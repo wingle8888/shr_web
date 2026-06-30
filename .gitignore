@@ -3,3 +3,6 @@ node_modules
 .DS_Store
 *.log
 workspace.code-workspace
+generate-favicon.js
+download-images.js
+vercel-login-out.txt
