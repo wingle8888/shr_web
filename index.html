@@ -1,47 +1,184 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHR Tech - 嵌入式开发板 & 模块商城</title>
-    <style>
-        body { margin:0; font-family: 'Microsoft YaHei', sans-serif; background:#0f0f0f; color:#eee; }
-        header { background:linear-gradient(135deg,#1a1a2e,#16213e); padding:1rem; text-align:center; }
-        .logo { font-size:2.2rem; font-weight:bold; color:#00d4ff; }
-        .hero { text-align:center; padding:100px 20px; background:linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)), url('https://picsum.photos/id/1015/1920/800'); background-size:cover; }
-        .products { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; padding:40px 20px; max-width:1200px; margin:0 auto; }
-        .card { background:#1e1e1e; border-radius:12px; overflow:hidden; transition:0.3s; }
-        .card:hover { transform:scale(1.05); box-shadow:0 10px 30px rgba(0,212,255,0.3); }
-        .btn { background:#00d4ff; color:#000; padding:12px 24px; border:none; border-radius:50px; font-weight:bold; cursor:pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SHR Tech - 专业嵌入式开发板、模块、传感器一站式采购平台">
+  <title>SHR Tech - 嵌入式开发板 & 模块商城</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <div class="logo">SHR Tech 商城</div>
-        <p>专业嵌入式开发板 · 模块 · 传感器 · 一站式采购</p>
-    </header>
+  <header>
+    <div class="header-inner">
+      <a href="#" class="logo">
+        <div class="logo-icon">SHR</div>
+        SHR Tech
+      </a>
+      <nav id="mainNav">
+        <a href="#home" class="active">首页</a>
+        <a href="#products">产品中心</a>
+        <a href="#features">服务优势</a>
+        <a href="#about">关于我们</a>
+        <a href="#contact">联系我们</a>
+      </nav>
+      <button class="header-cta" id="headerCta">立即咨询</button>
+      <button class="menu-toggle" id="menuToggle">☰</button>
+    </div>
+  </header>
 
-    <section class="hero">
-        <h1 style="font-size:3rem;">高性能嵌入式硬件</h1>
-        <p style="font-size:1.4rem;">STM32 · ESP32 · Raspberry Pi · LVGL 开发套件</p>
-        <button class="btn" onclick="alert('欢迎咨询采购！')">立即选购</button>
-    </section>
+  <section class="hero" id="home">
+    <div>
+      <h1>高性能嵌入式硬件</h1>
+      <p>STM32 · ESP32 · Raspberry Pi · LVGL 开发套件，一站式采购解决方案</p>
+      <div class="hero-tags">
+        <span class="hero-tag">原厂品质</span>
+        <span class="hero-tag">技术支持</span>
+        <span class="hero-tag">批量优惠</span>
+        <span class="hero-tag">快速发货</span>
+      </div>
+      <button class="btn" id="heroBtn">浏览产品</button>
+      <button class="btn btn-outline" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">联系我们</button>
+    </div>
+  </section>
 
-    <section class="products">
-        <div class="card">
-            <img src="https://picsum.photos/id/201/400/250" width="100%" alt="STM32">
-            <div style="padding:15px;">
-                <h3>STM32H750 开发板</h3>
-                <p>¥189</p>
-                <button class="btn">加入购物车</button>
-            </div>
+  <section id="features" class="features">
+    <div class="container">
+      <h2 class="section-title">为什么选择 SHR Tech</h2>
+      <p class="section-subtitle">专注嵌入式硬件领域，为工程师和开发者提供专业服务</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔧</div>
+          <h3>专业技术支持</h3>
+          <p>资深嵌入式工程师团队，提供选型指导、调试协助和方案定制</p>
         </div>
-        <!-- 可以继续添加更多商品卡片 -->
-    </section>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>正品保障</h3>
+          <p>所有产品均来自正规渠道，提供完整技术文档和开发资料</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚀</div>
+          <h3>快速交付</h3>
+          <p>现货库存充足，支持小批量试样和大批量采购，全国包邮</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💡</div>
+          <h3>方案定制</h3>
+          <p>提供 PCB 设计、固件开发、LVGL UI 定制等一站式解决方案</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <footer style="text-align:center; padding:40px; background:#111;">
-        <p>联系方式：你的微信 / 邮箱 / 电话</p>
-        <p>© 2026 SHR Tech - 嵌入式硬件解决方案提供商</p>
-    </footer>
+  <section id="products">
+    <div class="container">
+      <h2 class="section-title">热门产品</h2>
+      <p class="section-subtitle">精选嵌入式开发板与模块，满足各类项目需求</p>
+      <div class="products-grid" id="productsGrid"></div>
+    </div>
+  </section>
+
+  <section id="about" class="about">
+    <div class="container">
+      <div class="about-content">
+        <div class="about-text">
+          <h2>关于 SHR Tech</h2>
+          <p>SHR Tech 是一家专注于嵌入式硬件研发与分销的科技公司。我们为电子工程师、创客和教育机构提供高品质的开发板、传感器模块及配套技术服务。</p>
+          <p>从 STM32 高性能 MCU 到 ESP32 物联网方案，从 Raspberry Pi 单板计算机到 LVGL 图形界面开发套件，我们致力于让每一位开发者都能快速实现创意。</p>
+          <p>无论您是个人开发者还是企业客户，SHR Tech 都能为您提供专业、高效、可靠的硬件采购体验。</p>
+        </div>
+        <div class="about-stats">
+          <div class="stat-item">
+            <div class="stat-num">500+</div>
+            <div class="stat-label">产品 SKU</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">10K+</div>
+            <div class="stat-label">服务客户</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">99%</div>
+            <div class="stat-label">好评率</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">24h</div>
+            <div class="stat-label">快速响应</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="container">
+      <h2 class="section-title">联系我们</h2>
+      <p class="section-subtitle">欢迎咨询产品报价、技术方案或批量采购</p>
+      <div class="contact-grid">
+        <div class="contact-info">
+          <div class="contact-item">
+            <span class="icon">💬</span>
+            <div>
+              <h4>微信咨询</h4>
+              <p>添加微信：shr_tech（请替换为您的微信号）</p>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="icon">📧</span>
+            <div>
+              <h4>电子邮箱</h4>
+              <p>sales@shrtech.com（请替换为您的邮箱）</p>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="icon">📞</span>
+            <div>
+              <h4>电话咨询</h4>
+              <p>400-XXX-XXXX（请替换为您的电话）</p>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="icon">📍</span>
+            <div>
+              <h4>公司地址</h4>
+              <p>深圳市南山区科技园（请替换为您的地址）</p>
+            </div>
+          </div>
+        </div>
+        <form class="contact-form" id="contactForm">
+          <div class="form-group">
+            <label for="formName">您的姓名</label>
+            <input type="text" id="formName" placeholder="请输入姓名" required>
+          </div>
+          <div class="form-group">
+            <label for="formEmail">电子邮箱</label>
+            <input type="email" id="formEmail" placeholder="请输入邮箱">
+          </div>
+          <div class="form-group">
+            <label for="formPhone">联系电话</label>
+            <input type="tel" id="formPhone" placeholder="请输入电话">
+          </div>
+          <div class="form-group">
+            <label for="formMessage">留言内容</label>
+            <textarea id="formMessage" placeholder="请描述您的需求，如产品型号、数量等" required></textarea>
+          </div>
+          <button type="submit" class="btn" style="width:100%">提交咨询</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-links">
+      <a href="#home">首页</a>
+      <a href="#products">产品中心</a>
+      <a href="#about">关于我们</a>
+      <a href="#contact">联系我们</a>
+    </div>
+    <p>© 2026 SHR Tech - 嵌入式硬件解决方案提供商</p>
+    <p>Powered by Vercel</p>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+  <script src="js/app.js"></script>
 </body>
 </html>

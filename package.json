@@ -1,0 +1,11 @@
+{
+  "name": "shr-tech-website",
+  "version": "1.0.0",
+  "description": "SHR Tech 嵌入式硬件公司官网",
+  "scripts": {
+    "dev": "npx serve . -l 3000",
+    "start": "npx serve . -l 3000"
+  },
+  "keywords": ["embedded", "stm32", "esp32", "hardware"],
+  "license": "MIT"
+}
