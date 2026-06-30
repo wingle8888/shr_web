@@ -131,7 +131,7 @@ nav a.active {
   text-align: center;
   padding: 120px 20px 80px;
   background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)),
-    url("../images/hero.jpg") center/cover;
+    url("/images/hero.jpg") center/cover;
 }
 
 .hero h1 {

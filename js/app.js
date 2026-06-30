@@ -5,7 +5,7 @@ const products = [
     desc: "480MHz Cortex-M7，1MB Flash，外置 SDRAM，适合高性能嵌入式应用",
     price: 189,
     tag: "热卖",
-    img: "images/stm32.jpg",
+    img: "/images/stm32.jpg",
   },
   {
     id: 2,
@@ -13,7 +13,7 @@ const products = [
     desc: "WiFi + BLE 5.0，双核 240MHz，内置 AI 加速，IoT 首选",
     price: 68,
     tag: "推荐",
-    img: "images/esp32.jpg",
+    img: "/images/esp32.jpg",
   },
   {
     id: 3,
@@ -21,7 +21,7 @@ const products = [
     desc: "博通 BCM2712 四核 2.4GHz，8GB RAM，PCIe 2.0 接口",
     price: 599,
     tag: "新品",
-    img: "images/rpi5.jpg",
+    img: "/images/rpi5.jpg",
   },
   {
     id: 4,
@@ -29,7 +29,7 @@ const products = [
     desc: "4.3 寸 IPS 电容屏 + STM32F429，预装 LVGL 图形库 Demo",
     price: 258,
     tag: "套装",
-    img: "images/lvgl.jpg",
+    img: "/images/lvgl.jpg",
   },
   {
     id: 5,
@@ -37,7 +37,7 @@ const products = [
     desc: "六轴陀螺仪 + 加速度计，I2C 接口，姿态检测必备",
     price: 12,
     tag: "传感器",
-    img: "images/mpu6050.jpg",
+    img: "/images/mpu6050.jpg",
   },
   {
     id: 6,
@@ -45,7 +45,7 @@ const products = [
     desc: "Renesas RA4M1 芯片，内置 WiFi，兼容 Arduino 生态",
     price: 145,
     tag: "入门",
-    img: "images/arduino.jpg",
+    img: "/images/arduino.jpg",
   },
 ];
 
