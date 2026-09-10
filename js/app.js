@@ -49,11 +49,25 @@ const products = [
   },
 ];
 
+let cart = JSON.parse(localStorage.getItem("shr_cart") || "[]");
+
 function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+function saveCart() {
+  localStorage.setItem("shr_cart", JSON.stringify(cart));
+  updateCartBadge();
+}
+
+function updateCartBadge() {
+  const badge = document.getElementById("cartBadge");
+  const count = cart.reduce((sum, item) => sum + item.qty, 0);
+  badge.textContent = count;
+  badge.style.display = count > 0 ? "inline-flex" : "none";
 }
 
 function renderProducts() {
@@ -68,12 +82,69 @@ function renderProducts() {
         <h3>${p.name}</h3>
         <p class="card-desc">${p.desc}</p>
         <div class="card-price"><small>¥</small>${p.price}</div>
-        <button class="btn" onclick="handleInquiry('${p.name}')">咨询采购</button>
+        <div class="card-actions">
+          <button class="btn" onclick="addToCart(${p.id})">加入购物车</button>
+          <button class="btn btn-outline card-inquiry" onclick="handleInquiry('${p.name}')">咨询采购</button>
+        </div>
       </div>
     </div>
   `
     )
     .join("");
+}
+
+function addToCart(id) {
+  const product = products.find((p) => p.id === id);
+  if (!product) return;
+  const existing = cart.find((item) => item.id === id);
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ id: product.id, name: product.name, price: product.price, img: product.img, qty: 1 });
+  }
+  saveCart();
+  showToast(`已加入购物车：${product.name}`);
+}
+
+function removeFromCart(id) {
+  cart = cart.filter((item) => item.id !== id);
+  saveCart();
+  renderCart();
+}
+
+function renderCart() {
+  const body = document.getElementById("cartBody");
+  const totalEl = document.getElementById("cartTotal");
+  if (cart.length === 0) {
+    body.innerHTML = '<div class="cart-empty">购物车是空的，去挑选开发板吧</div>';
+    totalEl.textContent = "0.00";
+    return;
+  }
+  body.innerHTML = cart
+    .map(
+      (item) => `
+    <div class="cart-item">
+      <img src="${item.img}" alt="${item.name}">
+      <div class="cart-item-info">
+        <div class="cart-item-title">${item.name}</div>
+        <div class="cart-item-price">¥${item.price} × ${item.qty}</div>
+      </div>
+      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">移除</button>
+    </div>
+  `
+    )
+    .join("");
+  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  totalEl.textContent = total.toFixed(2);
+}
+
+function openCart() {
+  renderCart();
+  document.getElementById("cartModal").classList.add("show");
+}
+
+function closeCart() {
+  document.getElementById("cartModal").classList.remove("show");
 }
 
 function handleInquiry(productName) {
@@ -116,6 +187,7 @@ function initNav() {
 
 document.addEventListener("DOMContentLoaded", () => {
   renderProducts();
+  updateCartBadge();
   initNav();
 
   document.getElementById("contactForm").addEventListener("submit", handleContactSubmit);
@@ -126,5 +198,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("headerCta").addEventListener("click", () => {
     document.getElementById("contact").scrollIntoView({ behavior: "smooth" });
+  });
+
+  document.getElementById("cartBtn").addEventListener("click", openCart);
+  document.getElementById("modalClose").addEventListener("click", closeCart);
+  document.getElementById("cartModal").addEventListener("click", (e) => {
+    if (e.target.id === "cartModal") closeCart();
+  });
+
+  document.getElementById("checkoutBtn").addEventListener("click", () => {
+    if (cart.length === 0) {
+      showToast("购物车是空的");
+      return;
+    }
+    const method = document.querySelector('input[name="payMethod"]:checked')?.value || "PayPal";
+    showToast(`已通过 ${method} 支付成功！感谢购买`);
+    cart = [];
+    saveCart();
+    closeCart();
   });
 });
