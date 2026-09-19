@@ -3,6 +3,19 @@
   min-height: 100vh;
 }
 
+/* 覆盖商城全局 fixed header，避免挡住下方选项卡 */
+.admin-body header,
+.admin-body .admin-header {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 1;
+  background: transparent;
+  border-bottom: none;
+  backdrop-filter: none;
+}
+
 .admin-wrap {
   max-width: 880px;
   margin: 0 auto;
