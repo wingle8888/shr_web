@@ -2,19 +2,31 @@ import { createRequire } from "node:module";
 import { runNodeHandler } from "./functions/_adapter.js";
 
 const require = createRequire(import.meta.url);
+const { setRuntimeEnv } = require("./api/_lib/runtime-env.js");
+const products = require("./api/products.js");
+const orders = require("./api/orders.js");
+const downloads = require("./api/downloads.js");
+const adminProducts = require("./api/admin/products.js");
+const adminOrders = require("./api/admin/orders.js");
+const adminUsers = require("./api/admin/users.js");
+const adminFiles = require("./api/admin/files.js");
+const adminUpload = require("./api/admin/upload.js");
+const authMe = require("./api/auth/me.js");
+const authRegister = require("./api/auth/register.js");
+const authLogin = require("./api/auth/login.js");
 
 const HANDLERS = {
-  "/api/products": () => require("./api/products.js"),
-  "/api/orders": () => require("./api/orders.js"),
-  "/api/downloads": () => require("./api/downloads.js"),
-  "/api/admin/products": () => require("./api/admin/products.js"),
-  "/api/admin/orders": () => require("./api/admin/orders.js"),
-  "/api/admin/users": () => require("./api/admin/users.js"),
-  "/api/admin/files": () => require("./api/admin/files.js"),
-  "/api/admin/upload": () => require("./api/admin/upload.js"),
-  "/api/auth/me": () => require("./api/auth/me.js"),
-  "/api/auth/register": () => require("./api/auth/register.js"),
-  "/api/auth/login": () => require("./api/auth/login.js"),
+  "/api/products": products,
+  "/api/orders": orders,
+  "/api/downloads": downloads,
+  "/api/admin/products": adminProducts,
+  "/api/admin/orders": adminOrders,
+  "/api/admin/users": adminUsers,
+  "/api/admin/files": adminFiles,
+  "/api/admin/upload": adminUpload,
+  "/api/auth/me": authMe,
+  "/api/auth/register": authRegister,
+  "/api/auth/login": authLogin,
 };
 
 function normalizePath(pathname) {
@@ -25,7 +37,6 @@ function normalizePath(pathname) {
 export default {
   async fetch(request, env, ctx) {
     try {
-      const { setRuntimeEnv } = require("./api/_lib/runtime-env.js");
       setRuntimeEnv(env || {});
       const url = new URL(request.url);
       const path = normalizePath(url.pathname);
@@ -37,9 +48,9 @@ export default {
         });
       }
 
-      const load = HANDLERS[path];
-      if (load) {
-        return runNodeHandler({ request, env, ctx, params: {} }, load());
+      const handler = HANDLERS[path];
+      if (handler) {
+        return runNodeHandler({ request, env, ctx, params: {} }, handler);
       }
 
       if (env && env.ASSETS) {

@@ -3,10 +3,14 @@ api
 functions
 node_modules
 .git
+.wrangler
 .cursor
 data
 字体
+scripts
 wrangler.toml
 package-lock.json
 package.json
 *.md
+*.toml
+*.log
