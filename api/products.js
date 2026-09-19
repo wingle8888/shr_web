@@ -27,10 +27,12 @@ module.exports = async function handler(req, res) {
       return;
     }
     const catalog = await readCatalog();
+    const deleted = new Set((catalog.deletedIds || []).map(String));
     sendJson(res, 200, {
       ok: true,
-      products: attachGalleries(catalog.products, catalog.galleries),
+      products: attachGalleries(catalog.products, catalog.galleries).filter((p) => !deleted.has(String(p.id))),
       hiddenIds: catalog.hiddenIds,
+      deletedIds: catalog.deletedIds || [],
       galleries: catalog.galleries || {},
     });
     return;

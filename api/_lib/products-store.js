@@ -36,16 +36,17 @@ function unwrapGalleries(raw) {
 }
 
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], galleries: {} };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: [], galleries: {} };
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
     return {
       products,
       hiddenIds: uniqueIds(raw.hiddenIds),
+      deletedIds: uniqueIds(raw.deletedIds),
       galleries: unwrapGalleries(raw.galleries),
     };
   }
-  return { products: [], hiddenIds: [], galleries: {} };
+  return { products: [], hiddenIds: [], deletedIds: [], galleries: {} };
 }
 
 function mergeProducts(a, b) {
@@ -73,10 +74,12 @@ function mergeCatalog(a, b) {
   const left = unwrapCatalog(a);
   const right = unwrapCatalog(b);
   const hiddenIds = Array.isArray(b) ? left.hiddenIds : right.hiddenIds;
+  const deletedIds = uniqueIds([...(left.deletedIds || []), ...(right.deletedIds || [])]);
   const galleries = Array.isArray(b) ? left.galleries : mergeGalleries(left.galleries, right.galleries);
   return {
     products: mergeProducts(left.products, right.products),
     hiddenIds,
+    deletedIds,
     galleries,
   };
 }
@@ -85,7 +88,7 @@ async function readCatalog() {
   const raw = await readJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    empty: { products: [], hiddenIds: [], galleries: {} },
+    empty: { products: [], hiddenIds: [], deletedIds: [], galleries: {} },
     merge: mergeCatalog,
   });
   return unwrapCatalog(raw);
@@ -95,6 +98,7 @@ async function writeCatalog(catalog) {
   const next = {
     products: mergeProducts([], catalog && catalog.products),
     hiddenIds: uniqueIds(catalog && catalog.hiddenIds),
+    deletedIds: uniqueIds(catalog && catalog.deletedIds),
     galleries: unwrapGalleries(catalog && catalog.galleries),
   };
   await writeJsonStore({
@@ -114,6 +118,7 @@ async function writeCustomProducts(list) {
   const saved = await writeCatalog({
     products: list,
     hiddenIds: cur.hiddenIds,
+    deletedIds: cur.deletedIds,
     galleries: cur.galleries,
   });
   return saved.products;
@@ -129,8 +134,24 @@ async function setProductsHidden(ids, hidden) {
   return writeCatalog({
     products: cur.products,
     hiddenIds: Array.from(set),
+    deletedIds: cur.deletedIds,
     galleries: cur.galleries,
   });
+}
+
+async function deleteProducts(ids) {
+  const remove = uniqueIds(ids);
+  if (!remove.length) throw new Error("ids required");
+  const cur = await readCatalog();
+  const removeSet = new Set(remove);
+  const products = (cur.products || []).filter((p) => !removeSet.has(String(p.id)));
+  const hiddenIds = (cur.hiddenIds || []).filter((id) => !removeSet.has(String(id)));
+  const deletedIds = uniqueIds([...(cur.deletedIds || []), ...remove]);
+  const galleries = { ...(cur.galleries || {}) };
+  remove.forEach((id) => {
+    delete galleries[id];
+  });
+  return writeCatalog({ products, hiddenIds, deletedIds, galleries });
 }
 
 const MAX_GALLERY = 12;
@@ -284,6 +305,7 @@ module.exports = {
   readCustomProducts,
   writeCustomProducts,
   setProductsHidden,
+  deleteProducts,
   normalizeProduct,
   nextProductId,
   categoryName,

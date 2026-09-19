@@ -5,6 +5,7 @@ const {
   readCustomProducts,
   writeCustomProducts,
   setProductsHidden,
+  deleteProducts,
   normalizeProduct,
   saveProductImage,
   addGalleryImages,
@@ -31,10 +32,12 @@ module.exports = async function handler(req, res) {
       return;
     }
     const catalog = await readCatalog();
+    const deleted = new Set((catalog.deletedIds || []).map(String));
     sendJson(res, 200, {
       ok: true,
-      products: attachGalleries(catalog.products, catalog.galleries),
+      products: attachGalleries(catalog.products, catalog.galleries).filter((p) => !deleted.has(String(p.id))),
       hiddenIds: catalog.hiddenIds,
+      deletedIds: catalog.deletedIds,
       galleries: catalog.galleries,
       categories: CATEGORIES,
     });
@@ -86,14 +89,13 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === "delete") {
-      const id = String(body.id || "").trim();
-      const next = list.filter((p) => String(p.id) !== id);
-      if (next.length === list.length) {
-        sendJson(res, 404, { ok: false, error: "product not found" });
+      const ids = Array.isArray(body.ids) ? body.ids : body.id != null ? [body.id] : [];
+      if (!ids.length) {
+        sendJson(res, 400, { ok: false, error: "ids required" });
         return;
       }
-      await writeCustomProducts(next);
-      sendJson(res, 200, { ok: true });
+      const catalog = await deleteProducts(ids);
+      sendJson(res, 200, { ok: true, deletedIds: catalog.deletedIds, count: ids.length });
       return;
     }
 

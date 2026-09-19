@@ -5,6 +5,7 @@ const state = {
   seedProducts: [],
   customProducts: [],
   hiddenIds: [],
+  deletedIds: [],
   galleries: {},
   galleryProductId: "",
   orders: [],
@@ -84,10 +85,12 @@ function hiddenSet() {
 
 function allProducts() {
   const hidden = hiddenSet();
+  const deleted = new Set((state.deletedIds || []).map(String));
   const map = new Map();
   state.seedProducts.forEach((p) => map.set(String(p.id), { ...p, source: "seed" }));
   state.customProducts.forEach((p) => map.set(String(p.id), { ...p, source: "custom" }));
   return Array.from(map.values())
+    .filter((p) => !deleted.has(String(p.id)))
     .map((p) => ({
       ...p,
       hidden: hidden.has(String(p.id)),
@@ -306,12 +309,8 @@ function renderProductsTable() {
           <button type="button" data-toggle-hidden="${p.id}" data-hidden="${p.hidden ? "1" : "0"}">${
             p.hidden ? "上架" : "下架"
           }</button>
-          ${
-            custom
-              ? `<button type="button" data-edit-product="${p.id}">编辑</button>
-                 <button type="button" class="danger" data-del-product="${p.id}">删除</button>`
-              : ""
-          }
+          ${custom ? `<button type="button" data-edit-product="${p.id}">编辑</button>` : ""}
+          <button type="button" class="danger" data-del-product="${p.id}">删除</button>
         </td>
       </tr>`;
         })
@@ -567,6 +566,7 @@ async function loadProductsBundle() {
   const data = await api("/api/admin/products");
   state.customProducts = data.products || [];
   state.hiddenIds = data.hiddenIds || [];
+  state.deletedIds = data.deletedIds || [];
   state.galleries = data.galleries || {};
   renderProductsTable();
   productOptions();
@@ -880,6 +880,31 @@ $("selectAllProducts").addEventListener("change", () => {
 $("hideSelectedProducts").addEventListener("click", () => setSelectedHidden(true));
 $("showSelectedProducts").addEventListener("click", () => setSelectedHidden(false));
 
+async function deleteSelectedProducts(ids) {
+  const hint = $("productBatchStatus");
+  const list = (ids || []).map(String).filter(Boolean);
+  if (!list.length) {
+    if (hint) hint.textContent = "请先勾选要删除的产品";
+    return;
+  }
+  if (!confirm(`确定删除选中的 ${list.length} 件产品？删除后商城不再显示。`)) return;
+  try {
+    if (hint) hint.textContent = "删除中…";
+    await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete", ids: list }),
+    });
+    if (list.includes(String(state.galleryProductId))) renderGalleryPanel("");
+    await loadProductsBundle();
+    if (hint) hint.textContent = `已删除 ${list.length} 件`;
+  } catch (err) {
+    if (hint) hint.textContent = err.message;
+    else alert(err.message);
+  }
+}
+
+$("deleteSelectedProducts").addEventListener("click", () => deleteSelectedProducts(selectedProductIds()));
+
 $("gallerySelectedProduct").addEventListener("click", () => {
   const ids = selectedProductIds();
   const hint = $("productBatchStatus");
@@ -992,16 +1017,7 @@ $("productsTable").addEventListener("click", async (e) => {
   }
   const delBtn = e.target.closest("[data-del-product]");
   if (!delBtn) return;
-  if (!confirm("确定删除该后台产品？")) return;
-  try {
-    await api("/api/admin/products", {
-      method: "POST",
-      body: JSON.stringify({ action: "delete", id: delBtn.dataset.delProduct }),
-    });
-    await loadProductsBundle();
-  } catch (err) {
-    alert(err.message);
-  }
+  deleteSelectedProducts([delBtn.dataset.delProduct]);
 });
 
 $("ordersTable").addEventListener("click", (e) => {

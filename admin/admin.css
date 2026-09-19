@@ -454,7 +454,8 @@
 }
 
 .admin-file-actions button.danger,
-.admin-row-actions button.danger {
+.admin-row-actions button.danger,
+.link-btn.danger {
   color: var(--danger);
   border-color: rgba(255, 92, 108, 0.4);
 }

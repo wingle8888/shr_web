@@ -18,17 +18,19 @@
         return {
           products: Array.isArray(data.products) ? data.products : [],
           hiddenIds: Array.isArray(data.hiddenIds) ? data.hiddenIds.map(String) : [],
+          deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds.map(String) : [],
           galleries: data.galleries && typeof data.galleries === "object" ? data.galleries : {},
         };
       }
     } catch (_) {}
-    return { products: [], hiddenIds: [], galleries: {} };
+    return { products: [], hiddenIds: [], deletedIds: [], galleries: {} };
   }
 
   async function hydrateProducts() {
     const seed = Array.isArray(window.PRODUCTS) ? window.PRODUCTS.slice() : [];
     const catalog = await loadCatalog();
     const hidden = new Set(catalog.hiddenIds);
+    const deleted = new Set(catalog.deletedIds);
     const merged = mergeProducts(seed, catalog.products).map((p) => {
       const extra = catalog.galleries[String(p.id)];
       return extra ? { ...p, images: extra } : p;
@@ -36,8 +38,9 @@
     window.PRODUCTS_SEED = seed;
     window.PRODUCTS_CUSTOM = catalog.products;
     window.PRODUCTS_HIDDEN = hidden;
+    window.PRODUCTS_DELETED = deleted;
     window.PRODUCTS_GALLERIES = catalog.galleries;
-    window.PRODUCTS = merged.filter((p) => !hidden.has(String(p.id)));
+    window.PRODUCTS = merged.filter((p) => !hidden.has(String(p.id)) && !deleted.has(String(p.id)));
     return window.PRODUCTS;
   }
 
