@@ -100,7 +100,40 @@ function renderCart() {
   totalEl.textContent = cartTotal().toFixed(2);
 }
 
-function renderDetail(product) {
+function downloadLabel(d) {
+  const lang = window.I18N?.getLang?.() || "zh";
+  if (lang === "en" && d.nameEn) return d.nameEn;
+  return d.name || d.nameEn || d.file;
+}
+
+function renderDownloadsHtml(downloads) {
+  if (!downloads.length) {
+    return `<p class="pin-note">${escapeHtml(t("noDownloads"))}</p>`;
+  }
+  return `<ul class="download-list">${downloads
+    .map(
+      (d) => `
+      <li>
+        <div class="download-meta">
+          <strong>${escapeHtml(downloadLabel(d))}</strong>
+          <span class="download-format">${escapeHtml(d.format || "")}</span>
+        </div>
+        <a class="btn btn-sm download-btn" href="${escapeHtml(d.file)}" download>${escapeHtml(t("downloadBtn"))}</a>
+      </li>`
+    )
+    .join("")}</ul>`;
+}
+
+async function fetchProductDownloads(productId) {
+  try {
+    const res = await fetch(`/api/downloads?productId=${encodeURIComponent(productId)}`);
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.downloads)) return data.downloads;
+  } catch (_) {}
+  return null;
+}
+
+function renderDetail(product, remoteDownloads) {
   const main = document.getElementById("detailMain");
   document.title = `${product.name} - ${t("brand")}`;
 
@@ -115,21 +148,10 @@ function renderDetail(product) {
     )
     .join("");
   const pack = (product.package || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
-  const downloads = product.downloads || [];
-  const downloadsHtml = downloads.length
-    ? `<ul class="download-list">${downloads
-        .map(
-          (d) => `
-      <li>
-        <div class="download-meta">
-          <strong>${escapeHtml(d.name)}</strong>
-          <span class="download-format">${escapeHtml(d.format || "")}</span>
-        </div>
-        <a class="btn btn-sm download-btn" href="${escapeHtml(d.file)}" download>${escapeHtml(t("downloadBtn"))}</a>
-      </li>`
-        )
-        .join("")}</ul>`
-    : `<p class="pin-note">${escapeHtml(t("noDownloads"))}</p>`;
+  const downloads = Array.isArray(remoteDownloads)
+    ? remoteDownloads
+    : product.downloads || [];
+  const downloadsHtml = renderDownloadsHtml(downloads);
 
   main.innerHTML = `
     <nav class="breadcrumb">
@@ -237,7 +259,7 @@ function renderDetail(product) {
   });
 }
 
-function loadCurrentProduct() {
+async function loadCurrentProduct() {
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
   const product = window.getProductById(id);
@@ -250,7 +272,8 @@ function loadCurrentProduct() {
     `;
     return null;
   }
-  renderDetail(product);
+  const remote = await fetchProductDownloads(product.id);
+  renderDetail(product, remote);
   return product;
 }
 
@@ -260,23 +283,23 @@ function initLangSwitch() {
   const lang = window.I18N.getLang();
   wrap.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === lang);
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       window.I18N.setLang(btn.dataset.lang);
       wrap.querySelectorAll(".lang-btn").forEach((b) =>
         b.classList.toggle("active", b.dataset.lang === btn.dataset.lang)
       );
       window.I18N.applyI18n();
-      loadCurrentProduct();
+      await loadCurrentProduct();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
     });
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initLangSwitch();
   window.I18N.applyI18n();
   updateCartBadge();
-  loadCurrentProduct();
+  await loadCurrentProduct();
 
   document.getElementById("cartBtn").addEventListener("click", () => {
     renderCart();

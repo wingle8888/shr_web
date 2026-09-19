@@ -1,0 +1,160 @@
+.admin-body {
+  padding-top: 0;
+  min-height: 100vh;
+}
+
+.admin-wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  backdrop-filter: blur(8px);
+}
+
+.admin-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.admin-tip {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.admin-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-upload {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 28px;
+  background: rgba(7, 11, 20, 0.45);
+}
+
+.admin-upload .form-group {
+  margin-bottom: 12px;
+}
+
+.admin-upload select,
+.admin-upload input[type="text"],
+.admin-upload input[type="password"],
+#loginCard input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(7, 11, 20, 0.75);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.admin-upload label,
+#loginCard label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.admin-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--primary);
+  min-height: 1.2em;
+}
+
+.admin-status.error {
+  color: var(--danger);
+}
+
+.admin-sub {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  font-family: var(--font-ui);
+  color: var(--primary);
+}
+
+.admin-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-product-block {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(7, 11, 20, 0.4);
+}
+
+.admin-product-block h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.admin-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(46, 230, 255, 0.08);
+  font-size: 13px;
+}
+
+.admin-file-row:first-of-type {
+  border-top: none;
+}
+
+.admin-file-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-file-actions a,
+.admin-file-actions button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--primary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.admin-file-actions button.danger {
+  color: var(--danger);
+  border-color: rgba(255, 92, 108, 0.4);
+}

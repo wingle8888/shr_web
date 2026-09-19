@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资料后台 - 开发板商城</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="admin-body">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="admin-wrap">
+    <header class="admin-header">
+      <a href="/" class="logo">
+        <div class="logo-icon">SHR</div>
+        <span class="logo-text">资料后台</span>
+      </a>
+      <a class="header-cart" href="/">返回商城</a>
+    </header>
+
+    <section class="admin-card" id="loginCard">
+      <h1>管理员登录</h1>
+      <p class="admin-tip">仅管理员可上传 / 删除资料。用户端只能下载。</p>
+      <form id="loginForm">
+        <label>后台密码</label>
+        <input type="password" id="adminPassword" required placeholder="请输入后台密码" autocomplete="current-password">
+        <button class="btn" type="submit" style="width:100%;margin-top:12px">登录</button>
+      </form>
+      <p class="admin-hint">默认密码：shr-admin-2026（可在 Vercel 环境变量 ADMIN_PASSWORD 修改）</p>
+    </section>
+
+    <section class="admin-card" id="panelCard" hidden>
+      <div class="admin-panel-head">
+        <h1>产品资料管理</h1>
+        <button type="button" class="link-btn" id="logoutBtn">退出</button>
+      </div>
+      <p class="admin-tip">支持上传 ZIP / RAR / 7Z（单文件约 4MB 以内）。上传后用户可在商品详情「资料下载」中下载。</p>
+
+      <form id="uploadForm" class="admin-upload">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="productId">选择商品</label>
+            <select id="productId" required></select>
+          </div>
+          <div class="form-group">
+            <label for="displayName">显示名称</label>
+            <input type="text" id="displayName" placeholder="如：原理图与例程 (ZIP)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="fileInput">压缩包文件</label>
+          <input type="file" id="fileInput" accept=".zip,.rar,.7z,application/zip,application/x-rar-compressed,application/x-7z-compressed" required>
+        </div>
+        <button class="btn" type="submit">上传资料</button>
+        <p class="admin-status" id="uploadStatus"></p>
+      </form>
+
+      <h2 class="admin-sub">已上传 / 已登记资料</h2>
+      <div id="fileList" class="admin-file-list">加载中…</div>
+    </section>
+  </div>
+  <script src="/js/products-data.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

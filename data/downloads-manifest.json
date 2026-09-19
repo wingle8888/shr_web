@@ -1,0 +1,122 @@
+{
+  "1": [
+    {
+      "id": "seed-stm32-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/stm32h750-docs.zip",
+      "format": "ZIP",
+      "size": 1151,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-stm32-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/stm32h750-docs.7z",
+      "format": "7Z",
+      "size": 853,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ],
+  "2": [
+    {
+      "id": "seed-esp32-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/esp32-s3-docs.zip",
+      "format": "ZIP",
+      "size": 804,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-esp32-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/esp32-s3-docs.7z",
+      "format": "7Z",
+      "size": 560,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ],
+  "3": [
+    {
+      "id": "seed-rpi5-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/rpi5-docs.zip",
+      "format": "ZIP",
+      "size": 729,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-rpi5-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/rpi5-docs.7z",
+      "format": "7Z",
+      "size": 504,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ],
+  "4": [
+    {
+      "id": "seed-lvgl-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/lvgl-kit-docs.zip",
+      "format": "ZIP",
+      "size": 721,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-lvgl-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/lvgl-kit-docs.7z",
+      "format": "7Z",
+      "size": 496,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ],
+  "5": [
+    {
+      "id": "seed-mpu-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/mpu6050-docs.zip",
+      "format": "ZIP",
+      "size": 706,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-mpu-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/mpu6050-docs.7z",
+      "format": "7Z",
+      "size": 476,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ],
+  "6": [
+    {
+      "id": "seed-uno-zip",
+      "name": "技术资料包 (ZIP)",
+      "nameEn": "Technical Docs (ZIP)",
+      "file": "/downloads/arduino-uno-r4-docs.zip",
+      "format": "ZIP",
+      "size": 701,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    },
+    {
+      "id": "seed-uno-7z",
+      "name": "技术资料包 (7Z)",
+      "nameEn": "Technical Docs (7Z)",
+      "file": "/downloads/arduino-uno-r4-docs.7z",
+      "format": "7Z",
+      "size": 481,
+      "uploadedAt": "2026-09-19T00:00:00.000Z"
+    }
+  ]
+}
