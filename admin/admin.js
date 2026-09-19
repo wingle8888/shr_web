@@ -348,9 +348,40 @@ function renderVisitCharts() {
   }
 }
 
+function cancelledOrder(order) {
+  return /取消|已退|cancel|refund/i.test(String((order && order.status) || ""));
+}
+
+function productSalesMap() {
+  const byId = new Map();
+  const byName = new Map();
+  (state.orders || []).forEach((order) => {
+    if (cancelledOrder(order)) return;
+    (order.items || []).forEach((item) => {
+      const qty = Number(item && item.qty) || 0;
+      if (qty <= 0) return;
+      if (item.id != null && String(item.id).trim() !== "") {
+        const key = String(item.id);
+        byId.set(key, (byId.get(key) || 0) + qty);
+        return;
+      }
+      const name = String((item && item.name) || "").trim();
+      if (name) byName.set(name, (byName.get(name) || 0) + qty);
+    });
+  });
+  return { byId, byName };
+}
+
+function productSoldQty(product, sales) {
+  const byId = sales.byId.get(String(product.id)) || 0;
+  const byName = sales.byName.get(String(product.name || "").trim()) || 0;
+  return byId + byName;
+}
+
 function renderProductsTable() {
   const tbody = $("productsTable").querySelector("tbody");
   const list = allProducts();
+  const sales = productSalesMap();
   const allBox = $("selectAllProducts");
   if (allBox) allBox.checked = false;
   tbody.innerHTML = list.length
@@ -358,6 +389,7 @@ function renderProductsTable() {
         .map((p) => {
           const custom = p.source === "custom";
           const img = p.img ? `<img class="admin-thumb" src="${escapeHtml(p.img)}" alt="">` : "";
+          const sold = productSoldQty(p, sales);
           const status = p.hidden
             ? `<span class="admin-pill off">已下架</span>`
             : `<span class="admin-pill on">在售</span>`;
@@ -368,6 +400,7 @@ function renderProductsTable() {
         <td>${escapeHtml(p.name)}</td>
         <td>${escapeHtml(p.category || p.categoryId || "")}</td>
         <td>¥${formatMoney(p.price)}</td>
+        <td>${sold}</td>
         <td>${status}</td>
         <td>${custom ? "后台上传" : "商城预设"}</td>
         <td class="admin-row-actions">
@@ -381,7 +414,7 @@ function renderProductsTable() {
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="9" class="admin-empty">暂无产品</td></tr>`;
+    : `<tr><td colspan="10" class="admin-empty">暂无产品</td></tr>`;
 }
 
 function renderGalleryPanel(productId) {
@@ -601,6 +634,7 @@ async function loadOrdersBundle() {
   renderOrders();
   renderAddressStats();
   renderCustomers();
+  renderProductsTable();
 }
 
 function markVisitUpdated() {
