@@ -1,30 +1,6 @@
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { setRuntimeEnv } = require("../../api/_lib/runtime-env.js");
-
-const HANDLERS = {
-  products: require("../../api/products.js"),
-  orders: require("../../api/orders.js"),
-  downloads: require("../../api/downloads.js"),
-  "admin/products": require("../../api/admin/products.js"),
-  "admin/orders": require("../../api/admin/orders.js"),
-  "admin/users": require("../../api/admin/users.js"),
-  "admin/files": require("../../api/admin/files.js"),
-  "admin/upload": require("../../api/admin/upload.js"),
-  "auth/me": require("../../api/auth/me.js"),
-  "auth/register": require("../../api/auth/register.js"),
-  "auth/login": require("../../api/auth/login.js"),
-};
-
-function routeKey(params) {
-  const raw = params && params.path;
-  if (Array.isArray(raw)) return raw.filter(Boolean).join("/");
-  return String(raw || "")
-    .split("/")
-    .filter(Boolean)
-    .join("/");
-}
 
 function headerMap(request) {
   const headers = {};
@@ -89,32 +65,31 @@ function createNodeRes() {
   };
 }
 
-export async function onRequest(context) {
-  setRuntimeEnv(context.env || {});
-  const key = routeKey(context.params);
-  const handler = HANDLERS[key];
-  if (!handler) {
-    return new Response(JSON.stringify({ ok: false, error: "not found" }), {
-      status: 404,
+export async function runNodeHandler(context, handler) {
+  try {
+    return await invokeHandler(context, handler);
+  } catch (err) {
+    return new Response(JSON.stringify({ ok: false, error: String((err && err.message) || err) }), {
+      status: 500,
       headers: { "content-type": "application/json; charset=utf-8" },
     });
   }
+}
 
+async function invokeHandler(context, handler) {
+  const { setRuntimeEnv } = require("../api/_lib/runtime-env.js");
+  setRuntimeEnv(context.env || {});
   const request = context.request;
   const url = new URL(request.url);
-  const body = await parseRequestBody(request);
   const req = {
     method: request.method,
     url: `${url.pathname}${url.search}`,
     headers: headerMap(request),
-    body,
+    body: await parseRequestBody(request),
   };
   const box = createNodeRes();
   await handler(req, box.res);
-  await Promise.race([
-    box.done,
-    new Promise((resolve) => setTimeout(resolve, 50)),
-  ]);
+  if (!box.res.statusCode) await box.done;
   const out = box.result();
   const headers = new Headers(out.headers);
   if (!headers.has("access-control-allow-origin")) {
