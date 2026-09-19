@@ -345,6 +345,59 @@ async function markRead(visitorId, who) {
   return thread;
 }
 
+function refreshThreadPreview(thread) {
+  const msgs = Array.isArray(thread.messages) ? thread.messages : [];
+  const last = msgs[msgs.length - 1];
+  thread.lastMessage = last ? preview(last.text) : "";
+  thread.updatedAt = last && last.createdAt ? last.createdAt : new Date().toISOString();
+}
+
+function messageMatches(m, i, messageId) {
+  const id = String(messageId || "").trim();
+  if (!id) return false;
+  if (m && m.id && String(m.id) === id) return true;
+  return id === "idx-" + i;
+}
+
+async function deleteMessage(visitorId, messageId) {
+  const vid = String(visitorId || "").trim().slice(0, 64);
+  if (!vid || !String(messageId || "").trim()) throw new Error("visitorId and messageId required");
+  const db = await readChats();
+  const thread = db.threads.find((t) => String(t.visitorId) === vid);
+  if (!thread) return null;
+  const msgs = Array.isArray(thread.messages) ? thread.messages : [];
+  thread.messages = msgs.filter((m, i) => !messageMatches(m, i, messageId));
+  refreshThreadPreview(thread);
+  await writeChats(db);
+  return thread;
+}
+
+async function clearThread(visitorId) {
+  const vid = String(visitorId || "").trim().slice(0, 64);
+  if (!vid) throw new Error("visitorId required");
+  const db = await readChats();
+  const thread = db.threads.find((t) => String(t.visitorId) === vid);
+  if (!thread) return null;
+  thread.messages = [];
+  thread.lastMessage = "";
+  thread.unreadAdmin = 0;
+  thread.unreadCustomer = 0;
+  thread.updatedAt = new Date().toISOString();
+  await writeChats(db);
+  return thread;
+}
+
+async function deleteThread(visitorId) {
+  const vid = String(visitorId || "").trim().slice(0, 64);
+  if (!vid) throw new Error("visitorId required");
+  const db = await readChats();
+  const exists = db.threads.some((t) => String(t.visitorId) === vid);
+  if (!exists) return false;
+  db.threads = db.threads.filter((t) => String(t.visitorId) !== vid);
+  await writeChats(db);
+  return true;
+}
+
 async function getAutoReply() {
   const db = await readChats();
   return db.autoReply || normalizeAutoReply(null);
@@ -367,6 +420,9 @@ module.exports = {
   appendMessage,
   listThreads,
   markRead,
+  deleteMessage,
+  clearThread,
+  deleteThread,
   summarize,
   displayTitle,
   getAutoReply,

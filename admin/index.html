@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260919l">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260919m">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -368,7 +368,13 @@
           <div class="admin-chat-layout">
             <div class="admin-chat-list" id="adminChatList"></div>
             <div class="admin-chat-thread">
-              <div class="admin-chat-thread-head" id="adminChatHead">请选择左侧会话</div>
+              <div class="admin-chat-thread-head-row">
+                <div class="admin-chat-thread-head" id="adminChatHead">请选择左侧会话</div>
+                <div class="admin-chat-head-actions">
+                  <button type="button" class="link-btn" id="clearChatThread" disabled>清空会话</button>
+                  <button type="button" class="link-btn" id="deleteChatThread" disabled>删除会话</button>
+                </div>
+              </div>
               <div class="admin-chat-thread-msgs" id="adminChatMsgs"></div>
               <form class="admin-chat-reply" id="adminChatForm">
                 <input type="text" id="adminChatInput" maxlength="500" placeholder="回复客户…" autocomplete="off" disabled>
@@ -385,6 +391,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
-  <script src="/admin/admin.js?v=20260919p"></script>
+  <script src="/admin/admin.js?v=20260919q"></script>
 </body>
 </html>

@@ -626,14 +626,17 @@ function renderChatList() {
       const title = chatDisplayName(t);
       const unread = Number(t.unreadAdmin) || 0;
       const active = String(t.visitorId) === String(state.activeChatVisitorId) ? " is-active" : "";
-      return `<button type="button" class="admin-chat-item${active}${unread ? " has-unread" : ""}" data-chat-visitor="${escapeHtml(t.visitorId)}">
+      return `<div class="admin-chat-item${active}${unread ? " has-unread" : ""}" data-chat-visitor="${escapeHtml(t.visitorId)}" role="button" tabindex="0">
         <div class="admin-chat-item-top">
           <strong><span class="presence-dot${t.online ? " is-online" : ""}"></span>${escapeHtml(title)}</strong>
-          ${unread ? `<span class="admin-tab-badge">${unread}</span>` : ""}
+          <span class="admin-chat-item-tools">
+            ${unread ? `<span class="admin-tab-badge">${unread}</span>` : ""}
+            <button type="button" class="link-btn admin-chat-del-thread" data-del-thread="${escapeHtml(t.visitorId)}" title="删除会话">删除</button>
+          </span>
         </div>
         <div class="admin-chat-item-preview">${escapeHtml(t.lastMessage || "")}</div>
         <div class="admin-chat-item-time">${formatTime(t.updatedAt)}</div>
-      </button>`;
+      </div>`;
     })
     .join("");
 }
@@ -644,11 +647,15 @@ function renderChatThread() {
   const input = $("adminChatInput");
   const send = $("adminChatSend");
   const thread = state.chatThread;
+  const clearBtn = $("clearChatThread");
+  const deleteBtn = $("deleteChatThread");
   if (!thread) {
     if (head) head.textContent = "请选择左侧会话";
     if (box) box.innerHTML = "";
     if (input) input.disabled = true;
     if (send) send.disabled = true;
+    if (clearBtn) clearBtn.disabled = true;
+    if (deleteBtn) deleteBtn.disabled = true;
     return;
   }
   const title = chatDisplayName(thread);
@@ -658,24 +665,32 @@ function renderChatThread() {
   }
   if (input) input.disabled = false;
   if (send) send.disabled = false;
+  if (clearBtn) clearBtn.disabled = false;
+  if (deleteBtn) deleteBtn.disabled = false;
   const msgs = thread.messages || [];
   if (box) {
-    box.innerHTML = msgs
-      .map((m) => {
-        const role = m.role === "admin" ? "admin" : m.role === "bot" ? "bot" : "user";
-        const label =
-          role === "admin"
-            ? "卖家"
-            : role === "bot"
-              ? "自动回复"
-              : chatDisplayName(thread) + (thread.online ? " · 在线" : " · 离线");
-        return `<div class="admin-chat-bubble ${role}">
-          <div class="admin-chat-bubble-label">${escapeHtml(label)}</div>
+    box.innerHTML = msgs.length
+      ? msgs
+          .map((m, i) => {
+            const role = m.role === "admin" ? "admin" : m.role === "bot" ? "bot" : "user";
+            const label =
+              role === "admin"
+                ? "卖家"
+                : role === "bot"
+                  ? "自动回复"
+                  : chatDisplayName(thread) + (thread.online ? " · 在线" : " · 离线");
+            const msgId = m.id || "idx-" + i;
+            return `<div class="admin-chat-bubble ${role}">
+          <div class="admin-chat-bubble-label">
+            <span>${escapeHtml(label)}</span>
+            <button type="button" class="link-btn admin-chat-del-msg" data-del-msg="${escapeHtml(msgId)}" title="删除这条消息">删除</button>
+          </div>
           <div>${escapeHtml(m.text || "")}</div>
           <div class="chat-time">${formatTime(m.createdAt)}</div>
         </div>`;
-      })
-      .join("");
+          })
+          .join("")
+      : `<p class="admin-tip">该会话暂无消息。</p>`;
     box.scrollTop = box.scrollHeight;
   }
 }
@@ -709,6 +724,64 @@ async function openChatThread(visitorId) {
   renderChatList();
   const data = await api("/api/admin/chat?visitorId=" + encodeURIComponent(visitorId) + "&presence=1");
   state.chatThread = data.conversation || null;
+  renderChatThread();
+  await loadChatList();
+}
+
+async function applyChatConversation(conversation) {
+  state.chatThread = conversation || null;
+  if (!state.chatThread) {
+    state.activeChatVisitorId = "";
+  }
+  renderChatThread();
+  await loadChatList();
+}
+
+async function deleteChatMessage(messageId) {
+  if (!state.activeChatVisitorId || !messageId) return;
+  if (!confirm("确定删除这条消息？删除后客户窗口也会同步。")) return;
+  const data = await api("/api/admin/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      action: "delete-message",
+      visitorId: state.activeChatVisitorId,
+      messageId,
+    }),
+  });
+  await applyChatConversation(data.conversation);
+}
+
+async function clearChatThread() {
+  if (!state.activeChatVisitorId) return;
+  const name = chatDisplayName(state.chatThread || { visitorId: state.activeChatVisitorId });
+  if (!confirm("确定清空「" + name + "」的全部消息？会话会保留，消息会从服务器删除。")) return;
+  const data = await api("/api/admin/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      action: "clear-thread",
+      visitorId: state.activeChatVisitorId,
+    }),
+  });
+  await applyChatConversation(data.conversation);
+}
+
+async function removeChatThread(visitorId) {
+  const vid = String(visitorId || state.activeChatVisitorId || "").trim();
+  if (!vid) return;
+  const listed = (state.chatThreads || []).find((t) => String(t.visitorId) === vid);
+  const name = chatDisplayName(listed || state.chatThread || { visitorId: vid });
+  if (!confirm("确定删除「" + name + "」的整个会话？会话和消息都会从服务器删除。")) return;
+  await api("/api/admin/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      action: "delete-thread",
+      visitorId: vid,
+    }),
+  });
+  if (String(state.activeChatVisitorId) === vid) {
+    state.activeChatVisitorId = "";
+    state.chatThread = null;
+  }
   renderChatThread();
   await loadChatList();
 }
@@ -893,9 +966,30 @@ $("autoReplyForm").addEventListener("submit", async (e) => {
 });
 
 $("adminChatList").addEventListener("click", (e) => {
+  const del = e.target.closest("[data-del-thread]");
+  if (del) {
+    e.preventDefault();
+    e.stopPropagation();
+    removeChatThread(del.dataset.delThread).catch((err) => alert(err.message));
+    return;
+  }
   const btn = e.target.closest("[data-chat-visitor]");
   if (!btn) return;
   openChatThread(btn.dataset.chatVisitor).catch((err) => alert(err.message));
+});
+
+$("adminChatMsgs").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-del-msg]");
+  if (!btn) return;
+  deleteChatMessage(btn.dataset.delMsg).catch((err) => alert(err.message));
+});
+
+$("clearChatThread").addEventListener("click", () => {
+  clearChatThread().catch((err) => alert(err.message));
+});
+
+$("deleteChatThread").addEventListener("click", () => {
+  removeChatThread(state.activeChatVisitorId).catch((err) => alert(err.message));
 });
 
 $("adminChatForm").addEventListener("submit", async (e) => {

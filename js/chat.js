@@ -176,14 +176,20 @@
   }
 
   function applyServerMessages(conversation) {
-    const messages = ((conversation && conversation.messages) || []).map((m) => ({
+    if (!conversation) return false;
+    const messages = (conversation.messages || []).map((m) => ({
       role: m.role,
       text: m.text,
       time: messageTime(m),
       createdAt: m.createdAt,
     }));
-    if (!messages.length) return false;
+    if (!conversation.id && !messages.length) return false;
     saveChatHistory(messages);
+    if (!messages.length) {
+      const box = document.getElementById("chatMessages");
+      if (box) box.innerHTML = "";
+      return true;
+    }
     renderChatMessages(messages);
     return true;
   }
