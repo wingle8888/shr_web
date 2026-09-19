@@ -3,11 +3,13 @@ import runtimeEnv from "./api/_lib/runtime-env.js";
 import products from "./api/products.js";
 import orders from "./api/orders.js";
 import downloads from "./api/downloads.js";
+import chat from "./api/chat.js";
 import adminProducts from "./api/admin/products.js";
 import adminOrders from "./api/admin/orders.js";
 import adminUsers from "./api/admin/users.js";
 import adminFiles from "./api/admin/files.js";
 import adminUpload from "./api/admin/upload.js";
+import adminChat from "./api/admin/chat.js";
 import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
@@ -23,6 +25,8 @@ const HANDLERS = {
   "/api/admin/users": adminUsers,
   "/api/admin/files": adminFiles,
   "/api/admin/upload": adminUpload,
+  "/api/chat": chat,
+  "/api/admin/chat": adminChat,
   "/api/auth/me": authMe,
   "/api/auth/register": authRegister,
   "/api/auth/login": authLogin,
@@ -49,7 +53,7 @@ export default {
             r2: Boolean(getR2()),
             kv: Boolean(getKV()),
             durable: Boolean(getCatalogStub()),
-            storeRev: 7,
+            storeRev: 8,
           }),
           {
             status: 200,

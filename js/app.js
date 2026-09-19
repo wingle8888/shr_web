@@ -488,6 +488,19 @@ function formatChatTime(date = new Date()) {
   return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
+function chatVisitorId() {
+  try {
+    let id = localStorage.getItem("shr_visitor_id");
+    if (!id) {
+      id = "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem("shr_visitor_id", id);
+    }
+    return id;
+  } catch {
+    return "anon";
+  }
+}
+
 function loadChatHistory() {
   try {
     return JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "[]");
@@ -503,7 +516,7 @@ function saveChatHistory(messages) {
 function appendChatBubble(role, text, time) {
   const box = document.getElementById("chatMessages");
   const el = document.createElement("div");
-  el.className = `chat-bubble ${role}`;
+  el.className = `chat-bubble ${role === "admin" ? "admin" : role}`;
   el.innerHTML = `${escapeHtml(text)}<div class="chat-time">${time || formatChatTime()}</div>`;
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
@@ -521,6 +534,22 @@ function getBotReply(text) {
   return t("botDefault");
 }
 
+function messageTime(item) {
+  if (item.time) return item.time;
+  if (item.createdAt) {
+    try {
+      return formatChatTime(new Date(item.createdAt));
+    } catch (_) {}
+  }
+  return formatChatTime();
+}
+
+function renderChatMessages(messages) {
+  const box = document.getElementById("chatMessages");
+  box.innerHTML = "";
+  messages.forEach((m) => appendChatBubble(m.role, m.text, messageTime(m)));
+}
+
 function pushMessage(role, text) {
   const messages = loadChatHistory();
   const item = { role, text, time: formatChatTime() };
@@ -529,15 +558,71 @@ function pushMessage(role, text) {
   appendChatBubble(role, text, item.time);
 }
 
+function chatIdentity() {
+  const user = window.Auth && window.Auth.currentUser ? window.Auth.currentUser() : null;
+  return {
+    visitorId: chatVisitorId(),
+    name: user && (user.name || user.email) ? user.name || user.email : "",
+    email: user && user.email ? user.email : "",
+  };
+}
+
+async function fetchChatThread() {
+  const { visitorId } = chatIdentity();
+  const res = await fetch("/api/chat?visitorId=" + encodeURIComponent(visitorId), { cache: "no-store" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) return null;
+  return data.conversation || null;
+}
+
+function applyServerMessages(conversation) {
+  const messages = ((conversation && conversation.messages) || []).map((m) => ({
+    role: m.role,
+    text: m.text,
+    time: messageTime(m),
+    createdAt: m.createdAt,
+  }));
+  if (!messages.length) return false;
+  saveChatHistory(messages);
+  renderChatMessages(messages);
+  return true;
+}
+
+async function syncChatFromServer() {
+  try {
+    const conversation = await fetchChatThread();
+    if (conversation && applyServerMessages(conversation)) return true;
+  } catch (_) {}
+  return false;
+}
+
 function renderChatHistory() {
-  const box = document.getElementById("chatMessages");
-  box.innerHTML = "";
   const messages = loadChatHistory();
   if (messages.length === 0) {
+    const box = document.getElementById("chatMessages");
+    box.innerHTML = "";
     pushMessage("bot", t("welcome"));
     return;
   }
-  messages.forEach((m) => appendChatBubble(m.role, m.text, m.time));
+  renderChatMessages(messages);
+}
+
+async function sendChatToServer(text, botText) {
+  const ident = chatIdentity();
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      visitorId: ident.visitorId,
+      text,
+      botText,
+      name: ident.name,
+      email: ident.email,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || "send failed");
+  applyServerMessages(data.conversation);
 }
 
 function openChat() {
@@ -546,17 +631,40 @@ function openChat() {
   document.getElementById("chatInput").focus();
   const box = document.getElementById("chatMessages");
   box.scrollTop = box.scrollHeight;
+  syncChatFromServer().catch(() => {});
+  startCustomerChatPoll();
 }
 
 function closeChat() {
   document.getElementById("chatPanel").hidden = true;
+  stopCustomerChatPoll();
 }
 
 function handleChatSend(text) {
   const msg = text.trim();
   if (!msg) return;
+  const botText = getBotReply(msg);
   pushMessage("user", msg);
-  setTimeout(() => pushMessage("bot", getBotReply(msg)), 450);
+  sendChatToServer(msg, botText).catch(() => {
+    setTimeout(() => pushMessage("bot", botText), 450);
+  });
+}
+
+let customerChatTimer = null;
+
+function startCustomerChatPoll() {
+  if (customerChatTimer) return;
+  customerChatTimer = setInterval(() => {
+    const panel = document.getElementById("chatPanel");
+    if (!panel || panel.hidden) return;
+    syncChatFromServer().catch(() => {});
+  }, 4000);
+}
+
+function stopCustomerChatPoll() {
+  if (!customerChatTimer) return;
+  clearInterval(customerChatTimer);
+  customerChatTimer = null;
 }
 
 function initChat() {
@@ -567,6 +675,11 @@ function initChat() {
 
   renderChatHistory();
   if (loadChatHistory().length <= 1) unread.style.display = "inline-flex";
+  syncChatFromServer()
+    .then((ok) => {
+      if (ok) unread.style.display = "inline-flex";
+    })
+    .catch(() => {});
 
   launcher.addEventListener("click", () => {
     const panel = document.getElementById("chatPanel");

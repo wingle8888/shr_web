@@ -1350,6 +1350,13 @@ footer {
   border-bottom-right-radius: 4px;
 }
 
+.chat-bubble.admin {
+  align-self: flex-start;
+  background: rgba(46, 230, 255, 0.12);
+  border: 1px solid rgba(46, 230, 255, 0.35);
+  border-bottom-left-radius: 4px;
+}
+
 .chat-time {
   font-size: 10px;
   color: #64748b;

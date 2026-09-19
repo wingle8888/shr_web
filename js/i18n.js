@@ -187,9 +187,9 @@
       botShip: "结算时请填写完整收货地址与手机号，现货一般 24 小时内发货。",
       botPay: "支持 PayPal、Visa/Mastercard、Apple Pay、Google Pay。",
       botReg: "可注册登录保存收货信息，也可不登录直接购买；订单号+手机号可查询记录。",
-      botHuman: "可通过顶部在线客服咨询，或添加微信 shr_tech / 邮件 sales@shrtech.com。",
+      botHuman: "已转接卖家。请在此留言，卖家会在后台看到并回复。也可加微信 shr_tech / 邮件 sales@shrtech.com。",
       botHi: "您好！想选哪款开发板？也可以直接告诉我项目需求。",
-      botDefault: "已收到。如需查单请用订单号+手机号；其他问题可继续描述。",
+      botDefault: "已收到，卖家会在后台看到您的留言。如需查单请用订单号+手机号；其他问题可继续描述。",
       boughtHint: "已加入购物车，请点击顶部购物车结算",
     },
     en: {
@@ -379,9 +379,9 @@
       botShip: "Enter full address and phone at checkout. In-stock items usually ship within 24h.",
       botPay: "We accept PayPal, Visa/Mastercard, Apple Pay, and Google Pay.",
       botReg: "You can sign up to save shipping details, or checkout as a guest; look up orders by ID + phone.",
-      botHuman: "Chat here, or reach us via WeChat shr_tech / sales@shrtech.com.",
+      botHuman: "A seller will see your message in the admin inbox and reply here. You can also use WeChat shr_tech / sales@shrtech.com.",
       botHi: "Hello! Which board are you looking for? Or tell me about your project.",
-      botDefault: "Got it. For orders use ID + phone; otherwise tell me more.",
+      botDefault: "Got it — the seller will see this in the admin inbox. For orders use ID + phone; otherwise tell me more.",
       boughtHint: "Added to cart — open Cart in the header to checkout",
     },
   };

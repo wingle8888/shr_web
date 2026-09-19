@@ -18,6 +18,10 @@ const state = {
   stats: null,
   visits: null,
   currentTab: "dashboard",
+  chatThreads: [],
+  chatUnread: 0,
+  activeChatVisitorId: "",
+  chatThread: null,
 };
 
 let dailyVisitChart = null;
@@ -116,6 +120,12 @@ function switchTab(tab) {
   });
   if (tab === "dashboard" && getPass()) {
     loadVisits().catch(() => {});
+  }
+  if (tab === "chat" && getPass()) {
+    loadChatList().catch(() => {});
+    startChatLive();
+  } else {
+    stopChatLive();
   }
 }
 
@@ -546,8 +556,8 @@ function startVisitLive() {
   if (visitTimer) return;
   visitTimer = setInterval(() => {
     if (!getPass() || document.hidden) return;
-    if (state.currentTab !== "dashboard") return;
-    loadVisits().catch(() => {});
+    if (state.currentTab === "dashboard") loadVisits().catch(() => {});
+    if (state.currentTab !== "chat") loadChatList().catch(() => {});
   }, 15000);
 }
 
@@ -584,6 +594,110 @@ async function loadUsers() {
   renderStats();
 }
 
+function updateChatBadge() {
+  const badge = $("chatTabBadge");
+  if (!badge) return;
+  const n = Number(state.chatUnread) || 0;
+  badge.hidden = n <= 0;
+  badge.textContent = n > 99 ? "99+" : String(n);
+}
+
+function renderChatList() {
+  updateChatBadge();
+  const box = $("adminChatList");
+  if (!box) return;
+  const threads = state.chatThreads || [];
+  if (!threads.length) {
+    box.innerHTML = `<p class="admin-tip">还没有客户留言。</p>`;
+    return;
+  }
+  box.innerHTML = threads
+    .map((t) => {
+      const title = t.name || t.email || t.visitorId;
+      const unread = Number(t.unreadAdmin) || 0;
+      const active = String(t.visitorId) === String(state.activeChatVisitorId) ? " is-active" : "";
+      return `<button type="button" class="admin-chat-item${active}${unread ? " has-unread" : ""}" data-chat-visitor="${escapeHtml(t.visitorId)}">
+        <div class="admin-chat-item-top">
+          <strong>${escapeHtml(title)}</strong>
+          ${unread ? `<span class="admin-tab-badge">${unread}</span>` : ""}
+        </div>
+        <div class="admin-chat-item-preview">${escapeHtml(t.lastMessage || "")}</div>
+        <div class="admin-chat-item-time">${formatTime(t.updatedAt)}</div>
+      </button>`;
+    })
+    .join("");
+}
+
+function renderChatThread() {
+  const head = $("adminChatHead");
+  const box = $("adminChatMsgs");
+  const input = $("adminChatInput");
+  const send = $("adminChatSend");
+  const thread = state.chatThread;
+  if (!thread) {
+    if (head) head.textContent = "请选择左侧会话";
+    if (box) box.innerHTML = "";
+    if (input) input.disabled = true;
+    if (send) send.disabled = true;
+    return;
+  }
+  const title = thread.name || thread.email || thread.visitorId;
+  if (head) head.textContent = title + (thread.email && thread.name ? ` · ${thread.email}` : "");
+  if (input) input.disabled = false;
+  if (send) send.disabled = false;
+  const msgs = thread.messages || [];
+  if (box) {
+    box.innerHTML = msgs
+      .map((m) => {
+        const role = m.role === "admin" ? "admin" : m.role === "bot" ? "bot" : "user";
+        const label = role === "admin" ? "卖家" : role === "bot" ? "自动回复" : "客户";
+        return `<div class="admin-chat-bubble ${role}">
+          <div class="admin-chat-bubble-label">${label}</div>
+          <div>${escapeHtml(m.text || "")}</div>
+          <div class="chat-time">${formatTime(m.createdAt)}</div>
+        </div>`;
+      })
+      .join("");
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+async function loadChatList() {
+  const data = await api("/api/admin/chat");
+  state.chatThreads = data.threads || [];
+  state.chatUnread = data.unread || 0;
+  renderChatList();
+}
+
+async function openChatThread(visitorId) {
+  state.activeChatVisitorId = visitorId;
+  renderChatList();
+  const data = await api("/api/admin/chat?visitorId=" + encodeURIComponent(visitorId));
+  state.chatThread = data.conversation || null;
+  renderChatThread();
+  await loadChatList();
+}
+
+let chatTimer = null;
+
+function startChatLive() {
+  if (chatTimer) return;
+  chatTimer = setInterval(() => {
+    if (!getPass() || document.hidden || state.currentTab !== "chat") return;
+    loadChatList()
+      .then(() => {
+        if (state.activeChatVisitorId) return openChatThread(state.activeChatVisitorId);
+      })
+      .catch(() => {});
+  }, 8000);
+}
+
+function stopChatLive() {
+  if (!chatTimer) return;
+  clearInterval(chatTimer);
+  chatTimer = null;
+}
+
 async function loadAll() {
   const tasks = [
     loadOrdersBundle(),
@@ -591,9 +705,10 @@ async function loadAll() {
     loadUsers(),
     loadVisits(),
     refreshList(),
+    loadChatList(),
   ];
   const results = await Promise.allSettled(tasks);
-  const failed = results.find((r) => r.status === "rejected");
+  const failed = results.slice(0, 5).find((r) => r.status === "rejected");
   if (failed) throw failed.reason;
 }
 
@@ -691,6 +806,7 @@ $("loginForm").addEventListener("submit", async (e) => {
 
 $("logoutBtn").addEventListener("click", () => {
   stopVisitLive();
+  stopChatLive();
   clearPass();
   showPanel(false);
 });
@@ -714,6 +830,32 @@ $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) 
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
+$("refreshChat").addEventListener("click", () => loadChatList().catch((e) => alert(e.message)));
+
+$("adminChatList").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-chat-visitor]");
+  if (!btn) return;
+  openChatThread(btn.dataset.chatVisitor).catch((err) => alert(err.message));
+});
+
+$("adminChatForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("adminChatInput").value.trim();
+  if (!text || !state.activeChatVisitorId) return;
+  try {
+    $("adminChatSend").disabled = true;
+    await api("/api/admin/chat", {
+      method: "POST",
+      body: JSON.stringify({ visitorId: state.activeChatVisitorId, text }),
+    });
+    $("adminChatInput").value = "";
+    await openChatThread(state.activeChatVisitorId);
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    $("adminChatSend").disabled = false;
+  }
+});
 
 $("importLocalUsers").addEventListener("click", async () => {
   let local = [];
