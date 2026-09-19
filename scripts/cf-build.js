@@ -1,4 +1,3 @@
-const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
@@ -30,12 +29,4 @@ FILES.forEach((file) => {
   if (fs.existsSync(src)) copyFile(src, path.join(OUT, file));
 });
 DIRS.forEach((dir) => copyDir(path.join(ROOT, dir), path.join(OUT, dir)));
-try {
-  spawnSync("npx", ["--yes", "wrangler", "r2", "bucket", "create", "shr-admin-store"], {
-    cwd: ROOT,
-    stdio: "inherit",
-    shell: true,
-    env: process.env,
-  });
-} catch (_) {}
 console.log("cloudflare assets ready:", OUT);

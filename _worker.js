@@ -12,7 +12,7 @@ import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
 
-const { setRuntimeEnv, getR2, getKV, isCloudflare } = runtimeEnv;
+const { setRuntimeEnv, getR2, getKV, getCatalogStub, isCloudflare } = runtimeEnv;
 
 const HANDLERS = {
   "/api/products": products,
@@ -48,7 +48,8 @@ export default {
             cloudflare: isCloudflare(),
             r2: Boolean(getR2()),
             kv: Boolean(getKV()),
-            storeRev: 5,
+            durable: Boolean(getCatalogStub()),
+            storeRev: 6,
           }),
           {
             status: 200,
@@ -74,3 +75,24 @@ export default {
     }
   },
 };
+
+export class CatalogDO {
+  constructor(state) {
+    this.state = state;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const key = String(url.searchParams.get("path") || "catalog");
+    if (request.method === "PUT" || request.method === "POST") {
+      const text = await request.text();
+      const data = text ? JSON.parse(text) : null;
+      await this.state.storage.put(key, data);
+      return new Response("ok");
+    }
+    const data = await this.state.storage.get(key);
+    return new Response(JSON.stringify(data === undefined ? null : data), {
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+}

@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { getR2, disableR2, isCloudflare } = require("./runtime-env");
+const { getR2, disableR2, getCatalogStub, isCloudflare } = require("./runtime-env");
 
 const mem = new Map();
 const STORE_HOST = "https://develop-boards.com";
@@ -36,13 +36,14 @@ function canUseCache() {
 }
 
 function storageKind() {
+  if (getCatalogStub()) return "do";
   if (getR2()) return "r2";
   if (canUseCache()) return "cache";
   return "";
 }
 
 function hasBlob() {
-  return Boolean(getR2());
+  return Boolean(getCatalogStub() || getR2());
 }
 
 function blobAuthOpts() {
@@ -149,7 +150,42 @@ async function r2PutJson(pathname, payload) {
   }
 }
 
+async function doGetJson(pathname) {
+  const stub = getCatalogStub();
+  if (!stub) return null;
+  try {
+    const res = await stub.fetch(
+      new Request("https://catalog/do?path=" + encodeURIComponent(pathname), { method: "GET" })
+    );
+    if (!res || !res.ok) return null;
+    const text = await res.text();
+    if (!text || text === "null") return null;
+    return JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function doPutJson(pathname, payload) {
+  const stub = getCatalogStub();
+  if (!stub) return false;
+  try {
+    const res = await stub.fetch(
+      new Request("https://catalog/do?path=" + encodeURIComponent(pathname), {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: payload,
+      })
+    );
+    return Boolean(res && res.ok);
+  } catch (_) {
+    return false;
+  }
+}
+
 async function blobGetJson(pathname) {
+  const fromDo = await doGetJson(pathname);
+  if (fromDo != null) return fromDo;
   const fromR2 = await r2GetJson(pathname);
   if (fromR2 != null) return fromR2;
   return cacheGetJson(pathname);
@@ -157,9 +193,10 @@ async function blobGetJson(pathname) {
 
 async function blobPutJson(pathname, body) {
   const payload = typeof body === "string" ? body : JSON.stringify(body);
+  const doOk = await doPutJson(pathname, payload);
   const r2ok = await r2PutJson(pathname, payload);
   await cachePutJson(pathname, payload);
-  return r2ok;
+  return doOk || r2ok;
 }
 
 async function blobPutFile(pathname, buffer, contentType) {

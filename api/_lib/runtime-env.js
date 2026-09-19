@@ -27,6 +27,17 @@ function disableR2() {
   globalThis.__SHR_R2_DISABLED = true;
 }
 
+function getCatalogStub() {
+  const env = getRuntimeEnv();
+  const ns = env && env.CATALOG;
+  if (!ns || typeof ns.idFromName !== "function" || typeof ns.get !== "function") return null;
+  try {
+    return ns.get(ns.idFromName("shr-catalog"));
+  } catch (_) {
+    return null;
+  }
+}
+
 function getKV() {
   return null;
 }
@@ -35,7 +46,7 @@ function disableKV() {}
 
 function isCloudflare() {
   const env = getRuntimeEnv();
-  if (env && env.ASSETS) return true;
+  if (env && (env.ASSETS || env.CATALOG)) return true;
   try {
     if (typeof WebSocketPair !== "undefined") return true;
   } catch (_) {}
@@ -50,6 +61,7 @@ module.exports = {
   getRuntimeEnv,
   getR2,
   disableR2,
+  getCatalogStub,
   getKV,
   disableKV,
   isCloudflare,

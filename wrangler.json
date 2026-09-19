@@ -13,10 +13,18 @@
     "html_handling": "auto-trailing-slash",
     "run_worker_first": true
   },
-  "r2_buckets": [
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CATALOG",
+        "class_name": "CatalogDO"
+      }
+    ]
+  },
+  "migrations": [
     {
-      "binding": "SHR_BUCKET",
-      "bucket_name": "shr-admin-store"
+      "tag": "v1",
+      "new_sqlite_classes": ["CatalogDO"]
     }
   ]
 }
