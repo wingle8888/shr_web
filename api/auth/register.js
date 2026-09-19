@@ -73,6 +73,13 @@ module.exports = async function handler(req, res) {
       sendJson(res, 409, { ok: false, error: "email already registered" });
       return;
     }
+    const nameKey = name.replace(/\s+/g, " ").toLowerCase();
+    if (
+      users.some((u) => String(u.name || "").trim().replace(/\s+/g, " ").toLowerCase() === nameKey)
+    ) {
+      sendJson(res, 409, { ok: false, error: "name already registered" });
+      return;
+    }
 
     const { salt, hash } = hashPassword(password);
     const user = {

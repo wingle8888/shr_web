@@ -64,6 +64,12 @@
     const users = localUsers();
     const key = email.toLowerCase();
     if (users.some((u) => u.email === key)) throw new Error("email already registered");
+    const nameKey = String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
+    if (
+      users.some((u) => String(u.name || "").trim().replace(/\s+/g, " ").toLowerCase() === nameKey)
+    ) {
+      throw new Error("name already registered");
+    }
     const hash = await sha256(`shr:${key}:${password}`);
     const hint = clientPlaceHint();
     const user = {
@@ -274,6 +280,7 @@
 
   function mapAuthError(err) {
     const msg = String(err && err.message ? err.message : err || "");
+    if (msg.includes("name already")) return "authNameTaken";
     if (msg.includes("already")) return "authEmailTaken";
     if (msg.includes("mismatch") && msg.includes("password")) return "authPwdMismatch";
     if (msg.includes("short")) return "authPwdShort";
