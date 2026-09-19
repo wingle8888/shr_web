@@ -395,9 +395,13 @@
         } catch (err) {
           const msg = String(err.message || "");
           if (errEl) {
-            errEl.textContent = msg.includes("storage") || msg.includes("服务器") || msg.includes("Blob") || msg.includes("云存储")
-              ? "服务器未配置云存储，无法保存注册资料。请管理员在 Vercel 开启 Blob 存储。"
-              : t(mapAuthError(err));
+            if (/not configured|未检测|未配置|BLOB_MISSING/i.test(msg)) {
+              errEl.textContent = "服务器未配置云存储，无法保存注册资料。请管理员确认 Vercel Blob 已关联并重新部署。";
+            } else if (/write failed|写入|BLOB_WRITE/i.test(msg)) {
+              errEl.textContent = "云存储写入失败：" + msg;
+            } else {
+              errEl.textContent = t(mapAuthError(err));
+            }
             errEl.hidden = false;
           } else if (toast) toast(t(mapAuthError(err)));
         }

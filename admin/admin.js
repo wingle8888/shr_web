@@ -387,7 +387,7 @@ function renderUsers() {
   if (tip) {
     tip.textContent = state.usersStorageOk
       ? "注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。"
-      : "服务器云存储未配置：注册无法写入服务器。请到 Vercel → Storage → 创建 Blob，并确保环境变量 BLOB_READ_WRITE_TOKEN 已关联本项目。";
+      : "服务器云存储未就绪：请确认 Vercel Blob 已关联本项目（BLOB_STORE_ID / Token），并重新部署后再试。";
   }
   if (statusEl) {
     statusEl.textContent = state.usersStorageMessage || "";

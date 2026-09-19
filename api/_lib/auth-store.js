@@ -31,12 +31,31 @@ function parseBody(req) {
   return {};
 }
 
+function blobToken() {
+  return String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
+}
+
+function blobStoreId() {
+  return String(process.env.BLOB_STORE_ID || "").trim();
+}
+
+/**
+ * Vercel 新版 Blob：线上可用 OIDC + BLOB_STORE_ID；
+ * 也兼容长期 BLOB_READ_WRITE_TOKEN。
+ */
 function hasBlob() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  if (blobToken()) return true;
+  if (blobStoreId() && (process.env.VERCEL || process.env.VERCEL_OIDC_TOKEN)) return true;
+  return false;
 }
 
 function isVercel() {
   return Boolean(process.env.VERCEL);
+}
+
+function blobAuthOpts() {
+  const token = blobToken();
+  return token ? { token } : {};
 }
 
 function emailKey(email) {
@@ -68,8 +87,29 @@ function writeUsersLocal(users) {
   } catch (_) {}
 }
 
+async function streamToText(stream) {
+  if (!stream) return "";
+  if (typeof stream === "string") return stream;
+  if (Buffer.isBuffer(stream)) return stream.toString("utf8");
+  if (typeof stream.text === "function") return stream.text();
+  return new Response(stream).text();
+}
+
+async function blobGetJson(pathname) {
+  const { get } = require("@vercel/blob");
+  try {
+    const result = await get(pathname, { access: "private", ...blobAuthOpts() });
+    if (!result || result.statusCode !== 200) return null;
+    const text = await streamToText(result.stream);
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+}
+
 async function blobFetchJson(url) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const token = blobToken();
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(url, { headers });
   if (!res.ok) return null;
@@ -82,63 +122,49 @@ async function blobFetchJson(url) {
 
 async function blobPut(pathname, body) {
   const { put } = require("@vercel/blob");
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
   const payload = typeof body === "string" ? body : JSON.stringify(body);
-  const base = {
+  // Private Blob Store 必须用 access: "private"（需 @vercel/blob >= 2.3）
+  return put(pathname, payload, {
+    access: "private",
     addRandomSuffix: false,
-    contentType: "application/json",
-    token,
     allowOverwrite: true,
-  };
-  // 你创建的是 Private Blob Store，优先 private
-  try {
-    return await put(pathname, payload, { ...base, access: "private" });
-  } catch (_) {
-    try {
-      return await put(pathname, payload, {
-        addRandomSuffix: false,
-        contentType: "application/json",
-        token,
-        access: "private",
-      });
-    } catch (__) {
-      return await put(pathname, payload, {
-        addRandomSuffix: false,
-        contentType: "application/json",
-        token,
-        access: "public",
-        allowOverwrite: true,
-      });
-    }
-  }
+    contentType: "application/json",
+    ...blobAuthOpts(),
+  });
 }
 
 async function readUsersFromBlob() {
   if (!hasBlob()) return null;
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
   try {
-    const { list } = require("@vercel/blob");
+    // 1) 直接按路径读取总库（Private Store 推荐）
+    const db = await blobGetJson(BLOB_LIST);
+    if (Array.isArray(db)) return db;
+    if (db && Array.isArray(db.users)) return db.users;
 
-    // 1) 优先读总库文件
-    const listed = await list({ prefix: "shr-auth/users-db", token });
-    const dbFile = (listed.blobs || []).find((b) => String(b.pathname).includes("users-db"));
-    if (dbFile && dbFile.url) {
-      const data = await blobFetchJson(dbFile.url);
-      if (Array.isArray(data)) return data;
-      if (data && Array.isArray(data.users)) return data.users;
+    // 2) list 兼容旧路径 / 逐用户文件
+    const { list } = require("@vercel/blob");
+    const listed = await list({ prefix: "shr-auth/", ...blobAuthOpts() });
+    const dbFile = (listed.blobs || []).find((b) => String(b.pathname).endsWith("users-db.json"));
+    if (dbFile) {
+      const byPath = await blobGetJson(dbFile.pathname);
+      if (Array.isArray(byPath)) return byPath;
+      if (byPath && Array.isArray(byPath.users)) return byPath.users;
+      if (dbFile.url) {
+        const data = await blobFetchJson(dbFile.url);
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.users)) return data.users;
+      }
     }
 
-    // 2) 兼容逐个用户文件
-    const perUser = await list({ prefix: `${BLOB_DIR}/`, token });
     const users = [];
-    for (const blob of perUser.blobs || []) {
+    for (const blob of listed.blobs || []) {
+      if (!String(blob.pathname).startsWith(`${BLOB_DIR}/`)) continue;
       try {
-        const row = await blobFetchJson(blob.url);
+        const row = (await blobGetJson(blob.pathname)) || (blob.url ? await blobFetchJson(blob.url) : null);
         if (row && row.email) users.push(row);
       } catch (_) {}
     }
-    if (users.length) return users;
-    return [];
+    return users;
   } catch (_) {
     return null;
   }
@@ -147,16 +173,12 @@ async function readUsersFromBlob() {
 async function writeUsersToBlob(users) {
   if (!hasBlob()) return false;
   const list = Array.isArray(users) ? users : [];
-  try {
-    await blobPut(BLOB_LIST, list);
-    for (const user of list) {
-      if (!user || !user.email) continue;
-      await blobPut(`${BLOB_DIR}/${emailKey(user.email)}.json`, user);
-    }
-    return true;
-  } catch (_) {
-    return false;
+  await blobPut(BLOB_LIST, list);
+  for (const user of list) {
+    if (!user || !user.email) continue;
+    await blobPut(`${BLOB_DIR}/${emailKey(user.email)}.json`, user);
   }
+  return true;
 }
 
 async function readUsers() {
@@ -175,22 +197,22 @@ async function writeUsers(users) {
   writeUsersLocal(list);
 
   if (hasBlob()) {
-    const ok = await writeUsersToBlob(list);
-    if (!ok) {
-      const err = new Error("cloud storage write failed");
+    try {
+      await writeUsersToBlob(list);
+      return { users: list, persisted: true, storage: "blob" };
+    } catch (e) {
+      const err = new Error(String((e && e.message) || e || "cloud storage write failed"));
       err.code = "BLOB_WRITE_FAILED";
       throw err;
     }
-    return { users: list, persisted: true, storage: "blob" };
   }
 
   if (isVercel()) {
-    const err = new Error("BLOB_READ_WRITE_TOKEN not configured");
+    const err = new Error("BLOB_STORE_ID / BLOB_READ_WRITE_TOKEN not configured");
     err.code = "BLOB_MISSING";
     throw err;
   }
 
-  // 本地开发：允许写文件
   return { users: list, persisted: true, storage: "local" };
 }
 
@@ -278,12 +300,23 @@ function publicUser(u) {
 }
 
 function storageStatus() {
-  if (hasBlob()) return { ok: true, storage: "blob", message: "服务器云存储已启用，注册资料可跨设备查看" };
+  if (hasBlob()) {
+    return {
+      ok: true,
+      storage: "blob",
+      message: "服务器云存储已启用，注册资料可跨设备查看",
+      storeId: blobStoreId() || null,
+      hasToken: Boolean(blobToken()),
+    };
+  }
   if (isVercel()) {
     return {
       ok: false,
       storage: "none",
-      message: "未配置 BLOB_READ_WRITE_TOKEN：注册无法保存到服务器。请在 Vercel → Storage → Blob 创建并关联到本项目。",
+      message:
+        "未检测到 Blob：请确认 Storage 已关联本项目，且 Production 含 BLOB_STORE_ID / BLOB_READ_WRITE_TOKEN，并重新部署。",
+      storeId: blobStoreId() || null,
+      hasToken: Boolean(blobToken()),
     };
   }
   return { ok: true, storage: "local", message: "本地开发模式" };

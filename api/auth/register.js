@@ -26,9 +26,12 @@ module.exports = async function handler(req, res) {
   if (!status.ok) {
     sendJson(res, 503, {
       ok: false,
+      code: "BLOB_MISSING",
       error: "server storage not configured",
       detail: status.message,
       storage: status.storage,
+      hasToken: Boolean(status.hasToken),
+      storeId: status.storeId || null,
     });
     return;
   }
@@ -84,11 +87,21 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     const code = err && err.code ? err.code : "";
-    if (code === "BLOB_MISSING" || code === "BLOB_WRITE_FAILED") {
+    if (code === "BLOB_MISSING") {
       sendJson(res, 503, {
         ok: false,
-        error: "server storage unavailable",
-        detail: "注册资料无法写入服务器，请在 Vercel 配置 Blob 存储后重试",
+        code,
+        error: "server storage not configured",
+        detail: "未检测到 Blob 环境变量，请确认已关联并重新部署",
+      });
+      return;
+    }
+    if (code === "BLOB_WRITE_FAILED") {
+      sendJson(res, 503, {
+        ok: false,
+        code,
+        error: "server storage write failed",
+        detail: String(err.message || "注册资料写入 Blob 失败，请稍后重试"),
       });
       return;
     }

@@ -70,14 +70,26 @@ module.exports = async function handler(req, res) {
   const storedName = `${productId}_${id}${ext}`;
   let fileUrl = "";
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  const blobToken = String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
+  const blobReady = Boolean(blobToken || process.env.BLOB_STORE_ID);
+  if (blobReady) {
     try {
       const { put } = require("@vercel/blob");
-      const blob = await put(`product-docs/${storedName}`, buffer, {
-        access: "public",
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-        contentType: "application/octet-stream",
-      });
+      const auth = blobToken ? { token: blobToken } : {};
+      let blob;
+      try {
+        blob = await put(`product-docs/${storedName}`, buffer, {
+          access: "private",
+          contentType: "application/octet-stream",
+          ...auth,
+        });
+      } catch (_) {
+        blob = await put(`product-docs/${storedName}`, buffer, {
+          access: "public",
+          contentType: "application/octet-stream",
+          ...auth,
+        });
+      }
       fileUrl = blob.url;
     } catch (err) {
       sendJson(res, 500, { ok: false, error: "blob upload failed", detail: String(err.message || err) });
@@ -115,5 +127,5 @@ module.exports = async function handler(req, res) {
   manifest[productId].unshift(item);
   writeManifest(manifest);
 
-  sendJson(res, 200, { ok: true, item, note: process.env.BLOB_READ_WRITE_TOKEN ? "blob" : "local" });
+  sendJson(res, 200, { ok: true, item, note: blobReady ? "blob" : "local" });
 };
