@@ -18,13 +18,34 @@ function uniqueIds(list) {
   return Array.from(new Set((list || []).map((x) => String(x).trim()).filter(Boolean)));
 }
 
+function unwrapGalleries(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  Object.keys(raw).forEach((pid) => {
+    const list = Array.isArray(raw[pid]) ? raw[pid] : [];
+    out[String(pid)] = list
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === "string") return { id: item, url: item };
+        if (item.url) return { id: String(item.id || item.url), url: String(item.url) };
+        return null;
+      })
+      .filter(Boolean);
+  });
+  return out;
+}
+
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [] };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], galleries: {} };
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
-    return { products, hiddenIds: uniqueIds(raw.hiddenIds) };
+    return {
+      products,
+      hiddenIds: uniqueIds(raw.hiddenIds),
+      galleries: unwrapGalleries(raw.galleries),
+    };
   }
-  return { products: [], hiddenIds: [] };
+  return { products: [], hiddenIds: [], galleries: {} };
 }
 
 function mergeProducts(a, b) {
@@ -44,13 +65,19 @@ function mergeProducts(a, b) {
   return Array.from(map.values()).sort((x, y) => Number(y.id) - Number(x.id));
 }
 
+function mergeGalleries(a, b) {
+  return { ...unwrapGalleries(a), ...unwrapGalleries(b) };
+}
+
 function mergeCatalog(a, b) {
   const left = unwrapCatalog(a);
   const right = unwrapCatalog(b);
   const hiddenIds = Array.isArray(b) ? left.hiddenIds : right.hiddenIds;
+  const galleries = Array.isArray(b) ? left.galleries : mergeGalleries(left.galleries, right.galleries);
   return {
     products: mergeProducts(left.products, right.products),
     hiddenIds,
+    galleries,
   };
 }
 
@@ -58,7 +85,7 @@ async function readCatalog() {
   const raw = await readJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    empty: { products: [], hiddenIds: [] },
+    empty: { products: [], hiddenIds: [], galleries: {} },
     merge: mergeCatalog,
   });
   return unwrapCatalog(raw);
@@ -68,6 +95,7 @@ async function writeCatalog(catalog) {
   const next = {
     products: mergeProducts([], catalog && catalog.products),
     hiddenIds: uniqueIds(catalog && catalog.hiddenIds),
+    galleries: unwrapGalleries(catalog && catalog.galleries),
   };
   await writeJsonStore({
     blobPath: BLOB_PATH,
@@ -83,7 +111,11 @@ async function readCustomProducts() {
 
 async function writeCustomProducts(list) {
   const cur = await readCatalog();
-  const saved = await writeCatalog({ products: list, hiddenIds: cur.hiddenIds });
+  const saved = await writeCatalog({
+    products: list,
+    hiddenIds: cur.hiddenIds,
+    galleries: cur.galleries,
+  });
   return saved.products;
 }
 
@@ -94,7 +126,50 @@ async function setProductsHidden(ids, hidden) {
     if (hidden) set.add(id);
     else set.delete(id);
   });
-  return writeCatalog({ products: cur.products, hiddenIds: Array.from(set) });
+  return writeCatalog({
+    products: cur.products,
+    hiddenIds: Array.from(set),
+    galleries: cur.galleries,
+  });
+}
+
+const MAX_GALLERY = 12;
+
+async function addGalleryImages(productId, payloads) {
+  const pid = String(productId || "").trim();
+  if (!pid) throw new Error("product id required");
+  const cur = await readCatalog();
+  const list = Array.isArray(cur.galleries[pid]) ? cur.galleries[pid].slice() : [];
+  const incoming = Array.isArray(payloads) ? payloads : [];
+  for (const item of incoming) {
+    if (list.length >= MAX_GALLERY) break;
+    const raw = item && (item.imageBase64 || item.base64 || item);
+    if (!raw) continue;
+    const imageId = `g${pid}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const url = await saveProductImage(imageId, raw, item.imageType || item.type);
+    list.push({ id: imageId, url });
+  }
+  cur.galleries[pid] = list;
+  await writeCatalog(cur);
+  return list;
+}
+
+async function removeGalleryImage(productId, imageId) {
+  const pid = String(productId || "").trim();
+  const iid = String(imageId || "").trim();
+  const cur = await readCatalog();
+  const list = Array.isArray(cur.galleries[pid]) ? cur.galleries[pid] : [];
+  cur.galleries[pid] = list.filter((img) => String(img.id) !== iid);
+  await writeCatalog(cur);
+  return cur.galleries[pid];
+}
+
+function attachGalleries(products, galleries) {
+  const map = unwrapGalleries(galleries);
+  return (products || []).map((p) => ({
+    ...p,
+    images: map[String(p.id)] || p.images || [],
+  }));
 }
 
 function categoryName(id) {
@@ -214,4 +289,8 @@ module.exports = {
   categoryName,
   saveProductImage,
   readProductImage,
+  addGalleryImages,
+  removeGalleryImage,
+  attachGalleries,
+  MAX_GALLERY,
 };

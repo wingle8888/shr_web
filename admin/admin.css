@@ -296,6 +296,35 @@
   opacity: 0.62;
 }
 
+.admin-gallery-box {
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(7, 11, 20, 0.45);
+}
+
+.admin-gallery-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.admin-gallery-item {
+  width: 110px;
+}
+
+.admin-gallery-item img {
+  width: 110px;
+  height: 82px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: block;
+  margin-bottom: 6px;
+}
+
 .admin-thumb {
   width: 48px;
   height: 48px;

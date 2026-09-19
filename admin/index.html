@@ -165,6 +165,7 @@
             </label>
             <button type="button" class="btn btn-sm" id="hideSelectedProducts">下架选中</button>
             <button type="button" class="link-btn" id="showSelectedProducts">上架选中</button>
+            <button type="button" class="link-btn" id="gallerySelectedProduct">为选中商品上传宣传图</button>
             <span class="admin-hint" id="productBatchStatus"></span>
           </div>
           <div class="admin-table-wrap">
@@ -184,6 +185,20 @@
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+
+          <div class="admin-gallery-box" id="galleryCard" hidden>
+            <div class="admin-panel-head">
+              <h2 class="admin-sub" style="margin:0">宣传图：<span id="galleryProductName">未选择</span></h2>
+              <button type="button" class="link-btn" id="galleryCloseBtn">关闭</button>
+            </div>
+            <p class="admin-tip">可一次选择多张图片（最多 12 张），会出现在该商品详情页，类似淘宝主图和详情长图。</p>
+            <div class="admin-inline-actions">
+              <input type="file" id="galleryFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+              <button type="button" class="btn btn-sm" id="galleryUploadBtn">上传选中图片</button>
+            </div>
+            <p class="admin-status" id="galleryStatus"></p>
+            <div class="admin-gallery-list" id="galleryList"></div>
           </div>
         </div>
       </div>
@@ -331,6 +346,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919g"></script>
+  <script src="/admin/admin.js?v=20260919h"></script>
 </body>
 </html>

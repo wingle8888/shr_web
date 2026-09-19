@@ -7,6 +7,9 @@ const {
   setProductsHidden,
   normalizeProduct,
   saveProductImage,
+  addGalleryImages,
+  removeGalleryImage,
+  attachGalleries,
 } = require("../_lib/products-store");
 
 module.exports = async function handler(req, res) {
@@ -30,8 +33,9 @@ module.exports = async function handler(req, res) {
     const catalog = await readCatalog();
     sendJson(res, 200, {
       ok: true,
-      products: catalog.products,
+      products: attachGalleries(catalog.products, catalog.galleries),
       hiddenIds: catalog.hiddenIds,
+      galleries: catalog.galleries,
       categories: CATEGORIES,
     });
     return;
@@ -54,6 +58,30 @@ module.exports = async function handler(req, res) {
       }
       const catalog = await setProductsHidden(ids, action === "hide");
       sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
+      return;
+    }
+
+    if (action === "gallery-add") {
+      const id = String(body.id || "").trim();
+      const payloads = Array.isArray(body.images) ? body.images : body.imageBase64 ? [body] : [];
+      if (!id || !payloads.length) {
+        sendJson(res, 400, { ok: false, error: "id and images required" });
+        return;
+      }
+      const images = await addGalleryImages(id, payloads);
+      sendJson(res, 200, { ok: true, images });
+      return;
+    }
+
+    if (action === "gallery-remove") {
+      const id = String(body.id || "").trim();
+      const imageId = String(body.imageId || "").trim();
+      if (!id || !imageId) {
+        sendJson(res, 400, { ok: false, error: "id and imageId required" });
+        return;
+      }
+      const images = await removeGalleryImage(id, imageId);
+      sendJson(res, 200, { ok: true, images });
       return;
     }
 

@@ -5,6 +5,8 @@ const state = {
   seedProducts: [],
   customProducts: [],
   hiddenIds: [],
+  galleries: {},
+  galleryProductId: "",
   orders: [],
   customers: [],
   addressStats: [],
@@ -86,7 +88,11 @@ function allProducts() {
   state.seedProducts.forEach((p) => map.set(String(p.id), { ...p, source: "seed" }));
   state.customProducts.forEach((p) => map.set(String(p.id), { ...p, source: "custom" }));
   return Array.from(map.values())
-    .map((p) => ({ ...p, hidden: hidden.has(String(p.id)) }))
+    .map((p) => ({
+      ...p,
+      hidden: hidden.has(String(p.id)),
+      images: state.galleries[String(p.id)] || p.images || [],
+    }))
     .sort((a, b) => Number(a.id) - Number(b.id));
 }
 
@@ -296,6 +302,7 @@ function renderProductsTable() {
         <td>${status}</td>
         <td>${custom ? "后台上传" : "商城预设"}</td>
         <td class="admin-row-actions">
+          <button type="button" data-gallery-product="${p.id}">宣传图</button>
           <button type="button" data-toggle-hidden="${p.id}" data-hidden="${p.hidden ? "1" : "0"}">${
             p.hidden ? "上架" : "下架"
           }</button>
@@ -310,6 +317,34 @@ function renderProductsTable() {
         })
         .join("")
     : `<tr><td colspan="9" class="admin-empty">暂无产品</td></tr>`;
+}
+
+function renderGalleryPanel(productId) {
+  const card = $("galleryCard");
+  const nameEl = $("galleryProductName");
+  const listEl = $("galleryList");
+  if (!card || !listEl) return;
+  const id = String(productId || "").trim();
+  if (!id) {
+    card.hidden = true;
+    state.galleryProductId = "";
+    return;
+  }
+  const product = allProducts().find((p) => String(p.id) === id);
+  state.galleryProductId = id;
+  card.hidden = false;
+  if (nameEl) nameEl.textContent = product ? `#${product.id} ${product.name}` : `#${id}`;
+  const images = (state.galleries[id] || []).slice();
+  listEl.innerHTML = images.length
+    ? images
+        .map(
+          (img) => `<div class="admin-gallery-item">
+      <img src="${escapeHtml(img.url)}" alt="">
+      <button type="button" class="danger" data-del-gallery="${escapeHtml(img.id)}">删除</button>
+    </div>`
+        )
+        .join("")
+    : `<p class="admin-tip">还没有宣传图，请选择多张图片后上传。</p>`;
 }
 
 function renderOrders() {
@@ -532,8 +567,10 @@ async function loadProductsBundle() {
   const data = await api("/api/admin/products");
   state.customProducts = data.products || [];
   state.hiddenIds = data.hiddenIds || [];
+  state.galleries = data.galleries || {};
   renderProductsTable();
   productOptions();
+  if (state.galleryProductId) renderGalleryPanel(state.galleryProductId);
 }
 
 async function loadUsers() {
@@ -843,7 +880,95 @@ $("selectAllProducts").addEventListener("change", () => {
 $("hideSelectedProducts").addEventListener("click", () => setSelectedHidden(true));
 $("showSelectedProducts").addEventListener("click", () => setSelectedHidden(false));
 
+$("gallerySelectedProduct").addEventListener("click", () => {
+  const ids = selectedProductIds();
+  const hint = $("productBatchStatus");
+  if (ids.length !== 1) {
+    if (hint) hint.textContent = "请只勾选一件商品，再上传宣传图";
+    return;
+  }
+  if (hint) hint.textContent = "";
+  renderGalleryPanel(ids[0]);
+  $("galleryCard").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+$("galleryCloseBtn").addEventListener("click", () => renderGalleryPanel(""));
+
+$("galleryUploadBtn").addEventListener("click", async () => {
+  const status = $("galleryStatus");
+  const input = $("galleryFiles");
+  const id = state.galleryProductId;
+  if (!id) {
+    if (status) status.textContent = "请先选择一件商品";
+    return;
+  }
+  const files = input && input.files ? Array.from(input.files) : [];
+  if (!files.length) {
+    if (status) status.textContent = "请选择至少一张图片";
+    return;
+  }
+  const existing = (state.galleries[id] || []).length;
+  const room = Math.max(0, 12 - existing);
+  if (!room) {
+    if (status) status.textContent = "已满 12 张，请先删除再上传";
+    return;
+  }
+  try {
+    if (status) {
+      status.className = "admin-status";
+      status.textContent = "上传中…";
+    }
+    const slice = files.slice(0, room);
+    for (let i = 0; i < slice.length; i++) {
+      const imageBase64 = await fileToCompressedDataUrl(slice[i]);
+      const data = await api("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "gallery-add",
+          id,
+          images: [{ imageBase64, imageType: "image/jpeg" }],
+        }),
+      });
+      if (data.images) state.galleries[id] = data.images;
+      if (status) status.textContent = `已上传 ${i + 1}/${slice.length}`;
+    }
+    if (input) input.value = "";
+    await loadProductsBundle();
+    if (status) status.textContent = `宣传图已保存，共 ${(state.galleries[id] || []).length} 张`;
+  } catch (err) {
+    if (status) {
+      status.className = "admin-status error";
+      status.textContent = "上传失败：" + err.message;
+    }
+  }
+});
+
+$("galleryList").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-del-gallery]");
+  if (!btn || !state.galleryProductId) return;
+  try {
+    const data = await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "gallery-remove",
+        id: state.galleryProductId,
+        imageId: btn.dataset.delGallery,
+      }),
+    });
+    if (data.images) state.galleries[state.galleryProductId] = data.images;
+    await loadProductsBundle();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 $("productsTable").addEventListener("click", async (e) => {
+  const galleryBtn = e.target.closest("[data-gallery-product]");
+  if (galleryBtn) {
+    renderGalleryPanel(galleryBtn.dataset.galleryProduct);
+    $("galleryCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   const toggleBtn = e.target.closest("[data-toggle-hidden]");
   if (toggleBtn) {
     const id = toggleBtn.dataset.toggleHidden;

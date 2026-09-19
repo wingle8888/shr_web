@@ -152,6 +152,31 @@ function renderDetail(product, remoteDownloads) {
     ? remoteDownloads
     : product.downloads || [];
   const downloadsHtml = renderDownloadsHtml(downloads);
+  const gallery = [];
+  if (product.img) gallery.push(product.img);
+  (product.images || []).forEach((item) => {
+    const url = typeof item === "string" ? item : item && item.url;
+    if (url && !gallery.includes(url)) gallery.push(url);
+  });
+  const mainImg = gallery[0] || product.img || "";
+  const thumbsHtml =
+    gallery.length > 1
+      ? `<div class="detail-thumbs">${gallery
+          .map(
+            (src, i) =>
+              `<button type="button" class="detail-thumb${i === 0 ? " active" : ""}" data-src="${escapeHtml(src)}">
+                <img src="${escapeHtml(src)}" alt="">
+              </button>`
+          )
+          .join("")}</div>`
+      : "";
+  const promoHtml =
+    gallery.length > 1
+      ? `<div class="detail-promo">
+          <h2>${escapeHtml(t("promoImages"))}</h2>
+          ${gallery.map((src) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(product.name)}">`).join("")}
+        </div>`
+      : "";
 
   main.innerHTML = `
     <nav class="breadcrumb">
@@ -164,8 +189,11 @@ function renderDetail(product, remoteDownloads) {
 
     <section class="detail-hero">
       <div class="detail-gallery">
-        <img src="${product.img}" alt="${escapeHtml(product.name)}">
-        <span class="card-tag">${escapeHtml(product.tag)}</span>
+        <div class="detail-gallery-main">
+          <img id="detailMainImg" src="${escapeHtml(mainImg)}" alt="${escapeHtml(product.name)}">
+          <span class="card-tag">${escapeHtml(product.tag)}</span>
+        </div>
+        ${thumbsHtml}
       </div>
       <div class="detail-buy">
         <p class="detail-cat">${escapeHtml(product.category)}</p>
@@ -203,6 +231,7 @@ function renderDetail(product, remoteDownloads) {
         <article class="detail-panel active" id="tab-intro">
           <h2>${escapeHtml(t("intro"))}</h2>
           <p>${escapeHtml(product.intro || product.desc)}</p>
+          ${promoHtml}
         </article>
         <article class="detail-panel" id="tab-features">
           <h2>${escapeHtml(t("features"))}</h2>
@@ -245,6 +274,17 @@ function renderDetail(product, remoteDownloads) {
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
   });
+
+  const thumbs = document.querySelector(".detail-thumbs");
+  if (thumbs) {
+    thumbs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".detail-thumb");
+      if (!btn) return;
+      const mainEl = document.getElementById("detailMainImg");
+      if (mainEl && btn.dataset.src) mainEl.src = btn.dataset.src;
+      thumbs.querySelectorAll(".detail-thumb").forEach((b) => b.classList.toggle("active", b === btn));
+    });
+  }
 
   document.getElementById("detailAddCart").addEventListener("click", () => {
     const qty = Math.max(1, parseInt(document.getElementById("buyQty").value, 10) || 1);
