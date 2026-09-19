@@ -4,6 +4,7 @@
   "description": "开发板商城嵌入式硬件公司官网",
   "scripts": {
     "build": "node scripts/cf-build.js",
+    "deploy": "npx wrangler deploy",
     "dev": "npx serve . -l 3000",
     "start": "npx serve . -l 3000"
   },
