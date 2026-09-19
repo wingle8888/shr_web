@@ -24,10 +24,11 @@
 
   function track() {
     if (shouldSkip()) return;
-    fetch("/api/visits", {
+    fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "visit",
         visitorId: visitorId(),
         path: location.pathname + (location.search || ""),
         referrer: document.referrer || "",

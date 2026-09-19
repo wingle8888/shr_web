@@ -455,17 +455,7 @@ async function loadOrdersBundle() {
 }
 
 async function loadVisits() {
-  try {
-    let data = null;
-    try {
-      data = await api("/api/admin/visits");
-    } catch (_) {
-      data = await api("/api/admin/stats");
-    }
-    state.visits = (data && data.visits) || state.visits || null;
-  } catch (_) {
-    /* visits 接口失败时沿用 orders 里附带的统计 */
-  }
+  /* 访问统计已由 /api/admin/orders 一并返回 */
   renderStats();
 }
 
