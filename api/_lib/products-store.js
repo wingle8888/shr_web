@@ -5,7 +5,7 @@ const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, blobGetJson, ha
 const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
 const BLOB_PATH = "shr-admin/products-db.json";
-const REMOVED_SEED_IDS = ["3"];
+const REMOVED_SEED_IDS = ["3", "6"];
 
 const CATEGORIES = [
   { id: "cat-mcu", name: "MCU 开发板" },

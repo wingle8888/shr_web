@@ -170,49 +170,6 @@ var PRODUCTS_SEED = [
       { name: "技术资料包 (7Z)", file: "/downloads/mpu6050-docs.7z", format: "7Z" },
     ],
   },
-  {
-    id: 6,
-    name: "Arduino UNO R4 WiFi",
-    desc: "Renesas RA4M1 芯片，内置 WiFi，兼容 Arduino 生态",
-    price: 145,
-    tag: "入门",
-    category: "MCU 开发板",
-    categoryId: "cat-mcu",
-    img: "/images/arduino.jpg",
-    intro:
-      "Arduino UNO R4 WiFi 采用 Renesas RA4M1（Cortex-M4）与 ESP32-S3 协处理器，在保留经典 UNO 外形与 5V 逻辑的同时提供 Wi‑Fi / 蓝牙。兼容大量现有 Arduino 盾板与教程，适合教学与快速原型。",
-    features: [
-      "RA4M1 @ 48MHz，SRAM / Flash 更大",
-      "板载 ESP32-S3，Wi‑Fi + 蓝牙",
-      "12×8 LED 矩阵，可做简单显示",
-      "DAC、CAN、RTC 等更丰富外设",
-      "USB-C，兼容 UNO 盾板布局",
-      "官方 IDE 与库完善",
-    ],
-    specs: [
-      ["主控", "Renesas RA4M1"],
-      ["协处理", "ESP32-S3（无线）"],
-      ["逻辑电平", "5V"],
-      ["工作电压", "5V（USB-C / 电源座）"],
-      ["数字 I/O", "14（含 PWM）"],
-      ["模拟输入", "6 路"],
-    ],
-    pins: [
-      ["D0 / D1", "RX / TX", "硬件串口（与 USB 复用注意）"],
-      ["D2–D13", "数字 I/O", "其中部分支持 PWM"],
-      ["A0–A5", "模拟输入", "也可作数字口"],
-      ["SCL / SDA", "I2C", "另有专用针或 A4/A5"],
-      ["VIN", "外电输入", "约 6–24V，经稳压"],
-      ["5V / 3.3V / GND", "电源", "给盾板与模块供电"],
-      ["IOREF", "参考电平", "5V，兼容盾板"],
-      ["RESET", "复位", "低电平复位"],
-    ],
-    package: ["UNO R4 WiFi 板 ×1", "包装盒"],
-    downloads: [
-      { name: "技术资料包 (ZIP)", file: "/downloads/arduino-uno-r4-docs.zip", format: "ZIP" },
-      { name: "技术资料包 (7Z)", file: "/downloads/arduino-uno-r4-docs.7z", format: "7Z" },
-    ],
-  },
 ];
 
 if (typeof window !== "undefined") window.PRODUCTS = PRODUCTS_SEED;
