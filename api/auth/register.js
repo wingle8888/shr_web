@@ -9,6 +9,7 @@ const {
   publicUser,
   storageStatus,
 } = require("../_lib/auth-store");
+const { readRegisterPlace } = require("../_lib/geo");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -83,6 +84,7 @@ module.exports = async function handler(req, res) {
       hash,
       createdAt: new Date().toISOString(),
       source: "server",
+      registerPlace: readRegisterPlace(req, body),
     };
     users.push(user);
     const saved = await writeUsers(users);

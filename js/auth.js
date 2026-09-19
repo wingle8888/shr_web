@@ -49,11 +49,23 @@
     return String(value || "").replace(/[\s\-()+]/g, "").trim();
   }
 
+  function clientPlaceHint() {
+    try {
+      return {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+        locale: navigator.language || "",
+      };
+    } catch {
+      return { timezone: "", locale: "" };
+    }
+  }
+
   async function registerLocal({ name, email, password, phone }) {
     const users = localUsers();
     const key = email.toLowerCase();
     if (users.some((u) => u.email === key)) throw new Error("email already registered");
     const hash = await sha256(`shr:${key}:${password}`);
+    const hint = clientPlaceHint();
     const user = {
       id: `lu${Date.now()}`,
       email: key,
@@ -62,6 +74,7 @@
       hash,
       createdAt: new Date().toISOString(),
       source: "local",
+      registerPlace: hint.timezone ? { timezone: hint.timezone, label: hint.timezone } : null,
     };
     users.push(user);
     saveLocalUsers(users);
@@ -88,6 +101,7 @@
       phone: u.phone || "",
       createdAt: u.createdAt,
       hash: u.hash || "",
+      registerPlace: u.registerPlace || null,
       localHash: true,
       source: "sync-code",
     }));
@@ -126,6 +140,7 @@
       hash: hash || (idx >= 0 ? users[idx].hash : ""),
       createdAt: user.createdAt || new Date().toISOString(),
       source: user.source || "server",
+      registerPlace: user.registerPlace || (idx >= 0 ? users[idx].registerPlace : null),
     };
     if (idx >= 0) users[idx] = { ...users[idx], ...row };
     else users.push(row);
@@ -137,7 +152,7 @@
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, ...clientPlaceHint() }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {

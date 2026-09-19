@@ -73,6 +73,7 @@ module.exports = async function handler(req, res) {
               salt: u.salt || "",
               hash: u.hash || "",
               localHash: Boolean(u.localHash || u.hash),
+              registerPlace: u.registerPlace || null,
             };
           })
           .filter(Boolean);

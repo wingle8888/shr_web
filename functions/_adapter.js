@@ -85,6 +85,7 @@ async function invokeHandler(context, handler) {
     url: `${url.pathname}${url.search}`,
     headers: headerMap(request),
     body: await parseRequestBody(request),
+    cf: request.cf || null,
   };
   const box = createNodeRes();
   await handler(req, box.res);

@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { hasBlob, isHosted, blobGetJson, blobPutJson, blobStoreId, blobToken } = require("./blob-store");
+const { formatRegisterPlace } = require("./geo");
 
 const USERS_FILE = path.join(process.cwd(), "data", "users.json");
 const TMP_USERS = path.join("/tmp", "shr-users.json");
@@ -145,6 +146,7 @@ function mergeUsers(base, incoming) {
       hash: u.hash || prev.hash,
       localHash: u.localHash != null ? u.localHash : prev.localHash,
       createdAt: prev.createdAt || u.createdAt,
+      registerPlace: u.registerPlace || prev.registerPlace || null,
     });
   });
   return Array.from(map.values()).sort((a, b) =>
@@ -198,6 +200,7 @@ function verifyToken(token) {
 }
 
 function publicUser(u) {
+  const place = u && u.registerPlace && typeof u.registerPlace === "object" ? u.registerPlace : null;
   return {
     id: u.id,
     email: u.email,
@@ -205,6 +208,8 @@ function publicUser(u) {
     phone: u.phone || "",
     createdAt: u.createdAt,
     source: u.source || "server",
+    registerPlace: place,
+    registerPlaceLabel: (place && place.label) || formatRegisterPlace(place) || "",
   };
 }
 

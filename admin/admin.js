@@ -523,17 +523,19 @@ function renderUsers() {
         .map((u) => {
           const source =
             u.source === "local-sync" || u.source === "sync-code" || u.source === "import" ? "导入" : "服务器";
+          const place = u.registerPlaceLabel || (u.registerPlace && u.registerPlace.label) || "-";
           return `<tr>
         <td>${escapeHtml(u.id)}</td>
         <td>${escapeHtml(u.name || "-")}</td>
         <td>${escapeHtml(u.email || "-")}</td>
         <td>${escapeHtml(u.phone || "-")}</td>
+        <td>${escapeHtml(place)}</td>
         <td>${escapeHtml(formatTime(u.createdAt))}</td>
         <td>${escapeHtml(source)}</td>
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="6" class="admin-empty">服务器暂无注册用户</td></tr>`;
+    : `<tr><td colspan="7" class="admin-empty">服务器暂无注册用户</td></tr>`;
 }
 
 async function refreshList() {
@@ -1100,6 +1102,7 @@ $("importLocalUsers").addEventListener("click", async () => {
           createdAt: u.createdAt,
           hash: u.hash,
           localHash: true,
+          registerPlace: u.registerPlace || null,
         })),
       }),
     });
