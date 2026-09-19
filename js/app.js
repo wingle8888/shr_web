@@ -1,59 +1,4 @@
-const products = [
-  {
-    id: 1,
-    name: "STM32H750 开发板",
-    desc: "480MHz Cortex-M7，1MB Flash，外置 SDRAM，适合高性能嵌入式应用",
-    price: 189,
-    tag: "热卖",
-    category: "开发板",
-    img: "/images/stm32.jpg",
-  },
-  {
-    id: 2,
-    name: "ESP32-S3 开发套件",
-    desc: "WiFi + BLE 5.0，双核 240MHz，内置 AI 加速，IoT 首选",
-    price: 68,
-    tag: "推荐",
-    category: "开发板",
-    img: "/images/esp32.jpg",
-  },
-  {
-    id: 3,
-    name: "Raspberry Pi 5 主板",
-    desc: "博通 BCM2712 四核 2.4GHz，8GB RAM，PCIe 2.0 接口",
-    price: 599,
-    tag: "新品",
-    category: "单板机",
-    img: "/images/rpi5.jpg",
-  },
-  {
-    id: 4,
-    name: "LVGL 触摸屏套件",
-    desc: "4.3 寸 IPS 电容屏 + STM32F429，预装 LVGL 图形库 Demo",
-    price: 258,
-    tag: "套装",
-    category: "套件",
-    img: "/images/lvgl.jpg",
-  },
-  {
-    id: 5,
-    name: "MPU6050 传感器模块",
-    desc: "六轴陀螺仪 + 加速度计，I2C 接口，姿态检测必备",
-    price: 12,
-    tag: "传感器",
-    category: "传感器",
-    img: "/images/mpu6050.jpg",
-  },
-  {
-    id: 6,
-    name: "Arduino UNO R4 WiFi",
-    desc: "Renesas RA4M1 芯片，内置 WiFi，兼容 Arduino 生态",
-    price: 145,
-    tag: "入门",
-    category: "开发板",
-    img: "/images/arduino.jpg",
-  },
-];
+const products = window.PRODUCTS || [];
 
 const CART_KEY = "shr_cart";
 const ORDERS_KEY = "shr_orders";
@@ -117,17 +62,19 @@ function renderProducts() {
     .map(
       (p) => `
     <div class="card">
-      <div class="card-img-wrap">
-        <img src="${p.img}" alt="${escapeHtml(p.name)}" loading="lazy">
-        <span class="card-tag">${escapeHtml(p.tag)}</span>
-      </div>
-      <div class="card-body">
-        <h3>${escapeHtml(p.name)}</h3>
-        <p class="card-desc">${escapeHtml(p.desc)}</p>
-        <div class="card-bottom">
-          <div class="card-price"><small>¥</small>${p.price}</div>
-          <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">加入购物车</button>
+      <a class="card-link" href="/product.html?id=${p.id}">
+        <div class="card-img-wrap">
+          <img src="${p.img}" alt="${escapeHtml(p.name)}" loading="lazy">
+          <span class="card-tag">${escapeHtml(p.tag)}</span>
         </div>
+        <div class="card-body">
+          <h3>${escapeHtml(p.name)}</h3>
+          <p class="card-desc">${escapeHtml(p.desc)}</p>
+        </div>
+      </a>
+      <div class="card-bottom card-bottom-pad">
+        <div class="card-price"><small>¥</small>${p.price}</div>
+        <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">加入购物车</button>
       </div>
     </div>
   `
