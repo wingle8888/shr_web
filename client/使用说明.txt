@@ -16,5 +16,5 @@
 
 【说明】
 客户端会以独立窗口打开线上后台：
-https://shr-web.vercel.app/admin/
+https://develop-boards.com/admin/
 若把本文件夹放在完整网站目录旁，会优先尝试打开本地后台页面。

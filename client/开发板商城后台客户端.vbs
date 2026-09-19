@@ -4,7 +4,7 @@ Option Explicit
 
 Dim sh, fso, url, edge, chrome, scriptDir, cfg, line, cfgPath
 
-url = "https://shr-web.vercel.app/admin/"
+url = "https://develop-boards.com/admin/"
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)

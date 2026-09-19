@@ -1,1 +1,1 @@
-https://shr-web.vercel.app/admin/
+https://develop-boards.com/admin/
