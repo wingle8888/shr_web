@@ -170,7 +170,7 @@
       }
       // 仅本地开发允许降级；线上必须走服务器
       const host = String(location.hostname || "");
-      if (host.includes("vercel.app") || host.includes("shr-web")) {
+      if (host.includes("vercel.app") || host.includes("shr-web") || host.includes("develop-boards.com") || host.includes("pages.dev")) {
         throw new Error("无法保存到服务器，请稍后重试或检查云存储配置");
       }
       const local = await registerLocal(payload);
@@ -252,7 +252,7 @@
         throw err;
       }
       const host = String(location.hostname || "");
-      if (host.includes("vercel.app") || host.includes("shr-web")) throw err;
+      if (host.includes("vercel.app") || host.includes("shr-web") || host.includes("develop-boards.com") || host.includes("pages.dev")) throw err;
       return resetLocal(payload);
     }
   }
@@ -474,7 +474,7 @@
           const msg = String(err.message || "");
           if (errEl) {
             if (/not configured|未检测|未配置|BLOB_MISSING/i.test(msg)) {
-              errEl.textContent = "服务器未配置云存储，无法保存注册资料。请管理员确认 Vercel Blob 已关联并重新部署。";
+              errEl.textContent = "服务器未配置云存储，无法保存注册资料。请管理员确认 Cloudflare R2 已绑定并重新部署。";
             } else if (/write failed|写入|BLOB_WRITE/i.test(msg)) {
               errEl.textContent = "云存储写入失败：" + msg;
             } else {

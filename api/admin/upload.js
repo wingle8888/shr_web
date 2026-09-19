@@ -14,7 +14,7 @@ const {
   UPLOAD_DIR,
   parseBody,
 } = require("../_lib/docs-store");
-const { hasBlob, blobPutFile, isVercel } = require("../_lib/blob-store");
+const { hasBlob, blobPutFile, isHosted } = require("../_lib/blob-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -75,16 +75,16 @@ module.exports = async function handler(req, res) {
   if (blobReady) {
     try {
       const blob = await blobPutFile(`product-docs/${storedName}`, buffer, "application/octet-stream");
-      fileUrl = blob && blob.url ? blob.url : "";
+      fileUrl = blob && blob.url ? blob.url : `/api/downloads?file=${encodeURIComponent(`product-docs/${storedName}`)}`;
     } catch (err) {
       sendJson(res, 500, { ok: false, error: "blob upload failed", detail: String(err.message || err) });
       return;
     }
-  } else if (isVercel()) {
+  } else if (isHosted()) {
     sendJson(res, 503, {
       ok: false,
       error: "server storage not configured",
-      detail: "请确认 Vercel Blob 已关联本项目",
+      detail: "请在 Cloudflare Pages 绑定 R2 桶 SHR_BUCKET",
     });
     return;
   } else {
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res) {
       sendJson(res, 500, {
         ok: false,
         error:
-          "cannot write upload (set BLOB_READ_WRITE_TOKEN on Vercel for persistent cloud storage)",
+          "cannot write upload (bind Cloudflare R2 bucket SHR_BUCKET for persistent storage)",
         detail: String(err.message || err),
       });
       return;

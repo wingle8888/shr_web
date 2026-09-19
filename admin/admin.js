@@ -446,7 +446,7 @@ function renderUsers() {
   if (tip) {
     tip.textContent = state.usersStorageOk
       ? "注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。"
-      : "服务器云存储未就绪：请确认 Vercel Blob 已关联本项目（BLOB_STORE_ID / Token），并重新部署后再试。";
+      : "服务器云存储未就绪：请在 Cloudflare Pages 绑定 R2 桶 SHR_BUCKET（develop-boards）并重新部署后再试。";
   }
   if (statusEl) {
     statusEl.textContent = state.usersStorageMessage || "";

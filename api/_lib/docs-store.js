@@ -46,9 +46,13 @@ function mergeManifest(a, b) {
 
 function readSeedManifest() {
   try {
-    return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
+    return require("../../data/downloads-manifest.json");
   } catch {
-    return {};
+    try {
+      return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
+    } catch {
+      return {};
+    }
   }
 }
 

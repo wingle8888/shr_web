@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { readJsonStore, writeJsonStore, hasBlob } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "visits.json");
 const TMP_FILE = path.join("/tmp", "shr-visits.json");
@@ -9,21 +10,6 @@ const MAX_DAYS = 400;
 const TZ = "Asia/Shanghai";
 
 let memCache = null;
-
-function blobToken() {
-  return String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
-}
-
-function hasBlob() {
-  if (blobToken()) return true;
-  if (process.env.BLOB_STORE_ID && (process.env.VERCEL || process.env.VERCEL_OIDC_TOKEN)) return true;
-  return false;
-}
-
-function blobAuthOpts() {
-  const token = blobToken();
-  return token ? { token } : {};
-}
 
 function dayKey(d = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -108,57 +94,30 @@ function writeVisitsLocal(data) {
   return payload;
 }
 
-async function streamToText(stream) {
-  if (!stream) return "";
-  if (typeof stream === "string") return stream;
-  if (Buffer.isBuffer(stream)) return stream.toString("utf8");
-  if (typeof stream.text === "function") return stream.text();
-  return new Response(stream).text();
-}
-
-async function readVisitsFromBlob() {
-  if (!hasBlob()) return null;
-  try {
-    const { get } = require("@vercel/blob");
-    const result = await get(BLOB_PATH, { access: "private", ...blobAuthOpts() });
-    if (!result || result.statusCode !== 200) return emptyStore();
-    const text = await streamToText(result.stream);
-    if (!text) return emptyStore();
-    return normalizeStore(JSON.parse(text));
-  } catch (_) {
-    return null;
-  }
-}
-
-async function writeVisitsToBlob(data) {
-  if (!hasBlob()) return false;
-  const { put } = require("@vercel/blob");
-  await put(BLOB_PATH, JSON.stringify(pruneDays(data)), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    ...blobAuthOpts(),
-  });
-  return true;
-}
-
 async function readVisits() {
-  let data = memCache ? normalizeStore(memCache) : emptyStore();
-  data = mergeVisits(data, readVisitsLocal());
-  const fromBlob = await readVisitsFromBlob();
-  if (fromBlob) data = mergeVisits(data, fromBlob);
+  const data = normalizeStore(
+    await readJsonStore({
+      blobPath: BLOB_PATH,
+      localPaths: [TMP_FILE, DATA_FILE],
+      empty: memCache ? normalizeStore(memCache) : emptyStore(),
+      merge: mergeVisits,
+    })
+  );
   memCache = data;
   return data;
 }
 
 async function writeVisits(data) {
-  const payload = writeVisitsLocal(data);
-  if (hasBlob()) {
-    try {
-      await writeVisitsToBlob(payload);
-    } catch (_) {}
-  }
+  const payload = pruneDays(data);
+  writeVisitsLocal(payload);
+  try {
+    await writeJsonStore({
+      blobPath: BLOB_PATH,
+      localPaths: [TMP_FILE, DATA_FILE],
+      data: payload,
+    });
+  } catch (_) {}
+  memCache = payload;
   return payload;
 }
 

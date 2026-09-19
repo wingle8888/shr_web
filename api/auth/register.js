@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
         ok: false,
         code,
         error: "server storage not configured",
-        detail: "未检测到 Blob 环境变量，请确认已关联并重新部署",
+        detail: "未检测到 Cloudflare R2，请绑定 SHR_BUCKET 并重新部署",
       });
       return;
     }
@@ -110,7 +110,7 @@ module.exports = async function handler(req, res) {
         ok: false,
         code,
         error: "server storage write failed",
-        detail: String(err.message || "注册资料写入 Blob 失败，请稍后重试"),
+        detail: String(err.message || "注册资料写入云存储失败，请稍后重试"),
       });
       return;
     }

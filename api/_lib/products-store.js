@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, blobGetJson, hasBlob, isVercel } = require("./blob-store");
+const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, blobGetJson, hasBlob, isHosted } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
@@ -127,10 +127,15 @@ async function rememberDeletedIds(extra) {
 
 function loadSeedProducts() {
   try {
-    const seed = require(path.join(process.cwd(), "js", "products-data.js"));
+    const seed = require("../../js/products-data.js");
     return Array.isArray(seed) ? seed : [];
   } catch (_) {
-    return [];
+    try {
+      const seed = require(path.join(process.cwd(), "js", "products-data.js"));
+      return Array.isArray(seed) ? seed : [];
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -326,8 +331,8 @@ async function saveProductImage(id, raw, typeHint) {
   const blobPath = productImageBlobPath(id);
   if (hasBlob()) {
     await blobPutFile(blobPath, buffer, contentType);
-  } else if (isVercel()) {
-    const err = new Error("BLOB_STORE_ID / BLOB_READ_WRITE_TOKEN not configured");
+  } else if (isHosted()) {
+    const err = new Error("Cloudflare R2 is not configured");
     err.code = "BLOB_MISSING";
     throw err;
   } else {
