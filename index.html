@@ -10,9 +10,14 @@
   <link rel="icon" href="/images/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/images/favicon-16.png" type="image/png" sizes="16x16">
   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" sizes="180x180">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
   <div class="top-bar">
     <div class="container top-bar-inner">
       <span>免注册购买 · 支持国际支付 · 现货 24h 发货</span>
@@ -24,7 +29,7 @@
     <div class="header-inner">
       <a href="#home" class="logo">
         <div class="logo-icon">SHR</div>
-        开发板商城
+        <span class="logo-text">开发板商城</span>
       </a>
       <div class="search-box">
         <input type="search" id="searchInput" placeholder="搜索开发板、模块、传感器…" autocomplete="off">
@@ -54,16 +59,17 @@
   <section class="mall-banner" id="home">
     <div class="container banner-grid">
       <div class="banner-main">
-        <p class="banner-eyebrow">嵌入式硬件商城</p>
-        <h1>开发板 · 模块 · 一站采购</h1>
-        <p>STM32 / ESP32 / Raspberry Pi / LVGL，游客下单即可发货，保留订单凭证便于售后查询</p>
-        <button class="btn" id="heroBtn" type="button">去选购</button>
+        <p class="banner-eyebrow"><span class="pulse-dot"></span>嵌入式硬件商城</p>
+        <h1><span class="logo-text">开发板商城</span></h1>
+        <p class="banner-tagline">STM32 · ESP32 · Raspberry Pi · LVGL</p>
+        <p>高性能开发板与模块一站采购，游客下单即可发货，订单凭证可查</p>
+        <button class="btn" id="heroBtn" type="button">浏览商品</button>
       </div>
       <div class="banner-side">
-        <div class="side-card">正品保障</div>
-        <div class="side-card">国际支付</div>
-        <div class="side-card">快速发货</div>
-        <div class="side-card">技术支持</div>
+        <div class="side-card"><span class="side-icon">01</span>正品保障</div>
+        <div class="side-card"><span class="side-icon">02</span>国际支付</div>
+        <div class="side-card"><span class="side-icon">03</span>快速发货</div>
+        <div class="side-card"><span class="side-icon">04</span>技术支持</div>
       </div>
     </div>
   </section>
