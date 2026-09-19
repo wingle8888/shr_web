@@ -217,4 +217,138 @@ document.addEventListener("DOMContentLoaded", () => {
     saveCart();
     closeCart();
   });
+
+  initChat();
 });
+
+/* ---------- 在线客服聊天 ---------- */
+const CHAT_STORAGE_KEY = "shr_chat_messages";
+const WELCOME_MSG =
+  "您好！我是开发板商城在线客服。可咨询产品选型、价格、发货或技术支持，也可点击下方快捷问题。";
+
+function formatChatTime(date = new Date()) {
+  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function loadChatHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveChatHistory(messages) {
+  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-40)));
+}
+
+function appendChatBubble(role, text, time) {
+  const box = document.getElementById("chatMessages");
+  const el = document.createElement("div");
+  el.className = `chat-bubble ${role}`;
+  el.innerHTML = `${escapeHtml(text)}<div class="chat-time">${time || formatChatTime()}</div>`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getBotReply(text) {
+  const t = text.toLowerCase();
+  if (/价格|多少钱|报价|优惠|discount|price/.test(t)) {
+    return "产品价格以页面标价为准，批量采购可享优惠。请告知型号与数量，或留下邮箱/微信，我们发送正式报价。";
+  }
+  if (/发货|物流|快递|运费|到货|shipping/.test(t)) {
+    return "现货一般 24 小时内发货，支持国内快递与国际物流。下单后可在订单信息中查看物流单号。";
+  }
+  if (/技术|调试|固件|驱动|文档|sdk|支持/.test(t)) {
+    return "我们提供选型指导、资料包和基础调试协助。请说明芯片型号与遇到的问题，工程师会跟进。";
+  }
+  if (/支付|paypal|visa|付款|国际/.test(t)) {
+    return "支持 PayPal、Visa/Mastercard、Apple Pay、Google Pay 等国际支付方式，结算时可在购物车中选择。";
+  }
+  if (/人工|微信|电话|联系|客服/.test(t)) {
+    return "可添加微信 shr_tech，或发邮件至 sales@shrtech.com。也可点击页面「联系我们」提交需求，我们会尽快回电。";
+  }
+  if (/你好|您好|hi|hello/.test(t)) {
+    return "您好！请问需要了解哪款开发板或模块？也可以直接告诉我项目需求。";
+  }
+  return "已收到您的消息。客服会尽快处理；紧急需求请留言联系方式，或前往「联系我们」提交详细需求。";
+}
+
+function pushMessage(role, text) {
+  const messages = loadChatHistory();
+  const item = { role, text, time: formatChatTime() };
+  messages.push(item);
+  saveChatHistory(messages);
+  appendChatBubble(role, text, item.time);
+}
+
+function renderChatHistory() {
+  const box = document.getElementById("chatMessages");
+  box.innerHTML = "";
+  const messages = loadChatHistory();
+  if (messages.length === 0) {
+    pushMessage("bot", WELCOME_MSG);
+    return;
+  }
+  messages.forEach((m) => appendChatBubble(m.role, m.text, m.time));
+}
+
+function openChat() {
+  const panel = document.getElementById("chatPanel");
+  panel.hidden = false;
+  document.getElementById("chatUnread").style.display = "none";
+  document.getElementById("chatInput").focus();
+  const box = document.getElementById("chatMessages");
+  box.scrollTop = box.scrollHeight;
+}
+
+function closeChat() {
+  document.getElementById("chatPanel").hidden = true;
+}
+
+function handleChatSend(text) {
+  const msg = text.trim();
+  if (!msg) return;
+  pushMessage("user", msg);
+  setTimeout(() => pushMessage("bot", getBotReply(msg)), 450);
+}
+
+function initChat() {
+  const launcher = document.getElementById("chatLauncher");
+  const closeBtn = document.getElementById("chatClose");
+  const form = document.getElementById("chatForm");
+  const input = document.getElementById("chatInput");
+  const unread = document.getElementById("chatUnread");
+
+  renderChatHistory();
+  if (loadChatHistory().length <= 1) {
+    unread.style.display = "inline-flex";
+  }
+
+  launcher.addEventListener("click", () => {
+    const panel = document.getElementById("chatPanel");
+    if (panel.hidden) openChat();
+    else closeChat();
+  });
+  closeBtn.addEventListener("click", closeChat);
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    handleChatSend(input.value);
+    input.value = "";
+  });
+
+  document.getElementById("chatQuick").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-q]");
+    if (!btn) return;
+    handleChatSend(btn.dataset.q);
+  });
+}

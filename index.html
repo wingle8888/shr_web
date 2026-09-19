@@ -233,6 +233,37 @@
     </div>
   </div>
 
+  <div class="chat-widget" id="chatWidget">
+    <button class="chat-launcher" id="chatLauncher" type="button" aria-label="打开客服聊天">
+      <span class="chat-launcher-icon">💬</span>
+      <span class="chat-launcher-text">在线客服</span>
+      <span class="chat-unread" id="chatUnread" style="display:none">1</span>
+    </button>
+    <div class="chat-panel" id="chatPanel" hidden>
+      <div class="chat-header">
+        <div class="chat-agent">
+          <div class="chat-avatar">客</div>
+          <div>
+            <div class="chat-agent-name">开发板商城客服</div>
+            <div class="chat-agent-status">在线 · 通常几分钟内回复</div>
+          </div>
+        </div>
+        <button class="chat-close" id="chatClose" type="button" aria-label="关闭聊天">&times;</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-quick" id="chatQuick">
+        <button type="button" data-q="产品价格">产品价格</button>
+        <button type="button" data-q="发货物流">发货物流</button>
+        <button type="button" data-q="技术支持">技术支持</button>
+        <button type="button" data-q="人工客服">人工客服</button>
+      </div>
+      <form class="chat-input-row" id="chatForm">
+        <input type="text" id="chatInput" placeholder="输入消息..." autocomplete="off" maxlength="500" required>
+        <button type="submit" class="chat-send" aria-label="发送">发送</button>
+      </form>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   <script src="/js/app.js"></script>
 </body>

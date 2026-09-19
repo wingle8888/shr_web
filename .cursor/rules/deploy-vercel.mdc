@@ -1,0 +1,13 @@
+---
+description: 站点改动默认提交并推送到 Vercel
+alwaysApply: true
+---
+
+# 默认部署到 Vercel
+
+完成对官网（`index.html` / `css/` / `js/` / `images/` 等线上相关文件）的改动后：
+
+1. **默认** `git add` 相关文件、`git commit`、`git push origin main`，以触发 Vercel 自动部署。
+2. 无需再询问「是否需要推送」；用户说「默认都需要推送到 vercel」即长期授权。
+3. 仅提交与本次改动相关的文件；不要把无关目录（如本地演示子项目）一并推送，除非用户明确要求。
+4. 推送后用一句话告知线上地址已更新（如 https://shr-web.vercel.app）。
