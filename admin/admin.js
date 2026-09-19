@@ -185,72 +185,76 @@ function chartDefaults() {
 }
 
 function renderVisitCharts() {
-  if (typeof Chart === "undefined") return;
-  const visits = state.visits || { daily: [], monthly: [] };
-  const daily = visits.daily || [];
-  const monthly = visits.monthly || [];
+  try {
+    if (typeof Chart === "undefined") return;
+    const visits = state.visits || { daily: [], monthly: [] };
+    const daily = visits.daily || [];
+    const monthly = visits.monthly || [];
 
-  const dailyLabels = daily.map((d) => String(d.day).slice(5));
-  const monthlyLabels = monthly.map((m) => m.month);
+    const dailyLabels = daily.map((d) => String(d.day).slice(5));
+    const monthlyLabels = monthly.map((m) => m.month);
 
-  const dailyCfg = {
-    type: "line",
-    data: {
-      labels: dailyLabels.length ? dailyLabels : ["暂无数据"],
-      datasets: [
-        {
-          label: "日 PV",
-          data: daily.length ? daily.map((d) => d.pv) : [0],
-          borderColor: "#2ee6ff",
-          backgroundColor: "rgba(46, 230, 255, 0.18)",
-          fill: true,
-          tension: 0.35,
-          pointRadius: 2,
-        },
-        {
-          label: "日 UV",
-          data: daily.length ? daily.map((d) => d.uv) : [0],
-          borderColor: "#ff7a18",
-          backgroundColor: "rgba(255, 122, 24, 0.12)",
-          fill: false,
-          tension: 0.35,
-          pointRadius: 2,
-        },
-      ],
-    },
-    options: chartDefaults(),
-  };
+    const dailyCfg = {
+      type: "line",
+      data: {
+        labels: dailyLabels.length ? dailyLabels : ["暂无数据"],
+        datasets: [
+          {
+            label: "日 PV",
+            data: daily.length ? daily.map((d) => d.pv) : [0],
+            borderColor: "#2ee6ff",
+            backgroundColor: "rgba(46, 230, 255, 0.18)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+          },
+          {
+            label: "日 UV",
+            data: daily.length ? daily.map((d) => d.uv) : [0],
+            borderColor: "#ff7a18",
+            backgroundColor: "rgba(255, 122, 24, 0.12)",
+            fill: false,
+            tension: 0.35,
+            pointRadius: 2,
+          },
+        ],
+      },
+      options: chartDefaults(),
+    };
 
-  const monthlyCfg = {
-    type: "bar",
-    data: {
-      labels: monthlyLabels.length ? monthlyLabels : ["暂无数据"],
-      datasets: [
-        {
-          label: "月 PV",
-          data: monthly.length ? monthly.map((m) => m.pv) : [0],
-          backgroundColor: "rgba(46, 230, 255, 0.55)",
-          borderRadius: 6,
-        },
-        {
-          label: "月 UV",
-          data: monthly.length ? monthly.map((m) => m.uv) : [0],
-          backgroundColor: "rgba(255, 122, 24, 0.55)",
-          borderRadius: 6,
-        },
-      ],
-    },
-    options: chartDefaults(),
-  };
+    const monthlyCfg = {
+      type: "bar",
+      data: {
+        labels: monthlyLabels.length ? monthlyLabels : ["暂无数据"],
+        datasets: [
+          {
+            label: "月 PV",
+            data: monthly.length ? monthly.map((m) => m.pv) : [0],
+            backgroundColor: "rgba(46, 230, 255, 0.55)",
+            borderRadius: 6,
+          },
+          {
+            label: "月 UV",
+            data: monthly.length ? monthly.map((m) => m.uv) : [0],
+            backgroundColor: "rgba(255, 122, 24, 0.55)",
+            borderRadius: 6,
+          },
+        ],
+      },
+      options: chartDefaults(),
+    };
 
-  const dailyCanvas = $("dailyVisitChart");
-  const monthlyCanvas = $("monthlyVisitChart");
-  if (!dailyCanvas || !monthlyCanvas) return;
+    const dailyCanvas = $("dailyVisitChart");
+    const monthlyCanvas = $("monthlyVisitChart");
+    if (!dailyCanvas || !monthlyCanvas) return;
 
-  if (dailyVisitChart) dailyVisitChart.destroy();
-  if (monthlyVisitChart) monthlyVisitChart.destroy();
-  dailyVisitChart = new Chart(dailyCanvas, dailyCfg);
-  monthlyVisitChart = new Chart(monthlyCanvas, monthlyCfg);
+    if (dailyVisitChart) dailyVisitChart.destroy();
+    if (monthlyVisitChart) monthlyVisitChart.destroy();
+    dailyVisitChart = new Chart(dailyCanvas, dailyCfg);
+    monthlyVisitChart = new Chart(monthlyCanvas, monthlyCfg);
+  } catch (_) {
+    /* 图表失败不影响数据总览其它内容 */
+  }
 }
 
 function renderProductsTable() {
@@ -443,6 +447,7 @@ async function loadOrdersBundle() {
   state.stats = data.stats || null;
   state.customers = data.customers || [];
   state.addressStats = data.addressStats || [];
+  if (data.visits) state.visits = data.visits;
   renderStats();
   renderOrders();
   renderAddressStats();
@@ -450,8 +455,17 @@ async function loadOrdersBundle() {
 }
 
 async function loadVisits() {
-  const data = await api("/api/admin/visits");
-  state.visits = data.visits || null;
+  try {
+    let data = null;
+    try {
+      data = await api("/api/admin/visits");
+    } catch (_) {
+      data = await api("/api/admin/stats");
+    }
+    state.visits = (data && data.visits) || state.visits || null;
+  } catch (_) {
+    /* visits 接口失败时沿用 orders 里附带的统计 */
+  }
   renderStats();
 }
 
@@ -470,13 +484,16 @@ async function loadUsers() {
 }
 
 async function loadAll() {
-  await Promise.all([
+  const tasks = [
     loadOrdersBundle(),
     loadProductsBundle(),
     loadUsers(),
     loadVisits(),
     refreshList(),
-  ]);
+  ];
+  const results = await Promise.allSettled(tasks);
+  const failed = results.find((r) => r.status === "rejected");
+  if (failed) throw failed.reason;
 }
 
 function resetProductForm() {
@@ -522,6 +539,7 @@ $("loginForm").addEventListener("submit", async (e) => {
   try {
     await api("/api/admin/files");
     showPanel(true);
+    switchTab("dashboard");
     await loadAll();
   } catch (err) {
     clearPass();
@@ -702,6 +720,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await api("/api/admin/files");
     showPanel(true);
+    switchTab("dashboard");
     await loadAll();
   } catch {
     clearPass();

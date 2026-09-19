@@ -117,6 +117,8 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 .admin-tab {

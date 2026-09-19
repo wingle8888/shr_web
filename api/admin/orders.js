@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const { readOrders, writeOrders, buildStats, extractCustomers, extractAddressStats } = require("../_lib/orders-store");
+const { buildVisitStats } = require("../_lib/visits-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -29,6 +30,7 @@ module.exports = async function handler(req, res) {
       stats: buildStats(orders),
       customers: extractCustomers(orders),
       addressStats: extractAddressStats(orders),
+      visits: buildVisitStats(),
     });
     return;
   }
