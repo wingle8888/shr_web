@@ -355,9 +355,7 @@ async function handleLookup(e) {
   `;
 }
 
-function handleContactSubmit(e) {
-  e.preventDefault();
-}
+function handleContactSubmit() {}
 
 function initNav() {
   const toggle = document.getElementById("menuToggle");
