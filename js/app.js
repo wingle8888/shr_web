@@ -22,6 +22,51 @@ function locProduct(p) {
   return window.getLocalizedProduct ? window.getLocalizedProduct(p) : p;
 }
 
+function mallCategories() {
+  const remote = Array.isArray(window.PRODUCT_CATEGORIES) ? window.PRODUCT_CATEGORIES : [];
+  if (remote.length) return remote;
+  return CATEGORY_ORDER.map((c) => ({
+    id: c.id,
+    nameKey: c.nameKey,
+    descKey: c.descKey,
+    name: t(c.nameKey),
+    desc: t(c.descKey),
+  }));
+}
+
+function categoryTitle(cat) {
+  if (cat.nameKey) {
+    const label = t(cat.nameKey);
+    if (label && label !== cat.nameKey) return label;
+  }
+  if (window.I18N && window.I18N.getLang && window.I18N.getLang() === "en" && cat.nameEn) return cat.nameEn;
+  return cat.name || cat.id;
+}
+
+function categoryDesc(cat) {
+  if (cat.descKey) {
+    const label = t(cat.descKey);
+    if (label && label !== cat.descKey) return label;
+  }
+  if (window.I18N && window.I18N.getLang && window.I18N.getLang() === "en" && cat.descEn) return cat.descEn;
+  return cat.desc || "";
+}
+
+function renderCategoryTabs() {
+  const wrap = document.getElementById("categoryTabs");
+  if (!wrap) return;
+  const cats = mallCategories();
+  const valid = new Set(["all", ...cats.map((c) => c.id)]);
+  if (!valid.has(currentCategory)) currentCategory = "all";
+  wrap.innerHTML = [
+    `<button type="button" class="${currentCategory === "all" ? "active" : ""}" data-cat="all">${escapeHtml(t("catAll"))}</button>`,
+    ...cats.map(
+      (cat) =>
+        `<button type="button" class="${currentCategory === cat.id ? "active" : ""}" data-cat="${escapeHtml(cat.id)}">${escapeHtml(categoryTitle(cat))}</button>`
+    ),
+  ].join("");
+}
+
 function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
@@ -96,15 +141,16 @@ function renderProducts() {
     grid.hidden = true;
     grid.innerHTML = "";
     sectionsEl.hidden = false;
-    sectionsEl.innerHTML = CATEGORY_ORDER.map((cat) => {
+    sectionsEl.innerHTML = mallCategories().map((cat) => {
       const items = products.filter((p) => p.categoryId === cat.id);
       if (items.length === 0) return "";
+      const desc = categoryDesc(cat);
       return `
-        <div class="category-block" id="${cat.id}">
+        <div class="category-block" id="${escapeHtml(cat.id)}">
           <div class="category-head">
             <div>
-              <h3>${escapeHtml(t(cat.nameKey))}</h3>
-              <p>${escapeHtml(t(cat.descKey))}</p>
+              <h3>${escapeHtml(categoryTitle(cat))}</h3>
+              ${desc ? `<p>${escapeHtml(desc)}</p>` : ""}
             </div>
             <span class="category-count">${t("itemsCount", { n: items.length })}</span>
           </div>
@@ -423,6 +469,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } else {
     products = window.PRODUCTS || [];
   }
+  renderCategoryTabs();
   renderProducts();
   updateCartBadge();
   initNav();
@@ -471,6 +518,7 @@ function initLangSwitch() {
       wrap.querySelectorAll(".lang-btn").forEach((b) => b.classList.toggle("active", b.dataset.lang === btn.dataset.lang));
       window.I18N.applyI18n();
       if (window.Auth) window.Auth.refreshAuthUI();
+      renderCategoryTabs();
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();

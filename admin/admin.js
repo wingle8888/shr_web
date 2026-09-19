@@ -8,6 +8,7 @@ const state = {
   deletedIds: [],
   galleries: {},
   galleryProductId: "",
+  categories: [],
   orders: [],
   customers: [],
   addressStats: [],
@@ -191,6 +192,45 @@ function productOptions() {
   sel.innerHTML = products
     .map((p) => `<option value="${p.id}">#${p.id} ${escapeHtml(p.name)}</option>`)
     .join("");
+}
+
+function fillCategorySelect(selectedId) {
+  const sel = $("prodCategory");
+  if (!sel) return;
+  const cats = Array.isArray(state.categories) && state.categories.length ? state.categories : [];
+  if (!cats.length) return;
+  const current = selectedId || sel.value;
+  sel.innerHTML = cats
+    .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+    .join("");
+  if (current && cats.some((c) => c.id === current)) sel.value = current;
+}
+
+function renderCategoriesTable() {
+  const tbody = $("categoriesTable") && $("categoriesTable").querySelector("tbody");
+  if (!tbody) return;
+  const cats = Array.isArray(state.categories) ? state.categories : [];
+  const counts = new Map();
+  allProducts().forEach((p) => {
+    const key = String(p.categoryId || "");
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  tbody.innerHTML = cats.length
+    ? cats
+        .map((c) => {
+          const n = counts.get(String(c.id)) || 0;
+          const canDelete = cats.length > 1;
+          return `<tr>
+        <td>${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.desc || "-")}</td>
+        <td>${n}</td>
+        <td class="admin-row-actions">
+          ${canDelete ? `<button type="button" class="danger" data-del-category="${escapeHtml(c.id)}">删除</button>` : `<span class="admin-hint">至少保留一个</span>`}
+        </td>
+      </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="4" class="admin-empty">暂无分类</td></tr>`;
 }
 
 function renderStats() {
@@ -675,6 +715,9 @@ async function loadProductsBundle() {
   state.hiddenIds = data.hiddenIds || [];
   state.deletedIds = data.deletedIds || [];
   state.galleries = data.galleries || {};
+  state.categories = Array.isArray(data.categories) ? data.categories : [];
+  fillCategorySelect();
+  renderCategoriesTable();
   renderProductsTable();
   productOptions();
   if (state.galleryProductId) renderGalleryPanel(state.galleryProductId);
@@ -931,7 +974,7 @@ function fillProductForm(p) {
   $("editProductId").value = p.id;
   $("prodName").value = p.name || "";
   $("prodPrice").value = p.price || "";
-  $("prodCategory").value = p.categoryId || "cat-mcu";
+  fillCategorySelect(p.categoryId || "");
   $("prodTag").value = p.tag || "";
   $("prodImg").value = p.img || "";
   if ($("prodImgCaption")) $("prodImgCaption").value = p.imgCaption || "";
@@ -1229,6 +1272,7 @@ $("productForm").addEventListener("submit", async (e) => {
     name: $("prodName").value.trim(),
     price: $("prodPrice").value,
     categoryId: $("prodCategory").value,
+    category: ($("prodCategory").selectedOptions[0] && $("prodCategory").selectedOptions[0].textContent) || "",
     tag: $("prodTag").value.trim(),
     img: $("prodImg").value.trim(),
     imgCaption: $("prodImgCaption") ? $("prodImgCaption").value.trim() : "",
@@ -1310,6 +1354,73 @@ async function deleteSelectedProducts(ids) {
 }
 
 $("deleteSelectedProducts").addEventListener("click", () => deleteSelectedProducts(selectedProductIds()));
+
+$("categoryAddBtn").addEventListener("click", async () => {
+  const status = $("categoryStatus");
+  const nameEl = $("categoryName");
+  const descEl = $("categoryDesc");
+  const name = nameEl ? nameEl.value.trim() : "";
+  if (!name) {
+    if (status) {
+      status.className = "admin-status error";
+      status.textContent = "请填写分类名称";
+    }
+    return;
+  }
+  try {
+    if (status) {
+      status.className = "admin-status";
+      status.textContent = "保存中…";
+    }
+    await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "category-add",
+        name,
+        desc: descEl ? descEl.value.trim() : "",
+      }),
+    });
+    if (nameEl) nameEl.value = "";
+    if (descEl) descEl.value = "";
+    await loadProductsBundle();
+    if (status) status.textContent = "分类已添加";
+  } catch (err) {
+    if (status) {
+      status.className = "admin-status error";
+      status.textContent = err.message;
+    }
+  }
+});
+
+$("categoriesTable").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-del-category]");
+  if (!btn) return;
+  const id = btn.dataset.delCategory;
+  const cat = (state.categories || []).find((c) => c.id === id);
+  const label = cat ? cat.name : id;
+  if (!(await adminConfirm(`确定删除分类「${label}」？商城将不再显示该分类，其下商品仍会出现在「全部」中。`, "删除分类"))) {
+    return;
+  }
+  const status = $("categoryStatus");
+  try {
+    await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({ action: "category-remove", id }),
+    });
+    await loadProductsBundle();
+    if (status) {
+      status.className = "admin-status";
+      status.textContent = "分类已删除";
+    }
+  } catch (err) {
+    if (status) {
+      status.className = "admin-status error";
+      status.textContent = err.message;
+    } else {
+      adminAlert(err.message);
+    }
+  }
+});
 
 $("gallerySelectedProduct").addEventListener("click", () => {
   const ids = selectedProductIds();

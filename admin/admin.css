@@ -304,8 +304,18 @@
   background: rgba(7, 11, 20, 0.45);
 }
 
-.admin-gallery-box .form-group {
-  margin: 10px 0 12px;
+.admin-category-form {
+  flex-wrap: wrap;
+}
+
+#categoryCard input[type="text"] {
+  min-width: 180px;
+  flex: 1;
+  border: 1px solid var(--border);
+  background: #0b1220;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .admin-gallery-list {

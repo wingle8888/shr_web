@@ -21,10 +21,11 @@
           hiddenIds: Array.isArray(data.hiddenIds) ? data.hiddenIds.map(String) : [],
           deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds.map(String) : [],
           galleries: data.galleries && typeof data.galleries === "object" ? data.galleries : {},
+          categories: Array.isArray(data.categories) ? data.categories : [],
         };
       }
     } catch (_) {}
-    return { complete: false, products: [], hiddenIds: [], deletedIds: [], galleries: {} };
+    return { complete: false, products: [], hiddenIds: [], deletedIds: [], galleries: {}, categories: [] };
   }
 
   async function hydrateProducts() {
@@ -45,6 +46,7 @@
     window.PRODUCTS_HIDDEN = hidden;
     window.PRODUCTS_DELETED = deleted;
     window.PRODUCTS_GALLERIES = catalog.galleries;
+    window.PRODUCT_CATEGORIES = catalog.categories;
     window.PRODUCTS = visible;
     return window.PRODUCTS;
   }

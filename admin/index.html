@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920a">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920b">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920c">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -162,6 +162,30 @@
             </div>
             <p class="admin-status" id="productStatus"></p>
           </form>
+
+          <h2 class="admin-sub">商品分类</h2>
+          <p class="admin-tip">自定义分类会出现在商城分类栏。删除后该分类不再显示，其下商品仍可在「全部」中看到。</p>
+          <div class="admin-gallery-box" id="categoryCard">
+            <div class="admin-inline-actions admin-category-form">
+              <input type="text" id="categoryName" maxlength="40" placeholder="分类名称，如：电源模块">
+              <input type="text" id="categoryDesc" maxlength="80" placeholder="简短说明（可选）">
+              <button type="button" class="btn btn-sm" id="categoryAddBtn">添加分类</button>
+            </div>
+            <p class="admin-status" id="categoryStatus"></p>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="categoriesTable">
+                <thead>
+                  <tr>
+                    <th>名称</th>
+                    <th>说明</th>
+                    <th>商品数</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
 
           <h2 class="admin-sub">商城商品一览</h2>
           <div class="admin-inline-actions admin-product-toolbar">
@@ -412,6 +436,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
-  <script src="/admin/admin.js?v=20260920b"></script>
+  <script src="/admin/admin.js?v=20260920c"></script>
 </body>
 </html>

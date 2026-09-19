@@ -1,5 +1,5 @@
 const { cors, sendJson, parseBody } = require("./_lib/docs-store");
-const { readCatalog, readProductImage, listVisibleProducts } = require("./_lib/products-store");
+const { readCatalog, readProductImage, listVisibleProducts, catalogCategories } = require("./_lib/products-store");
 const { recordVisit } = require("./_lib/visits-store");
 const { storageKind } = require("./_lib/blob-store");
 
@@ -36,6 +36,7 @@ module.exports = async function handler(req, res) {
       hiddenIds: catalog.hiddenIds,
       deletedIds: catalog.deletedIds || [],
       galleries: catalog.galleries || {},
+      categories: catalogCategories(catalog),
       storage: storageKind() || "none",
     });
     return;

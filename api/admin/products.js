@@ -1,12 +1,14 @@
 const { storageKind } = require("../_lib/blob-store");
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const {
-  CATEGORIES,
+  catalogCategories,
   readCatalog,
   readCustomProducts,
   writeCustomProducts,
   setProductsHidden,
   deleteProducts,
+  addCategory,
+  removeCategory,
   normalizeProduct,
   saveProductImage,
   addGalleryImages,
@@ -41,7 +43,7 @@ module.exports = async function handler(req, res) {
       hiddenIds: catalog.hiddenIds,
       deletedIds: catalog.deletedIds,
       galleries: catalog.galleries,
-      categories: CATEGORIES,
+      categories: catalogCategories(catalog),
       storage: storageKind() || "none",
     });
     return;
@@ -55,6 +57,37 @@ module.exports = async function handler(req, res) {
   if (req.method === "POST") {
     const action = String(body.action || "create").trim();
     const list = await readCustomProducts();
+
+    if (action === "category-add") {
+      try {
+        const categories = await addCategory(body);
+        sendJson(res, 200, { ok: true, categories });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 400, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
+
+    if (action === "category-remove") {
+      const id = String(body.id || "").trim();
+      if (!id) {
+        sendJson(res, 400, { ok: false, error: "id required" });
+        return;
+      }
+      try {
+        const categories = await removeCategory(id);
+        sendJson(res, 200, { ok: true, categories });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 400, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
 
     if (action === "hide" || action === "show") {
       const ids = Array.isArray(body.ids) ? body.ids : body.id != null ? [body.id] : [];

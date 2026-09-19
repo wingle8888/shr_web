@@ -13,13 +13,62 @@ function clipCaption(value) {
   return String(value || "").trim().slice(0, MAX_CAPTION);
 }
 
-const CATEGORIES = [
-  { id: "cat-mcu", name: "MCU 开发板" },
-  { id: "cat-iot", name: "无线 IoT" },
-  { id: "cat-sbc", name: "单板计算机" },
-  { id: "cat-display", name: "显示套件" },
-  { id: "cat-sensor", name: "传感器" },
+const DEFAULT_CATEGORIES = [
+  { id: "cat-mcu", name: "MCU 开发板", nameEn: "MCU Boards", desc: "STM32 / Arduino 等高性能与入门 MCU 板卡", descEn: "STM32 / Arduino and other MCU development boards", nameKey: "catMcu", descKey: "catMcuDesc" },
+  { id: "cat-iot", name: "无线 IoT", nameEn: "Wireless IoT", desc: "Wi‑Fi / BLE 物联网模组与开发套件", descEn: "Wi‑Fi / BLE IoT modules and kits", nameKey: "catIot", descKey: "catIotDesc" },
+  { id: "cat-sbc", name: "单板计算机", nameEn: "Single Board PC", desc: "Raspberry Pi 等 Linux 单板机", descEn: "Raspberry Pi and other Linux SBCs", nameKey: "catSbc", descKey: "catSbcDesc" },
+  { id: "cat-display", name: "显示套件", nameEn: "Display Kits", desc: "触摸屏与 LVGL 人机界面方案", descEn: "Touchscreens and LVGL HMI solutions", nameKey: "catDisplay", descKey: "catDisplayDesc" },
+  { id: "cat-sensor", name: "传感器", nameEn: "Sensors", desc: "姿态、环境等传感器模块", descEn: "Motion, environment and other sensor modules", nameKey: "catSensor", descKey: "catSensorDesc" },
 ];
+const CATEGORIES = DEFAULT_CATEGORIES;
+const MAX_CATEGORIES = 24;
+
+function unwrapCategories(raw) {
+  if (!Array.isArray(raw)) return null;
+  return raw
+    .map((item) => {
+      if (!item) return null;
+      const id = String(item.id || "").trim().slice(0, 64);
+      const name = String(item.name || "").trim().slice(0, 40);
+      if (!id || !name) return null;
+      return {
+        id,
+        name,
+        desc: String(item.desc || "").trim().slice(0, 80),
+        nameEn: String(item.nameEn || "").trim().slice(0, 40),
+        descEn: String(item.descEn || "").trim().slice(0, 80),
+        nameKey: String(item.nameKey || "").trim(),
+        descKey: String(item.descKey || "").trim(),
+      };
+    })
+    .filter(Boolean);
+}
+
+function catalogCategories(catalog) {
+  const list = unwrapCategories(catalog && catalog.categories);
+  if (list && list.length) return list;
+  return DEFAULT_CATEGORIES.map((c) => ({ ...c }));
+}
+
+function slugCategoryId(name, existing) {
+  const used = new Set((existing || []).map((c) => String(c.id)));
+  let base = String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24);
+  if (!base) base = Date.now().toString(36);
+  let id = `cat-${base}`;
+  let n = 2;
+  while (used.has(id)) {
+    id = `cat-${base}-${n}`;
+    n += 1;
+  }
+  return id.slice(0, 64);
+}
 
 function uniqueIds(list) {
   return Array.from(new Set((list || []).map((x) => String(x).trim()).filter(Boolean)));
@@ -49,7 +98,10 @@ function unwrapGalleries(raw) {
 }
 
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, updatedAt: "" };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
+  if (raw && typeof raw !== "object") {
+    return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
+  }
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
     return {
@@ -57,10 +109,11 @@ function unwrapCatalog(raw) {
       hiddenIds: uniqueIds(raw.hiddenIds),
       deletedIds: allDeletedIds(raw.deletedIds),
       galleries: unwrapGalleries(raw.galleries),
+      categories: unwrapCategories(raw.categories),
       updatedAt: String(raw.updatedAt || ""),
     };
   }
-  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, updatedAt: "" };
+  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
 }
 
 function mergeProducts(a, b) {
@@ -98,6 +151,20 @@ function pickHiddenIds(left, right, rawRight) {
   return uniqueIds([...(left.hiddenIds || []), ...(right.hiddenIds || [])]);
 }
 
+function pickCategories(left, right, rawRight) {
+  if (Array.isArray(rawRight)) return left.categories;
+  const leftT = catalogTime(left);
+  const rightT = catalogTime(right);
+  const leftCats = unwrapCategories(left.categories);
+  const rightCats = unwrapCategories(right.categories);
+  const hasL = Boolean(leftCats && leftCats.length);
+  const hasR = Boolean(rightCats && rightCats.length);
+  if (hasL && hasR) return rightT >= leftT ? rightCats : leftCats;
+  if (hasR) return rightCats;
+  if (hasL) return leftCats;
+  return null;
+}
+
 function mergeCatalog(a, b) {
   const left = unwrapCatalog(a);
   const right = unwrapCatalog(b);
@@ -114,6 +181,7 @@ function mergeCatalog(a, b) {
     hiddenIds: uniqueIds(hiddenIds).filter((id) => !deleted.has(id)),
     deletedIds,
     galleries,
+    categories: pickCategories(left, right, b),
     updatedAt,
   };
 }
@@ -122,10 +190,12 @@ async function readCatalog() {
   const raw = await readJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    empty: { products: [], hiddenIds: [], deletedIds: [], galleries: {} },
+    empty: { products: [], hiddenIds: [], deletedIds: [], galleries: {}, categories: [] },
     merge: mergeCatalog,
   });
-  return unwrapCatalog(raw);
+  const cat = unwrapCatalog(raw);
+  cat.categories = catalogCategories(cat);
+  return cat;
 }
 
 function readLocalDeletedIds() {
@@ -187,6 +257,7 @@ async function writeCatalog(catalog) {
     hiddenIds: uniqueIds(incoming.hiddenIds).filter((id) => !deleted.has(id)),
     deletedIds,
     galleries,
+    categories: catalogCategories(incoming),
     updatedAt: new Date().toISOString(),
   };
   await writeJsonStore({
@@ -208,6 +279,7 @@ async function writeCustomProducts(list) {
     hiddenIds: cur.hiddenIds,
     deletedIds: cur.deletedIds,
     galleries: cur.galleries,
+    categories: cur.categories,
   });
   return saved.products;
 }
@@ -224,6 +296,7 @@ async function setProductsHidden(ids, hidden) {
     hiddenIds: Array.from(set),
     deletedIds: cur.deletedIds,
     galleries: cur.galleries,
+    categories: cur.categories,
   });
 }
 
@@ -239,7 +312,37 @@ async function deleteProducts(ids) {
   remove.forEach((id) => {
     delete galleries[id];
   });
-  return writeCatalog({ products, hiddenIds, deletedIds, galleries });
+  return writeCatalog({ products, hiddenIds, deletedIds, galleries, categories: cur.categories });
+}
+
+async function addCategory(input) {
+  const name = String((input && input.name) || "").trim().slice(0, 40);
+  if (!name) throw new Error("分类名称不能为空");
+  const desc = String((input && input.desc) || "").trim().slice(0, 80);
+  const cur = await readCatalog();
+  const list = catalogCategories(cur);
+  if (list.length >= MAX_CATEGORIES) throw new Error("分类数量已满");
+  if (list.some((c) => c.name === name)) throw new Error("分类名称已存在");
+  list.push({
+    id: slugCategoryId(name, list),
+    name,
+    desc,
+  });
+  cur.categories = list;
+  await writeCatalog(cur);
+  return list;
+}
+
+async function removeCategory(id) {
+  const cid = String(id || "").trim();
+  if (!cid) throw new Error("category id required");
+  const cur = await readCatalog();
+  const list = catalogCategories(cur);
+  if (list.length <= 1) throw new Error("至少保留一个分类");
+  if (!list.some((c) => c.id === cid)) throw new Error("分类不存在");
+  cur.categories = list.filter((c) => c.id !== cid);
+  await writeCatalog(cur);
+  return cur.categories;
 }
 
 async function addGalleryImages(productId, payloads) {
@@ -291,8 +394,9 @@ function attachGalleries(products, galleries) {
   }));
 }
 
-function categoryName(id) {
-  const found = CATEGORIES.find((c) => c.id === id);
+function categoryName(id, categories) {
+  const list = Array.isArray(categories) && categories.length ? categories : DEFAULT_CATEGORIES;
+  const found = list.find((c) => c.id === id);
   return found ? found.name : "其他";
 }
 
@@ -404,12 +508,15 @@ async function readProductImage(id) {
 
 module.exports = {
   CATEGORIES,
+  catalogCategories,
   readCatalog,
   writeCatalog,
   readCustomProducts,
   writeCustomProducts,
   setProductsHidden,
   deleteProducts,
+  addCategory,
+  removeCategory,
   normalizeProduct,
   nextProductId,
   categoryName,
