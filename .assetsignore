@@ -2,6 +2,11 @@ _worker.js
 api
 functions
 node_modules
+node_modules/**
+**/node_modules/**
+**/workerd
+**/workerd.exe
+**/*.node
 .git
 .wrangler
 .cursor
@@ -9,8 +14,10 @@ data
 字体
 scripts
 wrangler.toml
+wrangler.jsonc
 package-lock.json
 package.json
 *.md
 *.toml
+*.jsonc
 *.log
