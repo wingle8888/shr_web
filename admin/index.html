@@ -46,7 +46,7 @@
 
     <section id="panelCard" hidden>
       <nav class="admin-tabs" id="adminTabs">
-        <button type="button" class="admin-tab active" data-tab="dashboard">月销售</button>
+        <button type="button" class="admin-tab active" data-tab="dashboard">数据总览</button>
         <button type="button" class="admin-tab" data-tab="products">产品</button>
         <button type="button" class="admin-tab" data-tab="docs">资料</button>
         <button type="button" class="admin-tab" data-tab="orders">订单</button>
@@ -57,11 +57,24 @@
       <div class="admin-tab-panel active" id="tab-dashboard">
         <div class="admin-card">
           <div class="admin-panel-head">
-            <h1>月销售情况</h1>
+            <h1>数据总览</h1>
             <button type="button" class="link-btn" id="refreshDashboard">刷新</button>
           </div>
           <div class="admin-stats" id="statsCards"></div>
-          <h2 class="admin-sub">按月汇总</h2>
+
+          <h2 class="admin-sub">访问量图表</h2>
+          <div class="admin-chart-grid">
+            <div class="admin-chart-card">
+              <h3>近 30 日访问量</h3>
+              <canvas id="dailyVisitChart" height="220"></canvas>
+            </div>
+            <div class="admin-chart-card">
+              <h3>近 12 月访问量</h3>
+              <canvas id="monthlyVisitChart" height="220"></canvas>
+            </div>
+          </div>
+
+          <h2 class="admin-sub">按月销售汇总</h2>
           <div class="admin-table-wrap">
             <table class="admin-table" id="monthlyTable">
               <thead>
@@ -274,6 +287,7 @@
     </section>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js"></script>
   <script src="/admin/admin.js"></script>
 </body>

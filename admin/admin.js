@@ -9,8 +9,12 @@ const state = {
   addressStats: [],
   users: [],
   stats: null,
+  visits: null,
   currentTab: "dashboard",
 };
+
+let dailyVisitChart = null;
+let monthlyVisitChart = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -107,26 +111,35 @@ function renderStats() {
     monthly: [],
   };
   const tm = stats.thisMonth || {};
+  const visits = state.visits || {
+    today: { pv: 0, uv: 0 },
+    thisMonth: { pv: 0, uv: 0 },
+    totalPv: 0,
+    totalUv: 0,
+  };
+  const today = visits.today || {};
+  const monthV = visits.thisMonth || {};
+
   $("statsCards").innerHTML = `
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">今日访问</div>
+      <div class="admin-stat-value">${today.pv || 0}</div>
+      <div class="admin-stat-sub">UV ${today.uv || 0} · ${escapeHtml(today.day || "今日")}</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">本月访问</div>
+      <div class="admin-stat-value">${monthV.pv || 0}</div>
+      <div class="admin-stat-sub">UV ${monthV.uv || 0} · ${escapeHtml(monthV.month || "本月")}</div>
+    </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">本月销售额</div>
       <div class="admin-stat-value">¥${formatMoney(tm.amount)}</div>
-      <div class="admin-stat-sub">${escapeHtml(tm.month || "-")}</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-label">本月订单</div>
-      <div class="admin-stat-value">${tm.orders || 0}</div>
-      <div class="admin-stat-sub">件量 ${tm.items || 0}</div>
+      <div class="admin-stat-sub">${escapeHtml(tm.month || "-")} · 订单 ${tm.orders || 0}</div>
     </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">累计销售额</div>
       <div class="admin-stat-value">¥${formatMoney(stats.totalAmount)}</div>
-      <div class="admin-stat-sub">订单 ${stats.totalOrders || 0}</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-label">客户数</div>
-      <div class="admin-stat-value">${state.customers.length}</div>
-      <div class="admin-stat-sub">注册 ${state.users.length}</div>
+      <div class="admin-stat-sub">订单 ${stats.totalOrders || 0} · 客户 ${state.customers.length}</div>
     </div>
   `;
 
@@ -144,6 +157,100 @@ function renderStats() {
         )
         .join("")
     : `<tr><td colspan="4" class="admin-empty">暂无销售数据</td></tr>`;
+
+  renderVisitCharts();
+}
+
+function chartDefaults() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: "#9fb3c8", boxWidth: 12, font: { size: 12 } },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: "#7f93a8", maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+        grid: { color: "rgba(46, 230, 255, 0.08)" },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: "#7f93a8", precision: 0 },
+        grid: { color: "rgba(46, 230, 255, 0.08)" },
+      },
+    },
+  };
+}
+
+function renderVisitCharts() {
+  if (typeof Chart === "undefined") return;
+  const visits = state.visits || { daily: [], monthly: [] };
+  const daily = visits.daily || [];
+  const monthly = visits.monthly || [];
+
+  const dailyLabels = daily.map((d) => String(d.day).slice(5));
+  const monthlyLabels = monthly.map((m) => m.month);
+
+  const dailyCfg = {
+    type: "line",
+    data: {
+      labels: dailyLabels.length ? dailyLabels : ["暂无数据"],
+      datasets: [
+        {
+          label: "日 PV",
+          data: daily.length ? daily.map((d) => d.pv) : [0],
+          borderColor: "#2ee6ff",
+          backgroundColor: "rgba(46, 230, 255, 0.18)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2,
+        },
+        {
+          label: "日 UV",
+          data: daily.length ? daily.map((d) => d.uv) : [0],
+          borderColor: "#ff7a18",
+          backgroundColor: "rgba(255, 122, 24, 0.12)",
+          fill: false,
+          tension: 0.35,
+          pointRadius: 2,
+        },
+      ],
+    },
+    options: chartDefaults(),
+  };
+
+  const monthlyCfg = {
+    type: "bar",
+    data: {
+      labels: monthlyLabels.length ? monthlyLabels : ["暂无数据"],
+      datasets: [
+        {
+          label: "月 PV",
+          data: monthly.length ? monthly.map((m) => m.pv) : [0],
+          backgroundColor: "rgba(46, 230, 255, 0.55)",
+          borderRadius: 6,
+        },
+        {
+          label: "月 UV",
+          data: monthly.length ? monthly.map((m) => m.uv) : [0],
+          backgroundColor: "rgba(255, 122, 24, 0.55)",
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: chartDefaults(),
+  };
+
+  const dailyCanvas = $("dailyVisitChart");
+  const monthlyCanvas = $("monthlyVisitChart");
+  if (!dailyCanvas || !monthlyCanvas) return;
+
+  if (dailyVisitChart) dailyVisitChart.destroy();
+  if (monthlyVisitChart) monthlyVisitChart.destroy();
+  dailyVisitChart = new Chart(dailyCanvas, dailyCfg);
+  monthlyVisitChart = new Chart(monthlyCanvas, monthlyCfg);
 }
 
 function renderProductsTable() {
@@ -342,6 +449,12 @@ async function loadOrdersBundle() {
   renderCustomers();
 }
 
+async function loadVisits() {
+  const data = await api("/api/admin/visits");
+  state.visits = data.visits || null;
+  renderStats();
+}
+
 async function loadProductsBundle() {
   const data = await api("/api/admin/products");
   state.customProducts = data.products || [];
@@ -357,7 +470,13 @@ async function loadUsers() {
 }
 
 async function loadAll() {
-  await Promise.all([loadOrdersBundle(), loadProductsBundle(), loadUsers(), refreshList()]);
+  await Promise.all([
+    loadOrdersBundle(),
+    loadProductsBundle(),
+    loadUsers(),
+    loadVisits(),
+    refreshList(),
+  ]);
 }
 
 function resetProductForm() {
@@ -421,7 +540,9 @@ $("adminTabs").addEventListener("click", (e) => {
   switchTab(btn.dataset.tab);
 });
 
-$("refreshDashboard").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
+$("refreshDashboard").addEventListener("click", () =>
+  Promise.all([loadOrdersBundle(), loadVisits()]).catch((e) => alert(e.message))
+);
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
