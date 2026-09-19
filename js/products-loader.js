@@ -12,7 +12,7 @@
 
   async function loadCatalog() {
     try {
-      const res = await fetch("/api/products", { cache: "no-store" });
+      const res = await fetch("/api/products?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         return {

@@ -36,13 +36,13 @@ function canUseCache() {
 }
 
 function storageKind() {
-  if (canUseCache()) return "cache";
   if (getR2()) return "r2";
+  if (canUseCache()) return "cache";
   return "";
 }
 
 function hasBlob() {
-  return Boolean(storageKind());
+  return Boolean(getR2());
 }
 
 function blobAuthOpts() {
@@ -126,9 +126,7 @@ async function parseStoredJson(obj) {
   return null;
 }
 
-async function blobGetJson(pathname) {
-  const cached = await cacheGetJson(pathname);
-  if (cached != null) return cached;
+async function r2GetJson(pathname) {
   const r2 = getR2();
   if (!r2) return null;
   try {
@@ -139,13 +137,43 @@ async function blobGetJson(pathname) {
   }
 }
 
-async function blobPutJson(pathname, body) {
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
-  return cachePutJson(pathname, payload);
+async function r2PutJson(pathname, payload) {
+  const r2 = getR2();
+  if (!r2) return false;
+  try {
+    await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
+    return true;
+  } catch (_) {
+    disableR2();
+    return false;
+  }
 }
 
-async function blobPutFile() {
-  return null;
+async function blobGetJson(pathname) {
+  const fromR2 = await r2GetJson(pathname);
+  if (fromR2 != null) return fromR2;
+  return cacheGetJson(pathname);
+}
+
+async function blobPutJson(pathname, body) {
+  const payload = typeof body === "string" ? body : JSON.stringify(body);
+  const r2ok = await r2PutJson(pathname, payload);
+  await cachePutJson(pathname, payload);
+  return r2ok;
+}
+
+async function blobPutFile(pathname, buffer, contentType) {
+  const r2 = getR2();
+  if (!r2) return null;
+  const type = contentType || "application/octet-stream";
+  const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  try {
+    await r2.put(pathname, body, { httpMetadata: { contentType: type } });
+    return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
+  } catch (_) {
+    disableR2();
+    return null;
+  }
 }
 
 async function blobGetFile(pathname) {
@@ -184,7 +212,7 @@ async function writeJsonStore({ blobPath, localPaths = [], data }) {
   (localPaths || []).forEach((p) => writeLocalJson(p, data));
   const saved = await blobPutJson(blobPath, data);
   if (!saved && isHosted()) {
-    const err = new Error("下架名单未能写入云端，请稍后重试");
+    const err = new Error("下架未写入全球存储，手机打开网站仍会看到该产品");
     err.code = "BLOB_MISSING";
     throw err;
   }

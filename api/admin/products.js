@@ -1,3 +1,4 @@
+const { storageKind } = require("../_lib/blob-store");
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const {
   CATEGORIES,
@@ -61,13 +62,13 @@ module.exports = async function handler(req, res) {
       }
       try {
         const catalog = await setProductsHidden(ids, action === "hide");
-        sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
+        sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds, storage: storageKind() || "none" });
       } catch (err) {
         const raw = String((err && err.message) || err || "");
         const rpc = /RPC receiver|does not implement the method/i.test(raw);
         sendJson(res, 503, {
           ok: false,
-          error: rpc || (err && err.code === "BLOB_MISSING") ? "下架名单未能写入云端，请稍后重试" : raw,
+          error: rpc || (err && err.code === "BLOB_MISSING") ? "下架未写入全球存储，手机打开网站仍会看到该产品" : raw,
         });
       }
       return;

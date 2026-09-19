@@ -48,7 +48,7 @@ export default {
             cloudflare: isCloudflare(),
             r2: Boolean(getR2()),
             kv: Boolean(getKV()),
-            storeRev: 4,
+            storeRev: 5,
           }),
           {
             status: 200,

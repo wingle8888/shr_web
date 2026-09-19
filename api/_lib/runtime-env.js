@@ -13,33 +13,14 @@ function getRuntimeEnv() {
   return globalThis.__SHR_ENV && typeof globalThis.__SHR_ENV === "object" ? globalThis.__SHR_ENV : {};
 }
 
-function ctorName(value) {
-  try {
-    return String((value && value.constructor && value.constructor.name) || "");
-  } catch (_) {
-    return "";
-  }
-}
-
-function isRealR2(binding) {
-  if (!binding || globalThis.__SHR_R2_DISABLED) return false;
-  if (typeof binding.fetch === "function") return false;
-  const name = ctorName(binding);
-  if (name && name !== "R2Bucket") return false;
-  return typeof binding.get === "function" && typeof binding.put === "function" && typeof binding.head === "function";
-}
-
-function named(env, names, test) {
-  if (!env) return null;
-  for (let i = 0; i < names.length; i += 1) {
-    const value = env[names[i]];
-    if (test(value)) return value;
-  }
-  return null;
-}
-
 function getR2() {
-  return named(getRuntimeEnv(), ["SHR_BUCKET", "R2"], isRealR2);
+  if (globalThis.__SHR_R2_DISABLED) return null;
+  const env = getRuntimeEnv();
+  const binding = env.SHR_BUCKET || env.R2 || null;
+  if (!binding) return null;
+  if (typeof binding.fetch === "function") return null;
+  if (typeof binding.get !== "function" || typeof binding.put !== "function") return null;
+  return binding;
 }
 
 function disableR2() {
