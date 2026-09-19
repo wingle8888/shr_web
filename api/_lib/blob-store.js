@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { getR2, getKV, isCloudflare } = require("./runtime-env");
+const { getR2, disableR2, getKV, disableKV, isCloudflare } = require("./runtime-env");
 
 const mem = new Map();
 const CACHE_ORIGIN = "https://shr-store.internal/";
@@ -60,6 +60,10 @@ function writeLocalJson(filePath, data) {
   } catch (_) {}
 }
 
+function isRpcMissing(err) {
+  return /does not implement the method/i.test(String((err && err.message) || err || ""));
+}
+
 async function cacheGetJson(pathname) {
   if (!canUseCache()) return null;
   try {
@@ -109,14 +113,17 @@ async function blobGetJson(pathname) {
     try {
       const parsed = await parseStoredJson(await r2.get(pathname));
       if (parsed != null) return parsed;
-    } catch (_) {}
+    } catch (err) {
+      if (isRpcMissing(err)) disableR2();
+    }
   }
   const kv = getKV();
   if (kv) {
     try {
       const parsed = await parseStoredJson(await kv.get(pathname, { type: "json" }));
       if (parsed != null) return parsed;
-    } catch (_) {
+    } catch (err) {
+      if (isRpcMissing(err)) disableKV();
       try {
         const parsed = await parseStoredJson(await kv.get(pathname));
         if (parsed != null) return parsed;
@@ -131,13 +138,21 @@ async function blobPutJson(pathname, body) {
   let ok = false;
   const r2 = getR2();
   if (r2) {
-    await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
-    ok = true;
+    try {
+      await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
+      ok = true;
+    } catch (err) {
+      if (isRpcMissing(err)) disableR2();
+    }
   }
   const kv = getKV();
   if (kv) {
-    await kv.put(pathname, payload);
-    ok = true;
+    try {
+      await kv.put(pathname, payload);
+      ok = true;
+    } catch (err) {
+      if (isRpcMissing(err)) disableKV();
+    }
   }
   if (await cachePutJson(pathname, payload)) ok = true;
   return ok;
@@ -148,8 +163,13 @@ async function blobPutFile(pathname, buffer, contentType) {
   if (!r2) return null;
   const type = contentType || "application/octet-stream";
   const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-  await r2.put(pathname, body, { httpMetadata: { contentType: type } });
-  return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
+  try {
+    await r2.put(pathname, body, { httpMetadata: { contentType: type } });
+    return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
+  } catch (err) {
+    if (isRpcMissing(err)) disableR2();
+    return null;
+  }
 }
 
 async function blobGetFile(pathname) {
@@ -162,7 +182,8 @@ async function blobGetFile(pathname) {
       buffer: Buffer.from(await obj.arrayBuffer()),
       contentType: (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
     };
-  } catch (_) {
+  } catch (err) {
+    if (isRpcMissing(err)) disableR2();
     return null;
   }
 }
@@ -188,12 +209,12 @@ async function writeJsonStore({ blobPath, localPaths = [], data }) {
   if (hasBlob()) {
     const saved = await blobPutJson(blobPath, data);
     if (!saved && isHosted()) {
-      const err = new Error("Cloudflare R2 / 存储写入失败");
+      const err = new Error("云存储写入失败，下架无法同步到商城");
       err.code = "BLOB_MISSING";
       throw err;
     }
   } else if (isHosted()) {
-    const err = new Error("Cloudflare R2 未绑定，下架/删除无法保存到商城");
+    const err = new Error("云存储未配置，下架无法同步到商城");
     err.code = "BLOB_MISSING";
     throw err;
   }
