@@ -37,6 +37,10 @@ window.PRODUCTS = [
       ["5V", "USB 输入", "经稳压到 3.3V"],
     ],
     package: ["开发板本体 ×1", "USB-C 数据线 ×1", "排针（部分已焊）", "快速入门说明"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/stm32h750-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/stm32h750-docs.7z", format: "7Z" },
+    ],
   },
   {
     id: 2,
@@ -76,6 +80,10 @@ window.PRODUCTS = [
       ["BOOT", "启动模式", "下载时按住"],
     ],
     package: ["开发板 ×1", "USB 线 ×1", "说明书二维码"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/esp32-s3-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/esp32-s3-docs.7z", format: "7Z" },
+    ],
   },
   {
     id: 3,
@@ -115,6 +123,10 @@ window.PRODUCTS = [
       ["Pin 37–40", "通用 GPIO", "输入输出可配置"],
     ],
     package: ["树莓派 5 主板 ×1（不含电源/外壳/卡）", "防静电包装"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/rpi5-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/rpi5-docs.7z", format: "7Z" },
+    ],
   },
   {
     id: 4,
@@ -154,6 +166,10 @@ window.PRODUCTS = [
       ["3V3 / GND / 5V", "电源", "注意背光电流"],
     ],
     package: ["核心板 ×1", "4.3 寸触摸屏 ×1", "排线 ×1", "示例资料链接"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/lvgl-kit-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/lvgl-kit-docs.7z", format: "7Z" },
+    ],
   },
   {
     id: 5,
@@ -192,6 +208,10 @@ window.PRODUCTS = [
       ["INT", "中断输出", "数据就绪 / 运动中断"],
     ],
     package: ["MPU6050 模块 ×1", "直插排针"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/mpu6050-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/mpu6050-docs.7z", format: "7Z" },
+    ],
   },
   {
     id: 6,
@@ -231,6 +251,10 @@ window.PRODUCTS = [
       ["RESET", "复位", "低电平复位"],
     ],
     package: ["UNO R4 WiFi 板 ×1", "包装盒"],
+    downloads: [
+      { name: "技术资料包 (ZIP)", file: "/downloads/arduino-uno-r4-docs.zip", format: "ZIP" },
+      { name: "技术资料包 (7Z)", file: "/downloads/arduino-uno-r4-docs.7z", format: "7Z" },
+    ],
   },
 ];
 

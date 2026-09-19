@@ -115,6 +115,21 @@ function renderDetail(product) {
     )
     .join("");
   const pack = (product.package || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
+  const downloads = product.downloads || [];
+  const downloadsHtml = downloads.length
+    ? `<ul class="download-list">${downloads
+        .map(
+          (d) => `
+      <li>
+        <div class="download-meta">
+          <strong>${escapeHtml(d.name)}</strong>
+          <span class="download-format">${escapeHtml(d.format || "")}</span>
+        </div>
+        <a class="btn btn-sm download-btn" href="${escapeHtml(d.file)}" download>${escapeHtml(t("downloadBtn"))}</a>
+      </li>`
+        )
+        .join("")}</ul>`
+    : `<p class="pin-note">${escapeHtml(t("noDownloads"))}</p>`;
 
   main.innerHTML = `
     <nav class="breadcrumb">
@@ -142,6 +157,11 @@ function renderDetail(product) {
           </label>
           <button class="btn" type="button" id="detailAddCart">${escapeHtml(t("addToCart"))}</button>
           <button class="btn btn-outline-orange" type="button" id="detailBuyNow">${escapeHtml(t("buyNow"))}</button>
+          ${
+            downloads[0]
+              ? `<a class="btn btn-sm download-btn-inline" href="${escapeHtml(downloads[0].file)}" download>${escapeHtml(t("downloads"))}</a>`
+              : ""
+          }
         </div>
         <p class="detail-ship-tip">${escapeHtml(t("shipTip"))}</p>
       </div>
@@ -154,6 +174,7 @@ function renderDetail(product) {
         <button type="button" data-tab="specs">${escapeHtml(t("specs"))}</button>
         <button type="button" data-tab="pins">${escapeHtml(t("pins"))}</button>
         <button type="button" data-tab="package">${escapeHtml(t("package"))}</button>
+        <button type="button" data-tab="downloads">${escapeHtml(t("downloads"))}</button>
       </div>
 
       <div class="detail-panels">
@@ -184,6 +205,11 @@ function renderDetail(product) {
         <article class="detail-panel" id="tab-package">
           <h2>${escapeHtml(t("package"))}</h2>
           <ul class="feature-list">${pack}</ul>
+        </article>
+        <article class="detail-panel" id="tab-downloads">
+          <h2>${escapeHtml(t("downloads"))}</h2>
+          <p class="pin-note">${escapeHtml(t("downloadHint"))}</p>
+          ${downloadsHtml}
         </article>
       </div>
     </section>

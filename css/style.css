@@ -1688,6 +1688,60 @@ footer {
   margin-bottom: 16px;
 }
 
+.download-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.download-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(7, 11, 20, 0.55);
+}
+
+.download-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.download-format {
+  font-size: 12px;
+  color: var(--primary);
+  font-family: var(--font-ui);
+  letter-spacing: 0.06em;
+}
+
+.download-btn,
+.download-btn-inline {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.download-btn-inline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.download-btn-inline:hover {
+  border-color: var(--primary);
+  background: rgba(46, 230, 255, 0.1);
+}
+
 @media (max-width: 768px) {
   .detail-hero {
     grid-template-columns: 1fr;
@@ -1699,5 +1753,10 @@ footer {
 
   .detail-page {
     padding-top: 90px;
+  }
+
+  .download-list li {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

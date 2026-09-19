@@ -33,6 +33,10 @@ window.PRODUCT_EN = {
       ["5V", "USB in", "Regulated to 3.3V"],
     ],
     package: ["Board ×1", "USB-C cable ×1", "Headers", "Quick start guide"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/stm32h750-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/stm32h750-docs.7z", format: "7Z" },
+    ],
   },
   2: {
     name: "ESP32-S3 DevKit",
@@ -68,6 +72,10 @@ window.PRODUCT_EN = {
       ["BOOT", "Boot mode", "Hold for download"],
     ],
     package: ["Board ×1", "USB cable ×1", "Docs QR"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/esp32-s3-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/esp32-s3-docs.7z", format: "7Z" },
+    ],
   },
   3: {
     name: "Raspberry Pi 5 Board",
@@ -103,6 +111,10 @@ window.PRODUCT_EN = {
       ["Pin 37–40", "GPIO", "Configurable IO"],
     ],
     package: ["Pi 5 board ×1 (no PSU/case/card)", "Anti-static pack"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/rpi5-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/rpi5-docs.7z", format: "7Z" },
+    ],
   },
   4: {
     name: "LVGL Touch Display Kit",
@@ -138,6 +150,10 @@ window.PRODUCT_EN = {
       ["3V3 / GND / 5V", "Power", "Watch backlight current"],
     ],
     package: ["Core board ×1", "4.3\" panel ×1", "FFC ×1", "Sample docs link"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/lvgl-kit-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/lvgl-kit-docs.7z", format: "7Z" },
+    ],
   },
   5: {
     name: "MPU6050 Sensor Module",
@@ -172,6 +188,10 @@ window.PRODUCT_EN = {
       ["INT", "Interrupt", "Data ready / motion"],
     ],
     package: ["MPU6050 module ×1", "Straight headers"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/mpu6050-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/mpu6050-docs.7z", format: "7Z" },
+    ],
   },
   6: {
     name: "Arduino UNO R4 WiFi",
@@ -207,6 +227,10 @@ window.PRODUCT_EN = {
       ["RESET", "Reset", "Active low"],
     ],
     package: ["UNO R4 WiFi ×1", "Retail box"],
+    downloads: [
+      { name: "Technical Docs (ZIP)", file: "/downloads/arduino-uno-r4-docs.zip", format: "ZIP" },
+      { name: "Technical Docs (7Z)", file: "/downloads/arduino-uno-r4-docs.7z", format: "7Z" },
+    ],
   },
 };
 
