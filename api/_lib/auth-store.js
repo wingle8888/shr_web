@@ -68,25 +68,48 @@ function writeUsersLocal(users) {
   } catch (_) {}
 }
 
+async function blobFetchJson(url) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(url, { headers });
+  if (!res.ok) return null;
+  try {
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
 async function blobPut(pathname, body) {
   const { put } = require("@vercel/blob");
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   const payload = typeof body === "string" ? body : JSON.stringify(body);
+  const base = {
+    addRandomSuffix: false,
+    contentType: "application/json",
+    token,
+    allowOverwrite: true,
+  };
+  // 你创建的是 Private Blob Store，优先 private
   try {
-    return await put(pathname, payload, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json",
-      token,
-    });
+    return await put(pathname, payload, { ...base, access: "private" });
   } catch (_) {
-    return await put(pathname, payload, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json",
-      token,
-    });
+    try {
+      return await put(pathname, payload, {
+        addRandomSuffix: false,
+        contentType: "application/json",
+        token,
+        access: "private",
+      });
+    } catch (__) {
+      return await put(pathname, payload, {
+        addRandomSuffix: false,
+        contentType: "application/json",
+        token,
+        access: "public",
+        allowOverwrite: true,
+      });
+    }
   }
 }
 
@@ -100,12 +123,9 @@ async function readUsersFromBlob() {
     const listed = await list({ prefix: "shr-auth/users-db", token });
     const dbFile = (listed.blobs || []).find((b) => String(b.pathname).includes("users-db"));
     if (dbFile && dbFile.url) {
-      const res = await fetch(dbFile.url + (dbFile.url.includes("?") ? "&" : "?") + "t=" + Date.now());
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) return data;
-        if (data && Array.isArray(data.users)) return data.users;
-      }
+      const data = await blobFetchJson(dbFile.url);
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.users)) return data.users;
     }
 
     // 2) 兼容逐个用户文件
@@ -113,9 +133,7 @@ async function readUsersFromBlob() {
     const users = [];
     for (const blob of perUser.blobs || []) {
       try {
-        const res = await fetch(blob.url);
-        if (!res.ok) continue;
-        const row = await res.json();
+        const row = await blobFetchJson(blob.url);
         if (row && row.email) users.push(row);
       } catch (_) {}
     }
