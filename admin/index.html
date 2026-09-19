@@ -3,63 +3,250 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>资料后台 - 开发板商城</title>
+  <title>后台管理 - 开发板商城</title>
   <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
-  <div class="admin-wrap">
+  <div class="admin-wrap admin-wrap-wide">
     <header class="admin-header">
       <a href="/" class="logo">
         <div class="logo-icon">SHR</div>
-        <span class="logo-text">资料后台</span>
+        <span class="logo-text">后台管理</span>
       </a>
-      <a class="header-cart" href="/">返回商城</a>
+      <div class="admin-header-actions">
+        <button type="button" class="link-btn" id="logoutBtn" hidden>退出</button>
+        <a class="header-cart" href="/">返回商城</a>
+      </div>
     </header>
 
     <section class="admin-card" id="loginCard">
-      <h1>管理员登录</h1>
-      <p class="admin-tip">仅管理员可上传 / 删除资料。用户端只能下载。</p>
+      <h1>打开后台客户端</h1>
+      <p class="admin-tip">登录后可上传产品与资料，查看订单、客户、注册用户与月销售。</p>
       <form id="loginForm">
         <label>后台密码</label>
         <input type="password" id="adminPassword" required placeholder="请输入后台密码" autocomplete="current-password">
-        <button class="btn" type="submit" style="width:100%;margin-top:12px">登录</button>
+        <button class="btn" type="submit" style="width:100%;margin-top:12px">进入后台</button>
       </form>
       <p class="admin-hint">默认密码：shr-admin-2026（可在 Vercel 环境变量 ADMIN_PASSWORD 修改）</p>
     </section>
 
-    <section class="admin-card" id="panelCard" hidden>
-      <div class="admin-panel-head">
-        <h1>产品资料管理</h1>
-        <button type="button" class="link-btn" id="logoutBtn">退出</button>
+    <section id="panelCard" hidden>
+      <nav class="admin-tabs" id="adminTabs">
+        <button type="button" class="admin-tab active" data-tab="dashboard">月销售</button>
+        <button type="button" class="admin-tab" data-tab="products">产品</button>
+        <button type="button" class="admin-tab" data-tab="docs">资料</button>
+        <button type="button" class="admin-tab" data-tab="orders">订单</button>
+        <button type="button" class="admin-tab" data-tab="customers">客户资料</button>
+        <button type="button" class="admin-tab" data-tab="users">注册资料</button>
+      </nav>
+
+      <div class="admin-tab-panel active" id="tab-dashboard">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>月销售情况</h1>
+            <button type="button" class="link-btn" id="refreshDashboard">刷新</button>
+          </div>
+          <div class="admin-stats" id="statsCards"></div>
+          <h2 class="admin-sub">按月汇总</h2>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="monthlyTable">
+              <thead>
+                <tr><th>月份</th><th>订单数</th><th>件数</th><th>销售额 (¥)</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <p class="admin-tip">支持上传 ZIP / RAR / 7Z（单文件约 4MB 以内）。上传后用户可在商品详情「资料下载」中下载。</p>
 
-      <form id="uploadForm" class="admin-upload">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="productId">选择商品</label>
-            <select id="productId" required></select>
+      <div class="admin-tab-panel" id="tab-products">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>产品管理</h1>
+            <button type="button" class="link-btn" id="refreshProducts">刷新</button>
           </div>
-          <div class="form-group">
-            <label for="displayName">显示名称</label>
-            <input type="text" id="displayName" placeholder="如：原理图与例程 (ZIP)">
+          <p class="admin-tip">可新增后台产品；商城静态商品仍保留。上传后前台会合并显示。</p>
+          <form id="productForm" class="admin-upload">
+            <input type="hidden" id="editProductId" value="">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prodName">产品名称 *</label>
+                <input type="text" id="prodName" required placeholder="如：STM32G431 核心板">
+              </div>
+              <div class="form-group">
+                <label for="prodPrice">价格 (¥) *</label>
+                <input type="number" id="prodPrice" required min="0" step="0.01" placeholder="99">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prodCategory">分类 *</label>
+                <select id="prodCategory" required>
+                  <option value="cat-mcu">MCU 开发板</option>
+                  <option value="cat-iot">无线 IoT</option>
+                  <option value="cat-sbc">单板计算机</option>
+                  <option value="cat-display">显示套件</option>
+                  <option value="cat-sensor">传感器</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="prodTag">标签</label>
+                <input type="text" id="prodTag" placeholder="新品 / 热卖 / 推荐">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="prodImg">图片 URL</label>
+              <input type="text" id="prodImg" placeholder="/images/stm32.jpg 或 https://…">
+            </div>
+            <div class="form-group">
+              <label for="prodDesc">一句话简介 *</label>
+              <input type="text" id="prodDesc" required placeholder="简短卖点">
+            </div>
+            <div class="form-group">
+              <label for="prodIntro">详细介绍</label>
+              <textarea id="prodIntro" rows="3" placeholder="产品介绍"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prodFeatures">功能特点（每行一条）</label>
+                <textarea id="prodFeatures" rows="3" placeholder="特点 1&#10;特点 2"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="prodPackage">包装清单（每行一条）</label>
+                <textarea id="prodPackage" rows="3" placeholder="开发板 ×1&#10;数据线 ×1"></textarea>
+              </div>
+            </div>
+            <div class="admin-form-actions">
+              <button class="btn" type="submit" id="productSubmitBtn">上传产品</button>
+              <button class="link-btn" type="button" id="productResetBtn">清空表单</button>
+            </div>
+            <p class="admin-status" id="productStatus"></p>
+          </form>
+
+          <h2 class="admin-sub">商城商品一览</h2>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="productsTable">
+              <thead>
+                <tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>来源</th><th>操作</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
-        <div class="form-group">
-          <label for="fileInput">压缩包文件</label>
-          <input type="file" id="fileInput" accept=".zip,.rar,.7z,application/zip,application/x-rar-compressed,application/x-7z-compressed" required>
-        </div>
-        <button class="btn" type="submit">上传资料</button>
-        <p class="admin-status" id="uploadStatus"></p>
-      </form>
+      </div>
 
-      <h2 class="admin-sub">已上传 / 已登记资料</h2>
-      <div id="fileList" class="admin-file-list">加载中…</div>
+      <div class="admin-tab-panel" id="tab-docs">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>资料上传</h1>
+            <button type="button" class="link-btn" id="refreshDocs">刷新</button>
+          </div>
+          <p class="admin-tip">支持 ZIP / RAR / 7Z（单文件约 4MB）。用户仅可在商品详情下载。</p>
+          <form id="uploadForm" class="admin-upload">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="productId">选择商品</label>
+                <select id="productId" required></select>
+              </div>
+              <div class="form-group">
+                <label for="displayName">显示名称</label>
+                <input type="text" id="displayName" placeholder="如：原理图与例程 (ZIP)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fileInput">压缩包文件</label>
+              <input type="file" id="fileInput" accept=".zip,.rar,.7z,application/zip,application/x-rar-compressed,application/x-7z-compressed" required>
+            </div>
+            <button class="btn" type="submit">上传资料</button>
+            <p class="admin-status" id="uploadStatus"></p>
+          </form>
+          <h2 class="admin-sub">已上传 / 已登记资料</h2>
+          <div id="fileList" class="admin-file-list">加载中…</div>
+        </div>
+      </div>
+
+      <div class="admin-tab-panel" id="tab-orders">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>订单列表</h1>
+            <div class="admin-inline-actions">
+              <button type="button" class="link-btn" id="importLocalOrders">同步本机订单</button>
+              <button type="button" class="link-btn" id="refreshOrders">刷新</button>
+            </div>
+          </div>
+          <p class="admin-tip">包含服务器订单；可把当前浏览器本地订单同步到后台。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="ordersTable">
+              <thead>
+                <tr>
+                  <th>订单号</th>
+                  <th>时间</th>
+                  <th>客户</th>
+                  <th>手机</th>
+                  <th>金额</th>
+                  <th>状态</th>
+                  <th>支付</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="orderDetail" class="admin-detail" hidden></div>
+        </div>
+      </div>
+
+      <div class="admin-tab-panel" id="tab-customers">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>客户资料</h1>
+            <button type="button" class="link-btn" id="refreshCustomers">刷新</button>
+          </div>
+          <p class="admin-tip">根据订单收货信息汇总的客户档案（含游客）。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="customersTable">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>手机</th>
+                  <th>邮箱</th>
+                  <th>地区</th>
+                  <th>订单数</th>
+                  <th>累计消费</th>
+                  <th>最近订单</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-tab-panel" id="tab-users">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>注册资料</h1>
+            <button type="button" class="link-btn" id="refreshUsers">刷新</button>
+          </div>
+          <p class="admin-tip">网站注册账号列表（不含密码）。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="usersTable">
+              <thead>
+                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>手机</th><th>注册时间</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
+
   <script src="/js/products-data.js"></script>
   <script src="/admin/admin.js"></script>
 </body>

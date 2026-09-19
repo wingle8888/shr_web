@@ -243,6 +243,7 @@ window.getLocalizedProduct = function getLocalizedProduct(product) {
 };
 
 window.getProductById = function getProductById(id) {
-  const raw = window.PRODUCTS.find((p) => String(p.id) === String(id));
+  const list = window.PRODUCTS || [];
+  const raw = list.find((p) => String(p.id) === String(id));
   return window.getLocalizedProduct(raw);
 };

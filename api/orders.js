@@ -1,24 +1,9 @@
-const fs = require("fs");
-const path = require("path");
-
-const DATA_FILE = path.join("/tmp", "shr-orders.json");
-
-function readOrders() {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-  } catch {
-    return [];
-  }
-}
-
-function writeOrders(orders) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(orders.slice(0, 500), null, 2));
-}
+const { readOrders, writeOrders, findOrder } = require("./_lib/orders-store");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-password");
 
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
@@ -43,7 +28,9 @@ module.exports = async function handler(req, res) {
       return;
     }
     const orders = readOrders();
-    orders.unshift(body);
+    const idx = orders.findIndex((o) => String(o.id) === String(body.id));
+    if (idx >= 0) orders[idx] = body;
+    else orders.unshift(body);
     writeOrders(orders);
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
@@ -53,18 +40,14 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "GET") {
     const url = new URL(req.url, "http://localhost");
-    const id = (url.searchParams.get("id") || "").toUpperCase();
-    const phone = (url.searchParams.get("phone") || "").replace(/\s|-/g, "");
+    const id = url.searchParams.get("id") || "";
+    const phone = url.searchParams.get("phone") || "";
     if (!id || !phone) {
       res.statusCode = 400;
       res.end(JSON.stringify({ ok: false, error: "id and phone required" }));
       return;
     }
-    const order = readOrders().find(
-      (o) =>
-        String(o.id).toUpperCase() === id &&
-        String(o.shipping?.phone || "").replace(/\s|-/g, "") === phone
-    );
+    const order = findOrder(id, phone);
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ ok: true, order: order || null }));

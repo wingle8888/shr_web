@@ -1,4 +1,15 @@
 const PASS_KEY = "shr_admin_pass";
+const ORDERS_KEY = "shr_orders";
+
+const state = {
+  seedProducts: [],
+  customProducts: [],
+  orders: [],
+  customers: [],
+  users: [],
+  stats: null,
+  currentTab: "dashboard",
+};
 
 function $(id) {
   return document.getElementById(id);
@@ -16,12 +27,32 @@ function clearPass() {
   sessionStorage.removeItem(PASS_KEY);
 }
 
-function productOptions() {
-  const sel = $("productId");
-  const products = window.PRODUCTS || [];
-  sel.innerHTML = products
-    .map((p) => `<option value="${p.id}">#${p.id} ${p.name}</option>`)
-    .join("");
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatMoney(n) {
+  return (Number(n) || 0).toFixed(2);
+}
+
+function formatSize(n) {
+  if (!n && n !== 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatTime(iso) {
+  if (!iso) return "-";
+  try {
+    return new Date(iso).toLocaleString("zh-CN");
+  } catch {
+    return String(iso);
+  }
 }
 
 async function api(url, options = {}) {
@@ -35,16 +66,194 @@ async function api(url, options = {}) {
   return data;
 }
 
+function allProducts() {
+  const map = new Map();
+  state.seedProducts.forEach((p) => map.set(String(p.id), { ...p, source: "seed" }));
+  state.customProducts.forEach((p) => map.set(String(p.id), { ...p, source: "custom" }));
+  return Array.from(map.values()).sort((a, b) => Number(a.id) - Number(b.id));
+}
+
 function showPanel(loggedIn) {
   $("loginCard").hidden = loggedIn;
   $("panelCard").hidden = !loggedIn;
+  $("logoutBtn").hidden = !loggedIn;
 }
 
-function formatSize(n) {
-  if (!n && n !== 0) return "";
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll(".admin-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+  document.querySelectorAll(".admin-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === `tab-${tab}`);
+  });
+}
+
+function productOptions() {
+  const sel = $("productId");
+  if (!sel) return;
+  const products = allProducts();
+  sel.innerHTML = products
+    .map((p) => `<option value="${p.id}">#${p.id} ${escapeHtml(p.name)}</option>`)
+    .join("");
+}
+
+function renderStats() {
+  const stats = state.stats || {
+    totalOrders: 0,
+    totalAmount: 0,
+    thisMonth: { month: "-", orders: 0, amount: 0, items: 0 },
+    monthly: [],
+  };
+  const tm = stats.thisMonth || {};
+  $("statsCards").innerHTML = `
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">本月销售额</div>
+      <div class="admin-stat-value">¥${formatMoney(tm.amount)}</div>
+      <div class="admin-stat-sub">${escapeHtml(tm.month || "-")}</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">本月订单</div>
+      <div class="admin-stat-value">${tm.orders || 0}</div>
+      <div class="admin-stat-sub">件量 ${tm.items || 0}</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">累计销售额</div>
+      <div class="admin-stat-value">¥${formatMoney(stats.totalAmount)}</div>
+      <div class="admin-stat-sub">订单 ${stats.totalOrders || 0}</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">客户数</div>
+      <div class="admin-stat-value">${state.customers.length}</div>
+      <div class="admin-stat-sub">注册 ${state.users.length}</div>
+    </div>
+  `;
+
+  const tbody = $("monthlyTable").querySelector("tbody");
+  const rows = stats.monthly || [];
+  tbody.innerHTML = rows.length
+    ? rows
+        .map(
+          (m) => `<tr>
+        <td>${escapeHtml(m.month)}</td>
+        <td>${m.orders}</td>
+        <td>${m.items}</td>
+        <td>¥${formatMoney(m.amount)}</td>
+      </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="4" class="admin-empty">暂无销售数据</td></tr>`;
+}
+
+function renderProductsTable() {
+  const tbody = $("productsTable").querySelector("tbody");
+  const list = allProducts();
+  tbody.innerHTML = list.length
+    ? list
+        .map((p) => {
+          const custom = p.source === "custom";
+          return `<tr>
+        <td>${p.id}</td>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.category || p.categoryId || "")}</td>
+        <td>¥${formatMoney(p.price)}</td>
+        <td>${custom ? "后台上传" : "商城预设"}</td>
+        <td class="admin-row-actions">
+          ${
+            custom
+              ? `<button type="button" data-edit-product="${p.id}">编辑</button>
+                 <button type="button" class="danger" data-del-product="${p.id}">删除</button>`
+              : `<span class="admin-muted">只读</span>`
+          }
+        </td>
+      </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="6" class="admin-empty">暂无产品</td></tr>`;
+}
+
+function renderOrders() {
+  const tbody = $("ordersTable").querySelector("tbody");
+  const list = state.orders || [];
+  tbody.innerHTML = list.length
+    ? list
+        .map((o) => {
+          const s = o.shipping || {};
+          return `<tr data-order-id="${escapeHtml(o.id)}" class="admin-click-row">
+        <td>${escapeHtml(o.id)}</td>
+        <td>${escapeHtml(formatTime(o.createdAt))}</td>
+        <td>${escapeHtml(s.name || "-")}</td>
+        <td>${escapeHtml(s.phone || "-")}</td>
+        <td>¥${formatMoney(o.total)}</td>
+        <td>${escapeHtml(o.status || "-")}</td>
+        <td>${escapeHtml(o.payMethod || "-")}</td>
+      </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="7" class="admin-empty">暂无订单</td></tr>`;
+}
+
+function showOrderDetail(order) {
+  const box = $("orderDetail");
+  if (!order) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  const s = order.shipping || {};
+  const items = (order.items || [])
+    .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　¥${formatMoney((i.price || 0) * (i.qty || 0))}</li>`)
+    .join("");
+  box.hidden = false;
+  box.innerHTML = `
+    <h3>订单详情 ${escapeHtml(order.id)}</h3>
+    <p>收货：${escapeHtml(s.name || "")} · ${escapeHtml(s.phone || "")} · ${escapeHtml(s.email || "")}</p>
+    <p>地址：${escapeHtml(s.region || "")} ${escapeHtml(s.address || "")}</p>
+    <p>支付：${escapeHtml(order.payMethod || "-")} · 状态：${escapeHtml(order.status || "-")}</p>
+    ${order.userEmail ? `<p>关联账号：${escapeHtml(order.userEmail)}</p>` : ""}
+    <ul>${items}</ul>
+    <p><strong>合计 ¥${formatMoney(order.total)}</strong></p>
+  `;
+}
+
+function renderCustomers() {
+  const tbody = $("customersTable").querySelector("tbody");
+  const list = state.customers || [];
+  tbody.innerHTML = list.length
+    ? list
+        .map(
+          (c) => `<tr>
+        <td>${escapeHtml(c.name || "-")}</td>
+        <td>${escapeHtml(c.phone || "-")}</td>
+        <td>${escapeHtml(c.email || "-")}</td>
+        <td>${escapeHtml(c.region || "-")}</td>
+        <td>${c.orderCount || 0}</td>
+        <td>¥${formatMoney(c.totalSpent)}</td>
+        <td>${escapeHtml(c.lastOrderId || "-")}<br><span class="admin-muted">${escapeHtml(
+            formatTime(c.lastOrderAt)
+          )}</span></td>
+      </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="7" class="admin-empty">暂无客户资料</td></tr>`;
+}
+
+function renderUsers() {
+  const tbody = $("usersTable").querySelector("tbody");
+  const list = state.users || [];
+  tbody.innerHTML = list.length
+    ? list
+        .map(
+          (u) => `<tr>
+        <td>${escapeHtml(u.id)}</td>
+        <td>${escapeHtml(u.name || "-")}</td>
+        <td>${escapeHtml(u.email || "-")}</td>
+        <td>${escapeHtml(u.phone || "-")}</td>
+        <td>${escapeHtml(formatTime(u.createdAt))}</td>
+      </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="5" class="admin-empty">暂无注册用户</td></tr>`;
 }
 
 async function refreshList() {
@@ -53,7 +262,7 @@ async function refreshList() {
   try {
     const data = await api("/api/admin/files");
     const manifest = data.downloads || {};
-    const products = window.PRODUCTS || [];
+    const products = allProducts();
     const ids = Array.from(
       new Set([...products.map((p) => String(p.id)), ...Object.keys(manifest)])
     ).sort((a, b) => Number(a) - Number(b));
@@ -81,7 +290,7 @@ async function refreshList() {
             </div>
             <div class="admin-file-actions">
               <a href="${escapeHtml(f.file)}" download target="_blank" rel="noopener">下载</a>
-              <button type="button" class="danger" data-del-product="${id}" data-del-id="${escapeHtml(f.id)}">删除</button>
+              <button type="button" class="danger" data-del-doc-product="${id}" data-del-id="${escapeHtml(f.id)}">删除</button>
             </div>
           </div>`
                 )
@@ -94,12 +303,55 @@ async function refreshList() {
   }
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+async function loadOrdersBundle() {
+  const data = await api("/api/admin/orders");
+  state.orders = data.orders || [];
+  state.stats = data.stats || null;
+  state.customers = data.customers || [];
+  renderStats();
+  renderOrders();
+  renderCustomers();
+}
+
+async function loadProductsBundle() {
+  const data = await api("/api/admin/products");
+  state.customProducts = data.products || [];
+  renderProductsTable();
+  productOptions();
+}
+
+async function loadUsers() {
+  const data = await api("/api/admin/users");
+  state.users = data.users || [];
+  renderUsers();
+  renderStats();
+}
+
+async function loadAll() {
+  await Promise.all([loadOrdersBundle(), loadProductsBundle(), loadUsers(), refreshList()]);
+}
+
+function resetProductForm() {
+  $("editProductId").value = "";
+  $("productForm").reset();
+  $("productSubmitBtn").textContent = "上传产品";
+  $("productStatus").textContent = "";
+  $("productStatus").className = "admin-status";
+}
+
+function fillProductForm(p) {
+  $("editProductId").value = p.id;
+  $("prodName").value = p.name || "";
+  $("prodPrice").value = p.price || "";
+  $("prodCategory").value = p.categoryId || "cat-mcu";
+  $("prodTag").value = p.tag || "";
+  $("prodImg").value = p.img || "";
+  $("prodDesc").value = p.desc || "";
+  $("prodIntro").value = p.intro || "";
+  $("prodFeatures").value = (p.features || []).join("\n");
+  $("prodPackage").value = (p.package || []).join("\n");
+  $("productSubmitBtn").textContent = "保存修改";
+  switchTab("products");
 }
 
 function fileToBase64(file) {
@@ -122,8 +374,7 @@ $("loginForm").addEventListener("submit", async (e) => {
   try {
     await api("/api/admin/files");
     showPanel(true);
-    productOptions();
-    await refreshList();
+    await loadAll();
   } catch (err) {
     clearPass();
     alert("登录失败：" + err.message);
@@ -133,6 +384,103 @@ $("loginForm").addEventListener("submit", async (e) => {
 $("logoutBtn").addEventListener("click", () => {
   clearPass();
   showPanel(false);
+});
+
+$("adminTabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".admin-tab");
+  if (!btn) return;
+  switchTab(btn.dataset.tab);
+});
+
+$("refreshDashboard").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
+$("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
+$("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
+$("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
+$("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
+$("refreshDocs").addEventListener("click", () => refreshList().catch((e) => alert(e.message)));
+
+$("productResetBtn").addEventListener("click", resetProductForm);
+
+$("productForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const status = $("productStatus");
+  status.textContent = "保存中…";
+  status.className = "admin-status";
+  const editId = $("editProductId").value.trim();
+  const payload = {
+    action: editId ? "update" : "create",
+    id: editId || undefined,
+    name: $("prodName").value.trim(),
+    price: $("prodPrice").value,
+    categoryId: $("prodCategory").value,
+    tag: $("prodTag").value.trim(),
+    img: $("prodImg").value.trim(),
+    desc: $("prodDesc").value.trim(),
+    intro: $("prodIntro").value.trim(),
+    featuresText: $("prodFeatures").value,
+    packageText: $("prodPackage").value,
+    seedIds: state.seedProducts.map((p) => p.id),
+  };
+  try {
+    await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
+    status.textContent = editId ? "已保存" : "产品已上传";
+    resetProductForm();
+    await loadProductsBundle();
+  } catch (err) {
+    status.textContent = "失败：" + err.message;
+    status.className = "admin-status error";
+  }
+});
+
+$("productsTable").addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("[data-edit-product]");
+  if (editBtn) {
+    const p = state.customProducts.find((x) => String(x.id) === String(editBtn.dataset.editProduct));
+    if (p) fillProductForm(p);
+    return;
+  }
+  const delBtn = e.target.closest("[data-del-product]");
+  if (!delBtn) return;
+  if (!confirm("确定删除该后台产品？")) return;
+  try {
+    await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({ action: "delete", id: delBtn.dataset.delProduct }),
+    });
+    await loadProductsBundle();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("ordersTable").addEventListener("click", (e) => {
+  const row = e.target.closest("[data-order-id]");
+  if (!row) return;
+  const order = state.orders.find((o) => String(o.id) === String(row.dataset.orderId));
+  showOrderDetail(order);
+});
+
+$("importLocalOrders").addEventListener("click", async () => {
+  let local = [];
+  try {
+    local = JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]");
+  } catch {
+    local = [];
+  }
+  if (!local.length) {
+    alert("本机没有可同步的订单");
+    return;
+  }
+  try {
+    await api("/api/admin/orders", {
+      method: "POST",
+      body: JSON.stringify({ action: "import", orders: local }),
+    });
+    await loadOrdersBundle();
+    alert(`已同步 ${local.length} 条本机订单`);
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 $("uploadForm").addEventListener("submit", async (e) => {
@@ -184,7 +532,7 @@ $("fileList").addEventListener("click", async (e) => {
       body: JSON.stringify({
         action: "delete",
         password: getPass(),
-        productId: btn.dataset.delProduct,
+        productId: btn.dataset.delDocProduct,
         fileId: btn.dataset.delId,
       }),
     });
@@ -195,6 +543,7 @@ $("fileList").addEventListener("click", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
+  state.seedProducts = Array.isArray(window.PRODUCTS) ? window.PRODUCTS.slice() : [];
   productOptions();
   if (!getPass()) {
     showPanel(false);
@@ -203,7 +552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await api("/api/admin/files");
     showPanel(true);
-    await refreshList();
+    await loadAll();
   } catch {
     clearPass();
     showPanel(false);

@@ -1,5 +1,3 @@
-const products = window.PRODUCTS || [];
-
 const CATEGORY_ORDER = [
   { id: "cat-mcu", nameKey: "catMcu", descKey: "catMcuDesc" },
   { id: "cat-iot", nameKey: "catIot", descKey: "catIotDesc" },
@@ -12,6 +10,7 @@ const CART_KEY = "shr_cart";
 const ORDERS_KEY = "shr_orders";
 const CHAT_STORAGE_KEY = "shr_chat_messages";
 
+let products = window.PRODUCTS || [];
 let cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
 let currentCategory = "all";
 let searchKeyword = "";
@@ -416,9 +415,14 @@ function bindModalDismiss(overlayId) {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initLangSwitch();
   window.I18N.applyI18n();
+  if (window.hydrateProducts) {
+    products = await window.hydrateProducts();
+  } else {
+    products = window.PRODUCTS || [];
+  }
   renderProducts();
   updateCartBadge();
   initNav();

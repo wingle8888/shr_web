@@ -300,6 +300,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initLangSwitch();
   window.I18N.applyI18n();
   updateCartBadge();
+  if (window.hydrateProducts) await window.hydrateProducts();
   if (window.Auth) {
     window.Auth.initAuthUI({
       t,
