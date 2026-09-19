@@ -1,10 +1,11 @@
 const fs = require("fs");
 const path = require("path");
-const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, hasBlob, isVercel } = require("./blob-store");
+const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, blobGetJson, hasBlob, isVercel } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
 const BLOB_PATH = "shr-admin/products-db.json";
+const REMOVED_SEED_IDS = ["3"];
 
 const CATEGORIES = [
   { id: "cat-mcu", name: "MCU 开发板" },
@@ -16,6 +17,10 @@ const CATEGORIES = [
 
 function uniqueIds(list) {
   return Array.from(new Set((list || []).map((x) => String(x).trim()).filter(Boolean)));
+}
+
+function allDeletedIds(list) {
+  return uniqueIds([...(list || []), ...REMOVED_SEED_IDS]);
 }
 
 function unwrapGalleries(raw) {
@@ -36,17 +41,17 @@ function unwrapGalleries(raw) {
 }
 
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: [], galleries: {} };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {} };
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
     return {
       products,
       hiddenIds: uniqueIds(raw.hiddenIds),
-      deletedIds: uniqueIds(raw.deletedIds),
+      deletedIds: allDeletedIds(raw.deletedIds),
       galleries: unwrapGalleries(raw.galleries),
     };
   }
-  return { products: [], hiddenIds: [], deletedIds: [], galleries: {} };
+  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {} };
 }
 
 function mergeProducts(a, b) {
@@ -74,11 +79,15 @@ function mergeCatalog(a, b) {
   const left = unwrapCatalog(a);
   const right = unwrapCatalog(b);
   const hiddenIds = Array.isArray(b) ? left.hiddenIds : right.hiddenIds;
-  const deletedIds = uniqueIds([...(left.deletedIds || []), ...(right.deletedIds || [])]);
+  const deletedIds = allDeletedIds([...(left.deletedIds || []), ...(right.deletedIds || [])]);
+  const deleted = new Set(deletedIds);
   const galleries = Array.isArray(b) ? left.galleries : mergeGalleries(left.galleries, right.galleries);
+  deletedIds.forEach((id) => {
+    delete galleries[id];
+  });
   return {
-    products: mergeProducts(left.products, right.products),
-    hiddenIds,
+    products: mergeProducts(left.products, right.products).filter((p) => !deleted.has(String(p.id))),
+    hiddenIds: uniqueIds(hiddenIds).filter((id) => !deleted.has(id)),
     deletedIds,
     galleries,
   };
@@ -94,12 +103,60 @@ async function readCatalog() {
   return unwrapCatalog(raw);
 }
 
+function readLocalDeletedIds() {
+  const ids = [];
+  [TMP_FILE, DATA_FILE].forEach((file) => {
+    try {
+      if (!fs.existsSync(file)) return;
+      const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+      ids.push(...uniqueIds(raw && raw.deletedIds));
+    } catch (_) {}
+  });
+  return uniqueIds(ids);
+}
+
+async function rememberDeletedIds(extra) {
+  const ids = uniqueIds(extra);
+  ids.push(...readLocalDeletedIds());
+  try {
+    const fromBlob = await blobGetJson(BLOB_PATH);
+    if (fromBlob) ids.push(...uniqueIds(fromBlob.deletedIds));
+  } catch (_) {}
+  return allDeletedIds(ids);
+}
+
+function loadSeedProducts() {
+  try {
+    const seed = require(path.join(process.cwd(), "js", "products-data.js"));
+    return Array.isArray(seed) ? seed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function listVisibleProducts(catalog) {
+  const cat = unwrapCatalog(catalog);
+  const hidden = new Set(cat.hiddenIds);
+  const deleted = new Set(cat.deletedIds);
+  const merged = mergeProducts(loadSeedProducts(), cat.products);
+  return attachGalleries(merged, cat.galleries).filter(
+    (p) => !hidden.has(String(p.id)) && !deleted.has(String(p.id))
+  );
+}
+
 async function writeCatalog(catalog) {
+  const incoming = unwrapCatalog(catalog);
+  const deletedIds = await rememberDeletedIds(incoming.deletedIds);
+  const deleted = new Set(deletedIds);
+  const galleries = { ...incoming.galleries };
+  deletedIds.forEach((id) => {
+    delete galleries[id];
+  });
   const next = {
-    products: mergeProducts([], catalog && catalog.products),
-    hiddenIds: uniqueIds(catalog && catalog.hiddenIds),
-    deletedIds: uniqueIds(catalog && catalog.deletedIds),
-    galleries: unwrapGalleries(catalog && catalog.galleries),
+    products: incoming.products.filter((p) => !deleted.has(String(p.id))),
+    hiddenIds: uniqueIds(incoming.hiddenIds).filter((id) => !deleted.has(id)),
+    deletedIds,
+    galleries,
   };
   await writeJsonStore({
     blobPath: BLOB_PATH,
@@ -314,5 +371,7 @@ module.exports = {
   addGalleryImages,
   removeGalleryImage,
   attachGalleries,
+  listVisibleProducts,
+  loadSeedProducts,
   MAX_GALLERY,
 };

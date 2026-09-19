@@ -1,4 +1,4 @@
-window.PRODUCTS = [
+var PRODUCTS_SEED = [
   {
     id: 1,
     name: "STM32H750 开发板",
@@ -83,49 +83,6 @@ window.PRODUCTS = [
     downloads: [
       { name: "技术资料包 (ZIP)", file: "/downloads/esp32-s3-docs.zip", format: "ZIP" },
       { name: "技术资料包 (7Z)", file: "/downloads/esp32-s3-docs.7z", format: "7Z" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Raspberry Pi 5 主板",
-    desc: "博通 BCM2712 四核 2.4GHz，8GB RAM，PCIe 2.0 接口",
-    price: 599,
-    tag: "新品",
-    category: "单板计算机",
-    categoryId: "cat-sbc",
-    img: "/images/rpi5.jpg",
-    intro:
-      "树莓派 5 采用 Broadcom BCM2712 四核 Cortex-A76 @ 2.4GHz，可选 8GB LPDDR4X 内存，新增 PCIe 2.0 接口可外接 NVMe SSD。双 4K 显示、千兆网口与更快的 USB 3.0，适合桌面 Linux、边缘计算与机器人主控。",
-    features: [
-      "四核 A76 @ 2.4GHz，性能大幅提升",
-      "双 micro-HDMI，最高双 4K60",
-      "PCIe 2.0 ×1，可接 M.2 NVMe（需扩展板）",
-      "千兆以太网 + 双频 Wi‑Fi / 蓝牙",
-      "2× USB 3.0 + 2× USB 2.0",
-      "40-pin GPIO 兼容树莓派生态",
-    ],
-    specs: [
-      ["SoC", "BCM2712"],
-      ["CPU", "4× Cortex-A76 @ 2.4GHz"],
-      ["内存", "8GB LPDDR4X"],
-      ["存储", "microSD + PCIe 扩展"],
-      ["视频", "2× micro-HDMI"],
-      ["供电", "建议 5V/5A USB-C PD"],
-    ],
-    pins: [
-      ["Pin 1 / 17", "3.3V", "逻辑电源，勿超电流"],
-      ["Pin 2 / 4", "5V", "外设供电"],
-      ["Pin 3 / 5", "GPIO2 / 3 (SDA/SCL)", "I2C1"],
-      ["Pin 8 / 10", "GPIO14 / 15", "UART0 TX / RX"],
-      ["Pin 19 / 21 / 23", "MOSI / MISO / SCLK", "SPI0"],
-      ["Pin 6 / 9 / 14…", "GND", "接地"],
-      ["Pin 32 / 33", "PWM", "舵机 / 调光"],
-      ["Pin 37–40", "通用 GPIO", "输入输出可配置"],
-    ],
-    package: ["树莓派 5 主板 ×1（不含电源/外壳/卡）", "防静电包装"],
-    downloads: [
-      { name: "技术资料包 (ZIP)", file: "/downloads/rpi5-docs.zip", format: "ZIP" },
-      { name: "技术资料包 (7Z)", file: "/downloads/rpi5-docs.7z", format: "7Z" },
     ],
   },
   {
@@ -257,4 +214,7 @@ window.PRODUCTS = [
     ],
   },
 ];
+
+if (typeof window !== "undefined") window.PRODUCTS = PRODUCTS_SEED;
+if (typeof module !== "undefined" && module.exports) module.exports = PRODUCTS_SEED;
 

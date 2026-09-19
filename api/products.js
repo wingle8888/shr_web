@@ -1,5 +1,5 @@
 const { cors, sendJson, parseBody } = require("./_lib/docs-store");
-const { readCatalog, readProductImage, attachGalleries } = require("./_lib/products-store");
+const { readCatalog, readProductImage, listVisibleProducts } = require("./_lib/products-store");
 const { recordVisit } = require("./_lib/visits-store");
 
 module.exports = async function handler(req, res) {
@@ -27,10 +27,11 @@ module.exports = async function handler(req, res) {
       return;
     }
     const catalog = await readCatalog();
-    const deleted = new Set((catalog.deletedIds || []).map(String));
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     sendJson(res, 200, {
       ok: true,
-      products: attachGalleries(catalog.products, catalog.galleries).filter((p) => !deleted.has(String(p.id))),
+      complete: true,
+      products: listVisibleProducts(catalog),
       hiddenIds: catalog.hiddenIds,
       deletedIds: catalog.deletedIds || [],
       galleries: catalog.galleries || {},

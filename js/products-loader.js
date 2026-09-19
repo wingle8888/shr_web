@@ -12,10 +12,11 @@
 
   async function loadCatalog() {
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
       if (res.ok && data.ok) {
         return {
+          complete: Boolean(data.complete),
           products: Array.isArray(data.products) ? data.products : [],
           hiddenIds: Array.isArray(data.hiddenIds) ? data.hiddenIds.map(String) : [],
           deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds.map(String) : [],
@@ -23,7 +24,7 @@
         };
       }
     } catch (_) {}
-    return { products: [], hiddenIds: [], deletedIds: [], galleries: {} };
+    return { complete: false, products: [], hiddenIds: [], deletedIds: [], galleries: {} };
   }
 
   async function hydrateProducts() {
@@ -31,16 +32,20 @@
     const catalog = await loadCatalog();
     const hidden = new Set(catalog.hiddenIds);
     const deleted = new Set(catalog.deletedIds);
-    const merged = mergeProducts(seed, catalog.products).map((p) => {
-      const extra = catalog.galleries[String(p.id)];
-      return extra ? { ...p, images: extra } : p;
-    });
+    const visible = catalog.complete
+      ? catalog.products.filter((p) => !hidden.has(String(p.id)) && !deleted.has(String(p.id)))
+      : mergeProducts(seed, catalog.products)
+          .map((p) => {
+            const extra = catalog.galleries[String(p.id)];
+            return extra ? { ...p, images: extra } : p;
+          })
+          .filter((p) => !hidden.has(String(p.id)) && !deleted.has(String(p.id)));
     window.PRODUCTS_SEED = seed;
-    window.PRODUCTS_CUSTOM = catalog.products;
+    window.PRODUCTS_CUSTOM = catalog.complete ? [] : catalog.products;
     window.PRODUCTS_HIDDEN = hidden;
     window.PRODUCTS_DELETED = deleted;
     window.PRODUCTS_GALLERIES = catalog.galleries;
-    window.PRODUCTS = merged.filter((p) => !hidden.has(String(p.id)) && !deleted.has(String(p.id)));
+    window.PRODUCTS = visible;
     return window.PRODUCTS;
   }
 
