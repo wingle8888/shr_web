@@ -4,6 +4,12 @@ const path = require("path");
 require("./cf-build.js");
 
 const root = path.join(__dirname, "..");
+spawnSync("npx", ["--yes", "wrangler", "r2", "bucket", "create", "develop-boards"], {
+  cwd: root,
+  stdio: "inherit",
+  shell: true,
+  env: process.env,
+});
 const result = spawnSync(
   "npx",
   ["--yes", "wrangler", "deploy", "--assets=./dist-assets"],

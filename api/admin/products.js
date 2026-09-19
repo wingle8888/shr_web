@@ -59,8 +59,16 @@ module.exports = async function handler(req, res) {
         sendJson(res, 400, { ok: false, error: "ids required" });
         return;
       }
-      const catalog = await setProductsHidden(ids, action === "hide");
-      sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
+      try {
+        const catalog = await setProductsHidden(ids, action === "hide");
+        sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
+      } catch (err) {
+        const missing = err && err.code === "BLOB_MISSING";
+        sendJson(res, missing ? 503 : 500, {
+          ok: false,
+          error: missing ? "云存储未配置，下架无法同步到商城。请在 Cloudflare 绑定 R2 存储桶 develop-boards。" : String(err.message || err),
+        });
+      }
       return;
     }
 
@@ -94,8 +102,16 @@ module.exports = async function handler(req, res) {
         sendJson(res, 400, { ok: false, error: "ids required" });
         return;
       }
-      const catalog = await deleteProducts(ids);
-      sendJson(res, 200, { ok: true, deletedIds: catalog.deletedIds, count: ids.length });
+      try {
+        const catalog = await deleteProducts(ids);
+        sendJson(res, 200, { ok: true, deletedIds: catalog.deletedIds, count: ids.length });
+      } catch (err) {
+        const missing = err && err.code === "BLOB_MISSING";
+        sendJson(res, missing ? 503 : 500, {
+          ok: false,
+          error: missing ? "云存储未配置，删除无法同步到商城。请在 Cloudflare 绑定 R2 存储桶 develop-boards。" : String(err.message || err),
+        });
+      }
       return;
     }
 

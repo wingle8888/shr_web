@@ -1,8 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const { getR2, isCloudflare } = require("./runtime-env");
+const { getR2, getKV, isCloudflare } = require("./runtime-env");
 
 const mem = new Map();
+const CACHE_ORIGIN = "https://shr-store.internal/";
 
 function blobToken() {
   return String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
@@ -20,8 +21,23 @@ function isHosted() {
   return isVercel() || isCloudflare();
 }
 
+function canUseCache() {
+  try {
+    return typeof caches !== "undefined" && caches.default && typeof caches.default.match === "function";
+  } catch (_) {
+    return false;
+  }
+}
+
+function storageKind() {
+  if (getR2()) return "r2";
+  if (getKV()) return "kv";
+  if (canUseCache()) return "cache";
+  return "";
+}
+
 function hasBlob() {
-  return Boolean(getR2());
+  return Boolean(storageKind());
 }
 
 function blobAuthOpts() {
@@ -44,26 +60,87 @@ function writeLocalJson(filePath, data) {
   } catch (_) {}
 }
 
-async function blobGetJson(pathname) {
-  const r2 = getR2();
-  if (!r2) return null;
+async function cacheGetJson(pathname) {
+  if (!canUseCache()) return null;
   try {
-    const obj = await r2.get(pathname);
-    if (!obj) return null;
-    const text = await obj.text();
-    if (!text) return null;
-    return JSON.parse(text);
+    const res = await caches.default.match(new Request(CACHE_ORIGIN + pathname));
+    if (!res) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
   } catch (_) {
     return null;
   }
 }
 
-async function blobPutJson(pathname, body) {
+async function cachePutJson(pathname, body) {
+  if (!canUseCache()) return false;
+  try {
+    const payload = typeof body === "string" ? body : JSON.stringify(body);
+    await caches.default.put(
+      new Request(CACHE_ORIGIN + pathname),
+      new Response(payload, {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "public, max-age=31536000",
+        },
+      })
+    );
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function parseStoredJson(obj) {
+  if (obj == null) return null;
+  if (typeof obj === "string") return obj ? JSON.parse(obj) : null;
+  if (typeof obj.text === "function") {
+    const text = await obj.text();
+    return text ? JSON.parse(text) : null;
+  }
+  if (typeof obj.json === "function") return obj.json();
+  if (typeof obj === "object") return obj;
+  return null;
+}
+
+async function blobGetJson(pathname) {
   const r2 = getR2();
-  if (!r2) return false;
+  if (r2) {
+    try {
+      const parsed = await parseStoredJson(await r2.get(pathname));
+      if (parsed != null) return parsed;
+    } catch (_) {}
+  }
+  const kv = getKV();
+  if (kv) {
+    try {
+      const parsed = await parseStoredJson(await kv.get(pathname, { type: "json" }));
+      if (parsed != null) return parsed;
+    } catch (_) {
+      try {
+        const parsed = await parseStoredJson(await kv.get(pathname));
+        if (parsed != null) return parsed;
+      } catch (_) {}
+    }
+  }
+  return cacheGetJson(pathname);
+}
+
+async function blobPutJson(pathname, body) {
   const payload = typeof body === "string" ? body : JSON.stringify(body);
-  await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
-  return true;
+  let ok = false;
+  const r2 = getR2();
+  if (r2) {
+    await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
+    ok = true;
+  }
+  const kv = getKV();
+  if (kv) {
+    await kv.put(pathname, payload);
+    ok = true;
+  }
+  if (await cachePutJson(pathname, payload)) ok = true;
+  return ok;
 }
 
 async function blobPutFile(pathname, buffer, contentType) {
@@ -109,9 +186,14 @@ async function writeJsonStore({ blobPath, localPaths = [], data }) {
   mem.set(blobPath, data);
   (localPaths || []).forEach((p) => writeLocalJson(p, data));
   if (hasBlob()) {
-    await blobPutJson(blobPath, data);
+    const saved = await blobPutJson(blobPath, data);
+    if (!saved && isHosted()) {
+      const err = new Error("Cloudflare R2 / 存储写入失败");
+      err.code = "BLOB_MISSING";
+      throw err;
+    }
   } else if (isHosted()) {
-    const err = new Error("Cloudflare R2 / Blob storage is not configured");
+    const err = new Error("Cloudflare R2 未绑定，下架/删除无法保存到商城");
     err.code = "BLOB_MISSING";
     throw err;
   }
@@ -120,6 +202,7 @@ async function writeJsonStore({ blobPath, localPaths = [], data }) {
 
 module.exports = {
   hasBlob,
+  storageKind,
   isVercel,
   isHosted,
   isCloudflare,

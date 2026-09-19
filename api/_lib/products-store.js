@@ -41,7 +41,7 @@ function unwrapGalleries(raw) {
 }
 
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {} };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, updatedAt: "" };
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
     return {
@@ -49,9 +49,10 @@ function unwrapCatalog(raw) {
       hiddenIds: uniqueIds(raw.hiddenIds),
       deletedIds: allDeletedIds(raw.deletedIds),
       galleries: unwrapGalleries(raw.galleries),
+      updatedAt: String(raw.updatedAt || ""),
     };
   }
-  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {} };
+  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, updatedAt: "" };
 }
 
 function mergeProducts(a, b) {
@@ -75,21 +76,37 @@ function mergeGalleries(a, b) {
   return { ...unwrapGalleries(a), ...unwrapGalleries(b) };
 }
 
+function catalogTime(raw) {
+  return String((raw && raw.updatedAt) || "");
+}
+
+function pickHiddenIds(left, right, rawRight) {
+  if (Array.isArray(rawRight)) return left.hiddenIds;
+  const leftT = catalogTime(left);
+  const rightT = catalogTime(right);
+  if (leftT && rightT) return rightT >= leftT ? right.hiddenIds : left.hiddenIds;
+  if (leftT && !rightT) return left.hiddenIds;
+  if (rightT && !leftT) return right.hiddenIds;
+  return uniqueIds([...(left.hiddenIds || []), ...(right.hiddenIds || [])]);
+}
+
 function mergeCatalog(a, b) {
   const left = unwrapCatalog(a);
   const right = unwrapCatalog(b);
-  const hiddenIds = Array.isArray(b) ? left.hiddenIds : right.hiddenIds;
+  const hiddenIds = pickHiddenIds(left, right, b);
   const deletedIds = allDeletedIds([...(left.deletedIds || []), ...(right.deletedIds || [])]);
   const deleted = new Set(deletedIds);
   const galleries = Array.isArray(b) ? left.galleries : mergeGalleries(left.galleries, right.galleries);
   deletedIds.forEach((id) => {
     delete galleries[id];
   });
+  const updatedAt = [catalogTime(left), catalogTime(right)].sort().pop() || "";
   return {
     products: mergeProducts(left.products, right.products).filter((p) => !deleted.has(String(p.id))),
     hiddenIds: uniqueIds(hiddenIds).filter((id) => !deleted.has(id)),
     deletedIds,
     galleries,
+    updatedAt,
   };
 }
 
@@ -162,6 +179,7 @@ async function writeCatalog(catalog) {
     hiddenIds: uniqueIds(incoming.hiddenIds).filter((id) => !deleted.has(id)),
     deletedIds,
     galleries,
+    updatedAt: new Date().toISOString(),
   };
   await writeJsonStore({
     blobPath: BLOB_PATH,

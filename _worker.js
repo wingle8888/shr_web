@@ -12,7 +12,7 @@ import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
 
-const { setRuntimeEnv } = runtimeEnv;
+const { setRuntimeEnv, getR2, getKV, isCloudflare } = runtimeEnv;
 
 const HANDLERS = {
   "/api/products": products,
@@ -41,10 +41,19 @@ export default {
       const path = normalizePath(url.pathname);
 
       if (path === "/api/health") {
-        return new Response(JSON.stringify({ ok: true, runtime: "cloudflare" }), {
-          status: 200,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            runtime: "cloudflare",
+            cloudflare: isCloudflare(),
+            r2: Boolean(getR2()),
+            kv: Boolean(getKV()),
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json; charset=utf-8" },
+          }
+        );
       }
 
       const handler = HANDLERS[path];
