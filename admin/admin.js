@@ -4,6 +4,7 @@ const ORDERS_KEY = "shr_orders";
 const state = {
   seedProducts: [],
   customProducts: [],
+  hiddenIds: [],
   orders: [],
   customers: [],
   addressStats: [],
@@ -75,11 +76,18 @@ async function api(url, options = {}) {
   return data;
 }
 
+function hiddenSet() {
+  return new Set((state.hiddenIds || []).map(String));
+}
+
 function allProducts() {
+  const hidden = hiddenSet();
   const map = new Map();
   state.seedProducts.forEach((p) => map.set(String(p.id), { ...p, source: "seed" }));
   state.customProducts.forEach((p) => map.set(String(p.id), { ...p, source: "custom" }));
-  return Array.from(map.values()).sort((a, b) => Number(a.id) - Number(b.id));
+  return Array.from(map.values())
+    .map((p) => ({ ...p, hidden: hidden.has(String(p.id)) }))
+    .sort((a, b) => Number(a.id) - Number(b.id));
 }
 
 function showPanel(loggedIn) {
@@ -268,30 +276,40 @@ function renderVisitCharts() {
 function renderProductsTable() {
   const tbody = $("productsTable").querySelector("tbody");
   const list = allProducts();
+  const allBox = $("selectAllProducts");
+  if (allBox) allBox.checked = false;
   tbody.innerHTML = list.length
     ? list
         .map((p) => {
           const custom = p.source === "custom";
           const img = p.img ? `<img class="admin-thumb" src="${escapeHtml(p.img)}" alt="">` : "";
-          return `<tr>
+          const status = p.hidden
+            ? `<span class="admin-pill off">已下架</span>`
+            : `<span class="admin-pill on">在售</span>`;
+          return `<tr class="${p.hidden ? "is-hidden-product" : ""}">
+        <td><input type="checkbox" class="product-check" value="${escapeHtml(String(p.id))}"></td>
         <td>${img}</td>
         <td>${p.id}</td>
         <td>${escapeHtml(p.name)}</td>
         <td>${escapeHtml(p.category || p.categoryId || "")}</td>
         <td>¥${formatMoney(p.price)}</td>
+        <td>${status}</td>
         <td>${custom ? "后台上传" : "商城预设"}</td>
         <td class="admin-row-actions">
+          <button type="button" data-toggle-hidden="${p.id}" data-hidden="${p.hidden ? "1" : "0"}">${
+            p.hidden ? "上架" : "下架"
+          }</button>
           ${
             custom
               ? `<button type="button" data-edit-product="${p.id}">编辑</button>
                  <button type="button" class="danger" data-del-product="${p.id}">删除</button>`
-              : `<span class="admin-muted">只读</span>`
+              : ""
           }
         </td>
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="7" class="admin-empty">暂无产品</td></tr>`;
+    : `<tr><td colspan="9" class="admin-empty">暂无产品</td></tr>`;
 }
 
 function renderOrders() {
@@ -513,6 +531,7 @@ async function loadVisits() {
 async function loadProductsBundle() {
   const data = await api("/api/admin/products");
   state.customProducts = data.products || [];
+  state.hiddenIds = data.hiddenIds || [];
   renderProductsTable();
   productOptions();
 }
@@ -789,7 +808,57 @@ $("productForm").addEventListener("submit", async (e) => {
   }
 });
 
+function selectedProductIds() {
+  return Array.from(document.querySelectorAll(".product-check:checked")).map((el) => el.value);
+}
+
+async function setSelectedHidden(hidden) {
+  const ids = selectedProductIds();
+  const hint = $("productBatchStatus");
+  if (!ids.length) {
+    if (hint) hint.textContent = "请先勾选要操作的产品";
+    return;
+  }
+  try {
+    if (hint) hint.textContent = hidden ? "下架中…" : "上架中…";
+    await api("/api/admin/products", {
+      method: "POST",
+      body: JSON.stringify({ action: hidden ? "hide" : "show", ids }),
+    });
+    await loadProductsBundle();
+    if (hint) hint.textContent = hidden ? `已下架 ${ids.length} 件` : `已上架 ${ids.length} 件`;
+  } catch (err) {
+    if (hint) hint.textContent = err.message;
+    else alert(err.message);
+  }
+}
+
+$("selectAllProducts").addEventListener("change", () => {
+  const on = $("selectAllProducts").checked;
+  document.querySelectorAll(".product-check").forEach((el) => {
+    el.checked = on;
+  });
+});
+
+$("hideSelectedProducts").addEventListener("click", () => setSelectedHidden(true));
+$("showSelectedProducts").addEventListener("click", () => setSelectedHidden(false));
+
 $("productsTable").addEventListener("click", async (e) => {
+  const toggleBtn = e.target.closest("[data-toggle-hidden]");
+  if (toggleBtn) {
+    const id = toggleBtn.dataset.toggleHidden;
+    const hidden = toggleBtn.dataset.hidden !== "1";
+    try {
+      await api("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify({ action: hidden ? "hide" : "show", ids: [id] }),
+      });
+      await loadProductsBundle();
+    } catch (err) {
+      alert(err.message);
+    }
+    return;
+  }
   const editBtn = e.target.closest("[data-edit-product]");
   if (editBtn) {
     const p = state.customProducts.find((x) => String(x.id) === String(editBtn.dataset.editProduct));

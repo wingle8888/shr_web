@@ -10,21 +10,29 @@
     return Array.from(map.values()).sort((a, b) => Number(a.id) - Number(b.id));
   }
 
-  async function loadCustomProducts() {
+  async function loadCatalog() {
     try {
       const res = await fetch("/api/products");
       const data = await res.json();
-      if (res.ok && data.ok && Array.isArray(data.products)) return data.products;
+      if (res.ok && data.ok) {
+        return {
+          products: Array.isArray(data.products) ? data.products : [],
+          hiddenIds: Array.isArray(data.hiddenIds) ? data.hiddenIds.map(String) : [],
+        };
+      }
     } catch (_) {}
-    return [];
+    return { products: [], hiddenIds: [] };
   }
 
   async function hydrateProducts() {
     const seed = Array.isArray(window.PRODUCTS) ? window.PRODUCTS.slice() : [];
-    const custom = await loadCustomProducts();
-    window.PRODUCTS = mergeProducts(seed, custom);
+    const catalog = await loadCatalog();
+    const hidden = new Set(catalog.hiddenIds);
+    const merged = mergeProducts(seed, catalog.products);
     window.PRODUCTS_SEED = seed;
-    window.PRODUCTS_CUSTOM = custom;
+    window.PRODUCTS_CUSTOM = catalog.products;
+    window.PRODUCTS_HIDDEN = hidden;
+    window.PRODUCTS = merged.filter((p) => !hidden.has(String(p.id)));
     return window.PRODUCTS;
   }
 

@@ -95,7 +95,7 @@
             <h1>产品管理</h1>
             <button type="button" class="link-btn" id="refreshProducts">刷新</button>
           </div>
-          <p class="admin-tip">可新增后台产品；商城静态商品仍保留。上传后前台会合并显示。</p>
+          <p class="admin-tip">可新增后台产品。勾选商品后可下架，下架后商城不再展示，数据仍保留，可再上架。</p>
           <form id="productForm" class="admin-upload">
             <input type="hidden" id="editProductId" value="">
             <div class="form-row">
@@ -159,10 +159,28 @@
           </form>
 
           <h2 class="admin-sub">商城商品一览</h2>
+          <div class="admin-inline-actions admin-product-toolbar">
+            <label class="admin-check-label">
+              <input type="checkbox" id="selectAllProducts"> 全选
+            </label>
+            <button type="button" class="btn btn-sm" id="hideSelectedProducts">下架选中</button>
+            <button type="button" class="link-btn" id="showSelectedProducts">上架选中</button>
+            <span class="admin-hint" id="productBatchStatus"></span>
+          </div>
           <div class="admin-table-wrap">
             <table class="admin-table" id="productsTable">
               <thead>
-                <tr><th>图片</th><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>来源</th><th>操作</th></tr>
+                <tr>
+                  <th></th>
+                  <th>图片</th>
+                  <th>ID</th>
+                  <th>名称</th>
+                  <th>分类</th>
+                  <th>价格</th>
+                  <th>状态</th>
+                  <th>来源</th>
+                  <th>操作</th>
+                </tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -313,6 +331,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919f"></script>
+  <script src="/admin/admin.js?v=20260919g"></script>
 </body>
 </html>

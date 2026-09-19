@@ -1,5 +1,5 @@
 const { cors, sendJson, parseBody } = require("./_lib/docs-store");
-const { readCustomProducts, readProductImage } = require("./_lib/products-store");
+const { readCatalog, readProductImage } = require("./_lib/products-store");
 const { recordVisit } = require("./_lib/visits-store");
 
 module.exports = async function handler(req, res) {
@@ -26,7 +26,12 @@ module.exports = async function handler(req, res) {
       res.end(file.buffer);
       return;
     }
-    sendJson(res, 200, { ok: true, products: await readCustomProducts() });
+    const catalog = await readCatalog();
+    sendJson(res, 200, {
+      ok: true,
+      products: catalog.products,
+      hiddenIds: catalog.hiddenIds,
+    });
     return;
   }
 

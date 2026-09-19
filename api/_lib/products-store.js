@@ -14,6 +14,19 @@ const CATEGORIES = [
   { id: "cat-sensor", name: "传感器" },
 ];
 
+function uniqueIds(list) {
+  return Array.from(new Set((list || []).map((x) => String(x).trim()).filter(Boolean)));
+}
+
+function unwrapCatalog(raw) {
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [] };
+  if (raw && typeof raw === "object") {
+    const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
+    return { products, hiddenIds: uniqueIds(raw.hiddenIds) };
+  }
+  return { products: [], hiddenIds: [] };
+}
+
 function mergeProducts(a, b) {
   const map = new Map();
   [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach((p) => {
@@ -31,24 +44,57 @@ function mergeProducts(a, b) {
   return Array.from(map.values()).sort((x, y) => Number(y.id) - Number(x.id));
 }
 
-async function readCustomProducts() {
-  const list = await readJsonStore({
-    blobPath: BLOB_PATH,
-    localPaths: [TMP_FILE, DATA_FILE],
-    empty: [],
-    merge: mergeProducts,
-  });
-  return Array.isArray(list) ? list : [];
+function mergeCatalog(a, b) {
+  const left = unwrapCatalog(a);
+  const right = unwrapCatalog(b);
+  const hiddenIds = Array.isArray(b) ? left.hiddenIds : right.hiddenIds;
+  return {
+    products: mergeProducts(left.products, right.products),
+    hiddenIds,
+  };
 }
 
-async function writeCustomProducts(list) {
-  const products = mergeProducts([], list);
+async function readCatalog() {
+  const raw = await readJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    empty: { products: [], hiddenIds: [] },
+    merge: mergeCatalog,
+  });
+  return unwrapCatalog(raw);
+}
+
+async function writeCatalog(catalog) {
+  const next = {
+    products: mergeProducts([], catalog && catalog.products),
+    hiddenIds: uniqueIds(catalog && catalog.hiddenIds),
+  };
   await writeJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    data: products,
+    data: next,
   });
-  return products;
+  return next;
+}
+
+async function readCustomProducts() {
+  return (await readCatalog()).products;
+}
+
+async function writeCustomProducts(list) {
+  const cur = await readCatalog();
+  const saved = await writeCatalog({ products: list, hiddenIds: cur.hiddenIds });
+  return saved.products;
+}
+
+async function setProductsHidden(ids, hidden) {
+  const cur = await readCatalog();
+  const set = new Set(cur.hiddenIds);
+  uniqueIds(ids).forEach((id) => {
+    if (hidden) set.add(id);
+    else set.delete(id);
+  });
+  return writeCatalog({ products: cur.products, hiddenIds: Array.from(set) });
 }
 
 function categoryName(id) {
@@ -158,8 +204,11 @@ async function readProductImage(id) {
 
 module.exports = {
   CATEGORIES,
+  readCatalog,
+  writeCatalog,
   readCustomProducts,
   writeCustomProducts,
+  setProductsHidden,
   normalizeProduct,
   nextProductId,
   categoryName,

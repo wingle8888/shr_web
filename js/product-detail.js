@@ -264,9 +264,10 @@ async function loadCurrentProduct() {
   const id = params.get("id");
   const product = window.getProductById(id);
   if (!product) {
+    const offShelf = window.PRODUCTS_HIDDEN && window.PRODUCTS_HIDDEN.has(String(id));
     document.getElementById("detailMain").innerHTML = `
       <div class="detail-empty">
-        <h1>${escapeHtml(t("notFound"))}</h1>
+        <h1>${escapeHtml(t(offShelf ? "productOffShelf" : "notFound"))}</h1>
         <a class="btn" href="/#products">${escapeHtml(t("backToMall"))}</a>
       </div>
     `;

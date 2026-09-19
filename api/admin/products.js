@@ -1,8 +1,10 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const {
   CATEGORIES,
+  readCatalog,
   readCustomProducts,
   writeCustomProducts,
+  setProductsHidden,
   normalizeProduct,
   saveProductImage,
 } = require("../_lib/products-store");
@@ -25,9 +27,11 @@ module.exports = async function handler(req, res) {
       sendJson(res, 401, { ok: false, error: "unauthorized" });
       return;
     }
+    const catalog = await readCatalog();
     sendJson(res, 200, {
       ok: true,
-      products: await readCustomProducts(),
+      products: catalog.products,
+      hiddenIds: catalog.hiddenIds,
       categories: CATEGORIES,
     });
     return;
@@ -41,6 +45,17 @@ module.exports = async function handler(req, res) {
   if (req.method === "POST") {
     const action = String(body.action || "create").trim();
     const list = await readCustomProducts();
+
+    if (action === "hide" || action === "show") {
+      const ids = Array.isArray(body.ids) ? body.ids : body.id != null ? [body.id] : [];
+      if (!ids.length) {
+        sendJson(res, 400, { ok: false, error: "ids required" });
+        return;
+      }
+      const catalog = await setProductsHidden(ids, action === "hide");
+      sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
+      return;
+    }
 
     if (action === "delete") {
       const id = String(body.id || "").trim();
