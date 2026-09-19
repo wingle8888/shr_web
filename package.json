@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "开发板商城嵌入式硬件公司官网",
   "scripts": {
+    "build": "node -e \"console.log('cloudflare pages static build')\"",
     "dev": "npx serve . -l 3000",
     "start": "npx serve . -l 3000"
   },

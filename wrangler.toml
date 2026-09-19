@@ -1,10 +1,4 @@
 name = "develop-boards"
-main = "_worker.js"
 compatibility_date = "2026-09-19"
 compatibility_flags = ["nodejs_compat"]
-
-[assets]
-directory = "."
-binding = "ASSETS"
-html_handling = "auto-trailing-slash"
-run_worker_first = ["/api/*"]
+pages_build_output_dir = "."
