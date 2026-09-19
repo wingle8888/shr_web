@@ -1,7 +1,7 @@
 {
   "name": "shr-tech-website",
   "version": "1.0.0",
-  "description": "SHR Tech 嵌入式硬件公司官网",
+  "description": "开发板商城嵌入式硬件公司官网",
   "scripts": {
     "dev": "npx serve . -l 3000",
     "start": "npx serve . -l 3000"
