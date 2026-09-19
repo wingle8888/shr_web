@@ -75,16 +75,19 @@ module.exports = async function handler(req, res) {
   if (blobReady) {
     try {
       const blob = await blobPutFile(`product-docs/${storedName}`, buffer, "application/octet-stream");
-      fileUrl = blob && blob.url ? blob.url : `/api/downloads?file=${encodeURIComponent(`product-docs/${storedName}`)}`;
+      if (!blob) {
+        sendJson(res, 503, { ok: false, error: "数据未能保存到服务器，请重试" });
+        return;
+      }
+      fileUrl = blob.url ? blob.url : `/api/downloads?file=${encodeURIComponent(`product-docs/${storedName}`)}`;
     } catch (err) {
-      sendJson(res, 500, { ok: false, error: "blob upload failed", detail: String(err.message || err) });
+      sendJson(res, 500, { ok: false, error: "数据未能保存到服务器，请重试", detail: String(err.message || err) });
       return;
     }
   } else if (isHosted()) {
     sendJson(res, 503, {
       ok: false,
-      error: "server storage not configured",
-      detail: "请在 Cloudflare Pages 绑定 R2 桶 SHR_BUCKET",
+      error: "数据未能保存到服务器，请重试",
     });
     return;
   } else {

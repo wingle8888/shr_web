@@ -348,9 +348,14 @@ async function saveProductImage(id, raw, typeHint) {
   const { buffer, contentType } = decodeImagePayload(raw, typeHint);
   const blobPath = productImageBlobPath(id);
   if (hasBlob()) {
-    await blobPutFile(blobPath, buffer, contentType);
+    const saved = await blobPutFile(blobPath, buffer, contentType);
+    if (!saved) {
+      const err = new Error("数据未能保存到服务器，请重试");
+      err.code = "BLOB_MISSING";
+      throw err;
+    }
   } else if (isHosted()) {
-    const err = new Error("Cloudflare R2 is not configured");
+    const err = new Error("数据未能保存到服务器，请重试");
     err.code = "BLOB_MISSING";
     throw err;
   } else {

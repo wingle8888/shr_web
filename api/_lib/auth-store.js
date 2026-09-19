@@ -76,7 +76,8 @@ async function readUsersFromBlob() {
 async function writeUsersToBlob(users) {
   if (!hasBlob()) return false;
   const list = Array.isArray(users) ? users : [];
-  await blobPutJson(BLOB_LIST, list);
+  const ok = await blobPutJson(BLOB_LIST, list);
+  if (!ok) return false;
   for (const user of list) {
     if (!user || !user.email) continue;
     await blobPutJson(`${BLOB_DIR}/${emailKey(user.email)}.json`, user);
@@ -101,17 +102,22 @@ async function writeUsers(users) {
 
   if (hasBlob()) {
     try {
-      await writeUsersToBlob(list);
+      const ok = await writeUsersToBlob(list);
+      if (!ok) {
+        const err = new Error("数据未能保存到服务器，请重试");
+        err.code = "BLOB_WRITE_FAILED";
+        throw err;
+      }
       return { users: list, persisted: true, storage: "blob" };
     } catch (e) {
-      const err = new Error(String((e && e.message) || e || "cloud storage write failed"));
+      const err = new Error(String((e && e.message) || e || "数据未能保存到服务器，请重试"));
       err.code = "BLOB_WRITE_FAILED";
       throw err;
     }
   }
 
   if (isHosted()) {
-    const err = new Error("Cloudflare R2 is not configured");
+    const err = new Error("数据未能保存到服务器，请重试");
     err.code = "BLOB_MISSING";
     throw err;
   }
@@ -207,7 +213,7 @@ function storageStatus() {
     return {
       ok: true,
       storage: "blob",
-      message: "服务器云存储已启用，注册资料可跨设备查看",
+      message: "服务器已保存数据，电脑和手机看到的是同一份",
       storeId: blobStoreId() || null,
       hasToken: Boolean(blobToken()),
     };
@@ -216,7 +222,7 @@ function storageStatus() {
     return {
       ok: false,
       storage: "none",
-      message: "未检测到云存储：请在 Cloudflare Pages 绑定 R2 桶 SHR_BUCKET（develop-boards）并重新部署。",
+      message: "服务器存储未就绪，后台改动无法保存",
       storeId: blobStoreId() || null,
       hasToken: Boolean(blobToken()),
     };

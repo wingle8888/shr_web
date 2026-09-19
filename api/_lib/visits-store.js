@@ -110,13 +110,11 @@ async function readVisits() {
 async function writeVisits(data) {
   const payload = pruneDays(data);
   writeVisitsLocal(payload);
-  try {
-    await writeJsonStore({
-      blobPath: BLOB_PATH,
-      localPaths: [TMP_FILE, DATA_FILE],
-      data: payload,
-    });
-  } catch (_) {}
+  await writeJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    data: payload,
+  });
   memCache = payload;
   return payload;
 }

@@ -200,20 +200,35 @@ async function blobPutJson(pathname, body) {
 }
 
 async function blobPutFile(pathname, buffer, contentType) {
-  const r2 = getR2();
-  if (!r2) return null;
   const type = contentType || "application/octet-stream";
   const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-  try {
-    await r2.put(pathname, body, { httpMetadata: { contentType: type } });
-    return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
-  } catch (_) {
-    disableR2();
-    return null;
+  const wrapped = JSON.stringify({
+    __file: true,
+    contentType: type,
+    b64: body.toString("base64"),
+  });
+  const doOk = await doPutJson(pathname, wrapped);
+  const r2 = getR2();
+  if (r2) {
+    try {
+      await r2.put(pathname, body, { httpMetadata: { contentType: type } });
+      return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
+    } catch (_) {
+      disableR2();
+    }
   }
+  if (doOk) return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
+  return null;
 }
 
 async function blobGetFile(pathname) {
+  const fromDo = await doGetJson(pathname);
+  if (fromDo && fromDo.__file && fromDo.b64) {
+    return {
+      buffer: Buffer.from(fromDo.b64, "base64"),
+      contentType: fromDo.contentType || "application/octet-stream",
+    };
+  }
   const r2 = getR2();
   if (!r2) return null;
   try {
@@ -249,7 +264,7 @@ async function writeJsonStore({ blobPath, localPaths = [], data }) {
   (localPaths || []).forEach((p) => writeLocalJson(p, data));
   const saved = await blobPutJson(blobPath, data);
   if (!saved && isHosted()) {
-    const err = new Error("下架未写入全球存储，手机打开网站仍会看到该产品");
+    const err = new Error("数据未能保存到服务器，请重试");
     err.code = "BLOB_MISSING";
     throw err;
   }

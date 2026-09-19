@@ -40,41 +40,48 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const action = String(body.action || "").trim();
-    if (action === "import") {
-      const incoming = Array.isArray(body.orders) ? body.orders : [];
-      const current = await readOrders();
-      const map = new Map();
-      [...current, ...incoming].forEach((o) => {
-        if (o && o.id) map.set(String(o.id), o);
+    try {
+      const action = String(body.action || "").trim();
+      if (action === "import") {
+        const incoming = Array.isArray(body.orders) ? body.orders : [];
+        const current = await readOrders();
+        const map = new Map();
+        [...current, ...incoming].forEach((o) => {
+          if (o && o.id) map.set(String(o.id), o);
+        });
+        const merged = Array.from(map.values()).sort((a, b) =>
+          String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+        );
+        await writeOrders(merged);
+        sendJson(res, 200, { ok: true, count: merged.length });
+        return;
+      }
+      if (action === "status") {
+        const id = String(body.id || "").trim();
+        const status = String(body.status || "").trim();
+        if (!id || !status) {
+          sendJson(res, 400, { ok: false, error: "id and status required" });
+          return;
+        }
+        const orders = await readOrders();
+        const idx = orders.findIndex((o) => String(o.id) === id);
+        if (idx < 0) {
+          sendJson(res, 404, { ok: false, error: "order not found" });
+          return;
+        }
+        orders[idx].status = status;
+        orders[idx].updatedAt = new Date().toISOString();
+        await writeOrders(orders);
+        sendJson(res, 200, { ok: true, order: orders[idx] });
+        return;
+      }
+      sendJson(res, 400, { ok: false, error: "unknown action" });
+    } catch (err) {
+      sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+        ok: false,
+        error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
       });
-      const merged = Array.from(map.values()).sort((a, b) =>
-        String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
-      );
-      await writeOrders(merged);
-      sendJson(res, 200, { ok: true, count: merged.length });
-      return;
     }
-    if (action === "status") {
-      const id = String(body.id || "").trim();
-      const status = String(body.status || "").trim();
-      if (!id || !status) {
-        sendJson(res, 400, { ok: false, error: "id and status required" });
-        return;
-      }
-      const orders = await readOrders();
-      const idx = orders.findIndex((o) => String(o.id) === id);
-      if (idx < 0) {
-        sendJson(res, 404, { ok: false, error: "order not found" });
-        return;
-      }
-      orders[idx].status = status;
-      orders[idx].updatedAt = new Date().toISOString();
-      await writeOrders(orders);
-      sendJson(res, 200, { ok: true, order: orders[idx] });
-      return;
-    }
-    sendJson(res, 400, { ok: false, error: "unknown action" });
     return;
   }
 

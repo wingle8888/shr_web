@@ -41,6 +41,7 @@ module.exports = async function handler(req, res) {
       deletedIds: catalog.deletedIds,
       galleries: catalog.galleries,
       categories: CATEGORIES,
+      storage: storageKind() || "none",
     });
     return;
   }
@@ -68,7 +69,7 @@ module.exports = async function handler(req, res) {
         const rpc = /RPC receiver|does not implement the method/i.test(raw);
         sendJson(res, 503, {
           ok: false,
-          error: rpc || (err && err.code === "BLOB_MISSING") ? "下架未写入全球存储，手机打开网站仍会看到该产品" : raw,
+          error: rpc || (err && err.code === "BLOB_MISSING") ? "数据未能保存到服务器，请重试" : raw,
         });
       }
       return;
@@ -81,8 +82,15 @@ module.exports = async function handler(req, res) {
         sendJson(res, 400, { ok: false, error: "id and images required" });
         return;
       }
-      const images = await addGalleryImages(id, payloads);
-      sendJson(res, 200, { ok: true, images });
+      try {
+        const images = await addGalleryImages(id, payloads);
+        sendJson(res, 200, { ok: true, images });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
       return;
     }
 
@@ -93,8 +101,15 @@ module.exports = async function handler(req, res) {
         sendJson(res, 400, { ok: false, error: "id and imageId required" });
         return;
       }
-      const images = await removeGalleryImage(id, imageId);
-      sendJson(res, 200, { ok: true, images });
+      try {
+        const images = await removeGalleryImage(id, imageId);
+        sendJson(res, 200, { ok: true, images });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
       return;
     }
 
@@ -111,7 +126,7 @@ module.exports = async function handler(req, res) {
         const missing = err && err.code === "BLOB_MISSING";
         sendJson(res, missing ? 503 : 500, {
           ok: false,
-          error: missing ? "云存储未配置，删除无法同步到商城。请在 Cloudflare 绑定 R2 存储桶 develop-boards。" : String(err.message || err),
+          error: missing ? "数据未能保存到服务器，请重试" : String(err.message || err),
         });
       }
       return;
@@ -148,7 +163,10 @@ module.exports = async function handler(req, res) {
       await writeCustomProducts(list);
       sendJson(res, 200, { ok: true, product });
     } catch (err) {
-      sendJson(res, 400, { ok: false, error: String(err.message || err) });
+      sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 400, {
+        ok: false,
+        error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+      });
     }
     return;
   }
