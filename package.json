@@ -7,7 +7,7 @@
     "start": "npx serve . -l 3000"
   },
   "dependencies": {
-    "@vercel/blob": "file:C:/Users/Administrator/AppData/Local/Temp/vercel-blob-2.8.0.tgz"
+    "@vercel/blob": "^2.8.0"
   },
   "keywords": [
     "embedded",
