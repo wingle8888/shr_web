@@ -22,8 +22,13 @@
     return /^\/admin/i.test(path) || /^\/client/i.test(path);
   }
 
+  let lastTrack = 0;
+
   function track() {
     if (shouldSkip()) return;
+    const now = Date.now();
+    if (now - lastTrack < 2000) return;
+    lastTrack = now;
     fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,4 +47,5 @@
   } else {
     track();
   }
+  window.addEventListener("pageshow", track);
 })();

@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const { readOrders, writeOrders, buildStats, extractCustomers, extractAddressStats } = require("../_lib/orders-store");
-const { buildVisitStats } = require("../_lib/visits-store");
+const { loadVisitStats } = require("../_lib/visits-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -23,6 +23,12 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
+    const onlyVisits = String(req.url || "").includes("only=visits");
+    const visits = await loadVisitStats();
+    if (onlyVisits) {
+      sendJson(res, 200, { ok: true, visits });
+      return;
+    }
     const orders = readOrders();
     sendJson(res, 200, {
       ok: true,
@@ -30,7 +36,7 @@ module.exports = async function handler(req, res) {
       stats: buildStats(orders),
       customers: extractCustomers(orders),
       addressStats: extractAddressStats(orders),
-      visits: buildVisitStats(),
+      visits,
     });
     return;
   }

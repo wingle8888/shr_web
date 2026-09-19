@@ -18,6 +18,7 @@ const state = {
 
 let dailyVisitChart = null;
 let monthlyVisitChart = null;
+let visitTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -95,6 +96,9 @@ function switchTab(tab) {
   document.querySelectorAll(".admin-tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tab}`);
   });
+  if (tab === "dashboard" && getPass()) {
+    loadVisits().catch(() => {});
+  }
 }
 
 function productOptions() {
@@ -162,6 +166,7 @@ function renderStats() {
     : `<tr><td colspan="4" class="admin-empty">暂无销售数据</td></tr>`;
 
   renderVisitCharts();
+  markVisitUpdated();
 }
 
 function chartDefaults() {
@@ -471,8 +476,35 @@ async function loadOrdersBundle() {
   renderCustomers();
 }
 
+function markVisitUpdated() {
+  const el = $("visitUpdatedAt");
+  if (!el) return;
+  const iso = state.visits && state.visits.updatedAt;
+  try {
+    el.textContent = "更新于 " + new Date(iso || Date.now()).toLocaleTimeString("zh-CN", { hour12: false });
+  } catch {
+    el.textContent = "";
+  }
+}
+
+function startVisitLive() {
+  if (visitTimer) return;
+  visitTimer = setInterval(() => {
+    if (!getPass() || document.hidden) return;
+    if (state.currentTab !== "dashboard") return;
+    loadVisits().catch(() => {});
+  }, 15000);
+}
+
+function stopVisitLive() {
+  if (!visitTimer) return;
+  clearInterval(visitTimer);
+  visitTimer = null;
+}
+
 async function loadVisits() {
-  /* 访问统计已由 /api/admin/orders 一并返回 */
+  const data = await api("/api/admin/orders?only=visits");
+  if (data.visits) state.visits = data.visits;
   renderStats();
 }
 
@@ -551,6 +583,7 @@ $("loginForm").addEventListener("submit", async (e) => {
     showPanel(true);
     switchTab("dashboard");
     await loadAll();
+    startVisitLive();
   } catch (err) {
     clearPass();
     alert("登录失败：" + err.message);
@@ -558,6 +591,7 @@ $("loginForm").addEventListener("submit", async (e) => {
 });
 
 $("logoutBtn").addEventListener("click", () => {
+  stopVisitLive();
   clearPass();
   showPanel(false);
 });
@@ -571,6 +605,12 @@ $("adminTabs").addEventListener("click", (e) => {
 $("refreshDashboard").addEventListener("click", () =>
   Promise.all([loadOrdersBundle(), loadVisits()]).catch((e) => alert(e.message))
 );
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && getPass() && state.currentTab === "dashboard") {
+    loadVisits().catch(() => {});
+  }
+});
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
@@ -801,6 +841,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     showPanel(true);
     switchTab("dashboard");
     await loadAll();
+    startVisitLive();
   } catch {
     clearPass();
     showPanel(false);

@@ -57,8 +57,11 @@
       <div class="admin-tab-panel active" id="tab-dashboard">
         <div class="admin-card">
           <div class="admin-panel-head">
-            <h1>数据总览</h1>
-            <button type="button" class="link-btn" id="refreshDashboard">刷新</button>
+            <h1>数据总览 <span class="admin-live-dot" id="visitLiveDot" title="每 15 秒刷新今日访问">实时</span></h1>
+            <div class="admin-inline-actions">
+              <span class="admin-hint" id="visitUpdatedAt"></span>
+              <button type="button" class="link-btn" id="refreshDashboard">刷新</button>
+            </div>
           </div>
           <div class="admin-stats" id="statsCards"></div>
 
@@ -305,6 +308,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919d"></script>
+  <script src="/admin/admin.js?v=20260919e"></script>
 </body>
 </html>

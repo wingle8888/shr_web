@@ -23,12 +23,16 @@ module.exports = async function handler(req, res) {
         sendJson(res, 200, { ok: true, skipped: true });
         return;
       }
-      const result = recordVisit({
-        visitorId: body.visitorId,
-        pathName: pathName || "/",
-        referrer: body.referrer,
-      });
-      sendJson(res, 200, { ok: true, ...result });
+      try {
+        const result = await recordVisit({
+          visitorId: body.visitorId,
+          pathName: pathName || "/",
+          referrer: body.referrer,
+        });
+        sendJson(res, 200, { ok: true, ...result });
+      } catch (err) {
+        sendJson(res, 200, { ok: true, persisted: false, error: String(err.message || err) });
+      }
       return;
     }
     sendJson(res, 400, { ok: false, error: "unknown action" });
