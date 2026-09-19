@@ -8,6 +8,7 @@ const state = {
   customers: [],
   addressStats: [],
   users: [],
+  usersStorage: "ephemeral",
   stats: null,
   visits: null,
   currentTab: "dashboard",
@@ -379,19 +380,28 @@ function renderCustomers() {
 function renderUsers() {
   const tbody = $("usersTable").querySelector("tbody");
   const list = state.users || [];
+  const tip = $("usersStorageTip");
+  if (tip) {
+    tip.textContent =
+      state.usersStorage === "blob"
+        ? "网站注册账号列表（不含密码）。数据已持久化到云存储。"
+        : "网站注册账号列表（不含密码）。当前为临时存储：若注册后看不到，请点「同步本机注册」。建议在 Vercel 配置 BLOB_READ_WRITE_TOKEN。";
+  }
   tbody.innerHTML = list.length
     ? list
-        .map(
-          (u) => `<tr>
+        .map((u) => {
+          const source = u.source === "local-sync" ? "本机同步" : "服务器";
+          return `<tr>
         <td>${escapeHtml(u.id)}</td>
         <td>${escapeHtml(u.name || "-")}</td>
         <td>${escapeHtml(u.email || "-")}</td>
         <td>${escapeHtml(u.phone || "-")}</td>
         <td>${escapeHtml(formatTime(u.createdAt))}</td>
-      </tr>`
-        )
+        <td>${escapeHtml(source)}</td>
+      </tr>`;
+        })
         .join("")
-    : `<tr><td colspan="5" class="admin-empty">暂无注册用户</td></tr>`;
+    : `<tr><td colspan="6" class="admin-empty">暂无注册用户。可先在商城注册，再点「同步本机注册」。</td></tr>`;
 }
 
 async function refreshList() {
@@ -469,6 +479,7 @@ async function loadProductsBundle() {
 async function loadUsers() {
   const data = await api("/api/admin/users");
   state.users = data.users || [];
+  state.usersStorage = data.storage || "ephemeral";
   renderUsers();
   renderStats();
 }
@@ -555,6 +566,40 @@ $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) 
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
+
+$("importLocalUsers").addEventListener("click", async () => {
+  let local = [];
+  try {
+    local = JSON.parse(localStorage.getItem("shr_users_local") || "[]");
+  } catch {
+    local = [];
+  }
+  if (!local.length) {
+    alert("本机没有可同步的注册账号（仅同步当前浏览器里本地注册的账号）");
+    return;
+  }
+  try {
+    await api("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "import",
+        users: local.map((u) => ({
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          phone: u.phone,
+          createdAt: u.createdAt,
+          hash: u.hash,
+          localHash: true,
+        })),
+      }),
+    });
+    await loadUsers();
+    alert(`已同步 ${local.length} 个本机注册账号到后台`);
+  } catch (err) {
+    alert(err.message);
+  }
+});
 $("refreshDocs").addEventListener("click", () => refreshList().catch((e) => alert(e.message)));
 
 $("productResetBtn").addEventListener("click", resetProductForm);

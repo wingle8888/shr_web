@@ -31,8 +31,9 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const user = readUsers().find((u) => u.email === email);
-  if (!user || !verifyPassword(password, user.salt, user.hash)) {
+  const users = await readUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user || !user.salt || !user.hash || !verifyPassword(password, user.salt, user.hash)) {
     sendJson(res, 401, { ok: false, error: "invalid credentials" });
     return;
   }

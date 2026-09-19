@@ -4,11 +4,12 @@ const crypto = require("crypto");
 
 const USERS_FILE = path.join(process.cwd(), "data", "users.json");
 const TMP_USERS = path.join("/tmp", "shr-users.json");
+const BLOB_PATH = "shr-auth/users.json";
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-admin-password");
 }
 
 function sendJson(res, status, data) {
@@ -29,7 +30,7 @@ function parseBody(req) {
   return {};
 }
 
-function readUsers() {
+function readUsersLocal() {
   try {
     if (fs.existsSync(TMP_USERS)) return JSON.parse(fs.readFileSync(TMP_USERS, "utf8"));
   } catch (_) {}
@@ -39,7 +40,7 @@ function readUsers() {
   return [];
 }
 
-function writeUsers(users) {
+function writeUsersLocal(users) {
   const text = JSON.stringify(users, null, 2);
   try {
     fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
@@ -48,6 +49,102 @@ function writeUsers(users) {
   try {
     fs.writeFileSync(TMP_USERS, text);
   } catch (_) {}
+}
+
+function hasBlob() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+async function readUsersFromBlob() {
+  if (!hasBlob()) return null;
+  try {
+    const { list } = require("@vercel/blob");
+    const { blobs } = await list({
+      prefix: "shr-auth/users",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    const target =
+      (blobs || []).find((b) => b.pathname === BLOB_PATH || String(b.pathname).endsWith("users.json")) ||
+      (blobs || [])[0];
+    if (!target || !target.url) return null;
+    const res = await fetch(target.url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (_) {
+    return null;
+  }
+}
+
+async function writeUsersToBlob(users) {
+  if (!hasBlob()) return false;
+  try {
+    const { put } = require("@vercel/blob");
+    const opts = {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    };
+    try {
+      opts.allowOverwrite = true;
+    } catch (_) {}
+    await put(BLOB_PATH, JSON.stringify(users, null, 2), opts);
+    return true;
+  } catch (_) {
+    try {
+      const { put } = require("@vercel/blob");
+      await put(BLOB_PATH, JSON.stringify(users, null, 2), {
+        access: "public",
+        addRandomSuffix: false,
+        contentType: "application/json",
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+      return true;
+    } catch (__) {
+      return false;
+    }
+  }
+}
+
+async function readUsers() {
+  const fromBlob = await readUsersFromBlob();
+  if (Array.isArray(fromBlob)) return fromBlob;
+  return readUsersLocal();
+}
+
+async function writeUsers(users) {
+  const list = Array.isArray(users) ? users : [];
+  writeUsersLocal(list);
+  await writeUsersToBlob(list);
+  return list;
+}
+
+function mergeUsers(base, incoming) {
+  const map = new Map();
+  (base || []).forEach((u) => {
+    if (u && u.email) map.set(String(u.email).toLowerCase(), u);
+  });
+  (incoming || []).forEach((u) => {
+    if (!u || !u.email) return;
+    const key = String(u.email).toLowerCase();
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, u);
+      return;
+    }
+    map.set(key, {
+      ...prev,
+      ...u,
+      salt: u.salt || prev.salt,
+      hash: u.hash || prev.hash,
+      localHash: u.localHash != null ? u.localHash : prev.localHash,
+      createdAt: prev.createdAt || u.createdAt,
+    });
+  });
+  return Array.from(map.values()).sort((a, b) =>
+    String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+  );
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
@@ -96,7 +193,14 @@ function verifyToken(token) {
 }
 
 function publicUser(u) {
-  return { id: u.id, email: u.email, name: u.name, phone: u.phone || "", createdAt: u.createdAt };
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    phone: u.phone || "",
+    createdAt: u.createdAt,
+    source: u.source || (u.custom ? "server" : "server"),
+  };
 }
 
 module.exports = {
@@ -105,6 +209,8 @@ module.exports = {
   parseBody,
   readUsers,
   writeUsers,
+  mergeUsers,
+  hasBlob,
   hashPassword,
   verifyPassword,
   signToken,

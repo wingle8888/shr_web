@@ -7,6 +7,7 @@ const {
   hashPassword,
   signToken,
   publicUser,
+  hasBlob,
 } = require("../_lib/auth-store");
 
 module.exports = async function handler(req, res) {
@@ -42,7 +43,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const users = readUsers();
+  const users = await readUsers();
   if (users.some((u) => u.email === email)) {
     sendJson(res, 409, { ok: false, error: "email already registered" });
     return;
@@ -57,10 +58,16 @@ module.exports = async function handler(req, res) {
     salt,
     hash,
     createdAt: new Date().toISOString(),
+    source: "server",
   };
   users.push(user);
-  writeUsers(users);
+  await writeUsers(users);
 
   const token = signToken(user);
-  sendJson(res, 200, { ok: true, token, user: publicUser(user) });
+  sendJson(res, 200, {
+    ok: true,
+    token,
+    user: publicUser(user),
+    storage: hasBlob() ? "blob" : "ephemeral",
+  });
 };

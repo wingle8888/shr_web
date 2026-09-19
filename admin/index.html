@@ -271,13 +271,16 @@
         <div class="admin-card">
           <div class="admin-panel-head">
             <h1>注册资料</h1>
-            <button type="button" class="link-btn" id="refreshUsers">刷新</button>
+            <div class="admin-inline-actions">
+              <button type="button" class="link-btn" id="importLocalUsers">同步本机注册</button>
+              <button type="button" class="link-btn" id="refreshUsers">刷新</button>
+            </div>
           </div>
-          <p class="admin-tip">网站注册账号列表（不含密码）。</p>
+          <p class="admin-tip" id="usersStorageTip">网站注册账号列表（不含密码）。若刚注册看不到，请点「同步本机注册」或确认已配置 BLOB 持久化。</p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="usersTable">
               <thead>
-                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>手机</th><th>注册时间</th></tr>
+                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>手机</th><th>注册时间</th><th>来源</th></tr>
               </thead>
               <tbody></tbody>
             </table>
