@@ -271,12 +271,19 @@
         <div class="admin-card">
           <div class="admin-panel-head">
             <h1>注册资料</h1>
-            <div class="admin-inline-actions">
+          </div>
+          <p class="admin-tip" id="usersStorageTip">手机注册的账号不会自动出现在电脑后台。请用手机打开本页点「同步本机注册」，或把手机上的同步码粘贴到下方导入。</p>
+          <div class="admin-upload" style="margin-bottom:16px">
+            <div class="form-group">
+              <label for="userSyncCode">粘贴手机同步码</label>
+              <textarea id="userSyncCode" rows="3" placeholder="在手机注册成功后会生成同步码，粘贴到这里"></textarea>
+            </div>
+            <div class="admin-form-actions">
+              <button type="button" class="btn" id="importSyncCodeBtn">导入同步码</button>
               <button type="button" class="link-btn" id="importLocalUsers">同步本机注册</button>
               <button type="button" class="link-btn" id="refreshUsers">刷新</button>
             </div>
           </div>
-          <p class="admin-tip" id="usersStorageTip">网站注册账号列表（不含密码）。若刚注册看不到，请点「同步本机注册」或确认已配置 BLOB 持久化。</p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="usersTable">
               <thead>
@@ -290,9 +297,9 @@
     </section>
   </div>
 
-  <!-- deploy-marker: data-overview-visits-v2 -->
+  <script src="/js/auth.js?v=20260919c"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919b"></script>
+  <script src="/admin/admin.js?v=20260919c"></script>
 </body>
 </html>

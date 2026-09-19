@@ -56,12 +56,12 @@ module.exports = async function handler(req, res) {
 
       const current = await readUsers();
       const merged = mergeUsers(current, normalized);
-      await writeUsers(merged);
+      const saved = await writeUsers(merged);
       sendJson(res, 200, {
         ok: true,
-        count: merged.length,
+        count: (saved.users || merged).length,
         imported: normalized.length,
-        storage: hasBlob() ? "blob" : "ephemeral",
+        storage: hasBlob() && saved.persisted ? "blob" : "ephemeral",
       });
       return;
     }

@@ -61,13 +61,15 @@ module.exports = async function handler(req, res) {
     source: "server",
   };
   users.push(user);
-  await writeUsers(users);
+  const saved = await writeUsers(users);
+  const persisted = Boolean(saved && saved.persisted);
 
   const token = signToken(user);
   sendJson(res, 200, {
     ok: true,
     token,
     user: publicUser(user),
-    storage: hasBlob() ? "blob" : "ephemeral",
+    storage: hasBlob() && persisted ? "blob" : "ephemeral",
+    needSync: !(hasBlob() && persisted),
   });
 };

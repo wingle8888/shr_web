@@ -4,7 +4,7 @@ const crypto = require("crypto");
 
 const USERS_FILE = path.join(process.cwd(), "data", "users.json");
 const TMP_USERS = path.join("/tmp", "shr-users.json");
-const BLOB_PATH = "shr-auth/users.json";
+const BLOB_DIR = "shr-auth/u";
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -55,22 +55,40 @@ function hasBlob() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function emailKey(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9@._+-]/g, "_")
+    .slice(0, 120);
+}
+
 async function readUsersFromBlob() {
   if (!hasBlob()) return null;
   try {
     const { list } = require("@vercel/blob");
-    const { blobs } = await list({
-      prefix: "shr-auth/users",
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
-    const target =
-      (blobs || []).find((b) => b.pathname === BLOB_PATH || String(b.pathname).endsWith("users.json")) ||
-      (blobs || [])[0];
-    if (!target || !target.url) return null;
-    const res = await fetch(target.url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const { blobs } = await list({ prefix: `${BLOB_DIR}/`, token });
+    if (!blobs || blobs.length === 0) {
+      // 兼容旧的单文件
+      const legacy = await list({ prefix: "shr-auth/users", token });
+      const file = (legacy.blobs || []).find((b) => String(b.pathname).includes("users"));
+      if (!file) return [];
+      const res = await fetch(file.url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    }
+    const users = [];
+    for (const blob of blobs) {
+      try {
+        const res = await fetch(blob.url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data && data.email) users.push(data);
+      } catch (_) {}
+    }
+    return users;
   } catch (_) {
     return null;
   }
@@ -80,44 +98,51 @@ async function writeUsersToBlob(users) {
   if (!hasBlob()) return false;
   try {
     const { put } = require("@vercel/blob");
-    const opts = {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json",
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    };
-    try {
-      opts.allowOverwrite = true;
-    } catch (_) {}
-    await put(BLOB_PATH, JSON.stringify(users, null, 2), opts);
-    return true;
-  } catch (_) {
-    try {
-      const { put } = require("@vercel/blob");
-      await put(BLOB_PATH, JSON.stringify(users, null, 2), {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const list = Array.isArray(users) ? users : [];
+    for (const user of list) {
+      if (!user || !user.email) continue;
+      const pathname = `${BLOB_DIR}/${emailKey(user.email)}.json`;
+      const opts = {
         access: "public",
         addRandomSuffix: false,
         contentType: "application/json",
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      });
-      return true;
-    } catch (__) {
-      return false;
+        token,
+        allowOverwrite: true,
+      };
+      try {
+        await put(pathname, JSON.stringify(user), opts);
+      } catch (_) {
+        await put(pathname, JSON.stringify(user), {
+          access: "public",
+          addRandomSuffix: false,
+          contentType: "application/json",
+          token,
+        });
+      }
     }
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
 async function readUsers() {
   const fromBlob = await readUsersFromBlob();
-  if (Array.isArray(fromBlob)) return fromBlob;
+  if (Array.isArray(fromBlob)) {
+    if (fromBlob.length > 0) return fromBlob;
+    const local = readUsersLocal();
+    if (local.length) return local;
+    return fromBlob;
+  }
   return readUsersLocal();
 }
 
 async function writeUsers(users) {
   const list = Array.isArray(users) ? users : [];
   writeUsersLocal(list);
-  await writeUsersToBlob(list);
-  return list;
+  const ok = await writeUsersToBlob(list);
+  return { users: list, persisted: ok || !process.env.VERCEL };
 }
 
 function mergeUsers(base, incoming) {
@@ -199,7 +224,7 @@ function publicUser(u) {
     name: u.name,
     phone: u.phone || "",
     createdAt: u.createdAt,
-    source: u.source || (u.custom ? "server" : "server"),
+    source: u.source || "server",
   };
 }
 

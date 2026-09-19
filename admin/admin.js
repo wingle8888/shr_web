@@ -575,7 +575,7 @@ $("importLocalUsers").addEventListener("click", async () => {
     local = [];
   }
   if (!local.length) {
-    alert("本机没有可同步的注册账号（仅同步当前浏览器里本地注册的账号）");
+    alert("本机没有可同步的注册账号。\n\n若是在手机上注册的：请用【同一部手机】打开后台，再点「同步本机注册」；或把手机上的同步码粘贴到上方导入。");
     return;
   }
   try {
@@ -596,6 +596,41 @@ $("importLocalUsers").addEventListener("click", async () => {
     });
     await loadUsers();
     alert(`已同步 ${local.length} 个本机注册账号到后台`);
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+$("importSyncCodeBtn").addEventListener("click", async () => {
+  const code = ($("userSyncCode").value || "").trim();
+  if (!code) {
+    alert("请先粘贴手机上的同步码");
+    return;
+  }
+  let users = [];
+  try {
+    if (window.Auth && window.Auth.parseSyncCode) users = window.Auth.parseSyncCode(code);
+    else {
+      const text = decodeURIComponent(escape(atob(code)));
+      const data = JSON.parse(text);
+      users = data.users || [];
+    }
+  } catch (err) {
+    alert("同步码无效，请重新复制");
+    return;
+  }
+  if (!users.length) {
+    alert("同步码里没有用户");
+    return;
+  }
+  try {
+    await api("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify({ action: "import", users }),
+    });
+    $("userSyncCode").value = "";
+    await loadUsers();
+    alert(`已导入 ${users.length} 个注册账号`);
   } catch (err) {
     alert(err.message);
   }
