@@ -1,5 +1,6 @@
 .vercel
 .wrangler
+dist-assets
 node_modules
 .DS_Store
 *.log

@@ -3,8 +3,11 @@ main = "_worker.js"
 compatibility_date = "2026-09-19"
 compatibility_flags = ["nodejs_compat"]
 
+[build]
+command = "node scripts/cf-build.js"
+
 [assets]
-directory = "."
+directory = "./dist-assets"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 run_worker_first = true

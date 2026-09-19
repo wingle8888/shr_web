@@ -1,6 +1,6 @@
-import { createRequire } from "node:module";
+import runtimeEnv from "../api/_lib/runtime-env.js";
 
-const require = createRequire(import.meta.url);
+const { setRuntimeEnv } = runtimeEnv;
 
 function headerMap(request) {
   const headers = {};
@@ -77,7 +77,6 @@ export async function runNodeHandler(context, handler) {
 }
 
 async function invokeHandler(context, handler) {
-  const { setRuntimeEnv } = require("../api/_lib/runtime-env.js");
   setRuntimeEnv(context.env || {});
   const request = context.request;
   const url = new URL(request.url);

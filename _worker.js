@@ -1,19 +1,18 @@
-import { createRequire } from "node:module";
 import { runNodeHandler } from "./functions/_adapter.js";
+import runtimeEnv from "./api/_lib/runtime-env.js";
+import products from "./api/products.js";
+import orders from "./api/orders.js";
+import downloads from "./api/downloads.js";
+import adminProducts from "./api/admin/products.js";
+import adminOrders from "./api/admin/orders.js";
+import adminUsers from "./api/admin/users.js";
+import adminFiles from "./api/admin/files.js";
+import adminUpload from "./api/admin/upload.js";
+import authMe from "./api/auth/me.js";
+import authRegister from "./api/auth/register.js";
+import authLogin from "./api/auth/login.js";
 
-const require = createRequire(import.meta.url);
-const { setRuntimeEnv } = require("./api/_lib/runtime-env.js");
-const products = require("./api/products.js");
-const orders = require("./api/orders.js");
-const downloads = require("./api/downloads.js");
-const adminProducts = require("./api/admin/products.js");
-const adminOrders = require("./api/admin/orders.js");
-const adminUsers = require("./api/admin/users.js");
-const adminFiles = require("./api/admin/files.js");
-const adminUpload = require("./api/admin/upload.js");
-const authMe = require("./api/auth/me.js");
-const authRegister = require("./api/auth/register.js");
-const authLogin = require("./api/auth/login.js");
+const { setRuntimeEnv } = runtimeEnv;
 
 const HANDLERS = {
   "/api/products": products,

@@ -21,10 +21,7 @@ function isHosted() {
 }
 
 function hasBlob() {
-  if (getR2()) return true;
-  if (blobToken()) return true;
-  if (blobStoreId() && (process.env.VERCEL || process.env.VERCEL_OIDC_TOKEN)) return true;
-  return false;
+  return Boolean(getR2());
 }
 
 function blobAuthOpts() {
@@ -47,41 +44,13 @@ function writeLocalJson(filePath, data) {
   } catch (_) {}
 }
 
-async function streamToText(stream) {
-  if (!stream) return "";
-  if (typeof stream === "string") return stream;
-  if (Buffer.isBuffer(stream)) return stream.toString("utf8");
-  if (typeof stream.text === "function") return stream.text();
-  return new Response(stream).text();
-}
-
-async function streamToBuffer(stream) {
-  if (!stream) return Buffer.alloc(0);
-  if (Buffer.isBuffer(stream)) return stream;
-  if (typeof stream === "string") return Buffer.from(stream);
-  const ab = await new Response(stream).arrayBuffer();
-  return Buffer.from(ab);
-}
-
 async function blobGetJson(pathname) {
   const r2 = getR2();
-  if (r2) {
-    try {
-      const obj = await r2.get(pathname);
-      if (!obj) return null;
-      const text = await obj.text();
-      if (!text) return null;
-      return JSON.parse(text);
-    } catch (_) {
-      return null;
-    }
-  }
-  if (!hasBlob()) return null;
+  if (!r2) return null;
   try {
-    const { get } = require("@vercel/blob");
-    const result = await get(pathname, { access: "private", ...blobAuthOpts() });
-    if (!result || result.statusCode !== 200) return null;
-    const text = await streamToText(result.stream);
+    const obj = await r2.get(pathname);
+    if (!obj) return null;
+    const text = await obj.text();
     if (!text) return null;
     return JSON.parse(text);
   } catch (_) {
@@ -90,65 +59,31 @@ async function blobGetJson(pathname) {
 }
 
 async function blobPutJson(pathname, body) {
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
   const r2 = getR2();
-  if (r2) {
-    await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
-    return true;
-  }
-  if (!hasBlob()) return false;
-  const { put } = require("@vercel/blob");
-  await put(pathname, payload, {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    ...blobAuthOpts(),
-  });
+  if (!r2) return false;
+  const payload = typeof body === "string" ? body : JSON.stringify(body);
+  await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
   return true;
 }
 
 async function blobPutFile(pathname, buffer, contentType) {
-  const type = contentType || "application/octet-stream";
   const r2 = getR2();
-  if (r2) {
-    const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-    await r2.put(pathname, body, { httpMetadata: { contentType: type } });
-    return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
-  }
-  if (!hasBlob()) return null;
-  const { put } = require("@vercel/blob");
-  return put(pathname, buffer, {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: type,
-    ...blobAuthOpts(),
-  });
+  if (!r2) return null;
+  const type = contentType || "application/octet-stream";
+  const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  await r2.put(pathname, body, { httpMetadata: { contentType: type } });
+  return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
 }
 
 async function blobGetFile(pathname) {
   const r2 = getR2();
-  if (r2) {
-    try {
-      const obj = await r2.get(pathname);
-      if (!obj) return null;
-      return {
-        buffer: Buffer.from(await obj.arrayBuffer()),
-        contentType: (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
-      };
-    } catch (_) {
-      return null;
-    }
-  }
-  if (!hasBlob()) return null;
+  if (!r2) return null;
   try {
-    const { get } = require("@vercel/blob");
-    const result = await get(pathname, { access: "private", ...blobAuthOpts() });
-    if (!result || result.statusCode !== 200) return null;
+    const obj = await r2.get(pathname);
+    if (!obj) return null;
     return {
-      buffer: await streamToBuffer(result.stream),
-      contentType: (result.blob && result.blob.contentType) || "application/octet-stream",
+      buffer: Buffer.from(await obj.arrayBuffer()),
+      contentType: (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
     };
   } catch (_) {
     return null;
