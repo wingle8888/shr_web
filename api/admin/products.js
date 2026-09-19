@@ -10,6 +10,7 @@ const {
   normalizeProduct,
   saveProductImage,
   addGalleryImages,
+  updateGalleryCaption,
   removeGalleryImage,
   attachGalleries,
 } = require("../_lib/products-store");
@@ -84,6 +85,25 @@ module.exports = async function handler(req, res) {
       }
       try {
         const images = await addGalleryImages(id, payloads);
+        sendJson(res, 200, { ok: true, images });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
+
+    if (action === "gallery-caption") {
+      const id = String(body.id || "").trim();
+      const imageId = String(body.imageId || "").trim();
+      if (!id || !imageId) {
+        sendJson(res, 400, { ok: false, error: "id and imageId required" });
+        return;
+      }
+      try {
+        const images = await updateGalleryCaption(id, imageId, body.caption);
         sendJson(res, 200, { ok: true, images });
       } catch (err) {
         sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {

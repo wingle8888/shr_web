@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260919n">
+  <link rel="stylesheet" href="/css/style.css?v=20260920a">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920a">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -135,6 +135,10 @@
               <input type="text" id="prodImg" placeholder="/images/stm32.jpg 或已上传图片">
             </div>
             <div class="form-group">
+              <label for="prodImgCaption">主图文字说明</label>
+              <textarea id="prodImgCaption" rows="2" maxlength="200" placeholder="显示在商品详情页主图下方，例如：正面实拍 / 接口特写"></textarea>
+            </div>
+            <div class="form-group">
               <label for="prodDesc">一句话简介 *</label>
               <input type="text" id="prodDesc" required placeholder="简短卖点">
             </div>
@@ -194,7 +198,11 @@
               <h2 class="admin-sub" style="margin:0">宣传图：<span id="galleryProductName">未选择</span></h2>
               <button type="button" class="link-btn" id="galleryCloseBtn">关闭</button>
             </div>
-            <p class="admin-tip">可一次选择多张图片（最多 12 张），会出现在该商品详情页，类似淘宝主图和详情长图。</p>
+            <p class="admin-tip">可一次选择多张图片（最多 12 张），会出现在该商品详情页。每张图可填写文字说明，显示在图片下方。</p>
+            <div class="form-group">
+              <label for="galleryCaption">本批图片说明（可选）</label>
+              <textarea id="galleryCaption" rows="2" maxlength="200" placeholder="上传时会套用到本批每张图，之后也可单独修改"></textarea>
+            </div>
             <div class="admin-inline-actions">
               <input type="file" id="galleryFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
               <button type="button" class="btn btn-sm" id="galleryUploadBtn">上传选中图片</button>
@@ -403,6 +411,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
-  <script src="/admin/admin.js?v=20260919s"></script>
+  <script src="/admin/admin.js?v=20260920a"></script>
 </body>
 </html>

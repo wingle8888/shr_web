@@ -6,6 +6,12 @@ const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
 const BLOB_PATH = "shr-admin/products-db.json";
 const REMOVED_SEED_IDS = ["3", "6"];
+const MAX_GALLERY = 12;
+const MAX_CAPTION = 200;
+
+function clipCaption(value) {
+  return String(value || "").trim().slice(0, MAX_CAPTION);
+}
 
 const CATEGORIES = [
   { id: "cat-mcu", name: "MCU 开发板" },
@@ -31,8 +37,10 @@ function unwrapGalleries(raw) {
     out[String(pid)] = list
       .map((item) => {
         if (!item) return null;
-        if (typeof item === "string") return { id: item, url: item };
-        if (item.url) return { id: String(item.id || item.url), url: String(item.url) };
+        if (typeof item === "string") return { id: item, url: item, caption: "" };
+        if (item.url) {
+          return { id: String(item.id || item.url), url: String(item.url), caption: clipCaption(item.caption) };
+        }
         return null;
       })
       .filter(Boolean);
@@ -234,8 +242,6 @@ async function deleteProducts(ids) {
   return writeCatalog({ products, hiddenIds, deletedIds, galleries });
 }
 
-const MAX_GALLERY = 12;
-
 async function addGalleryImages(productId, payloads) {
   const pid = String(productId || "").trim();
   if (!pid) throw new Error("product id required");
@@ -248,11 +254,23 @@ async function addGalleryImages(productId, payloads) {
     if (!raw) continue;
     const imageId = `g${pid}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const url = await saveProductImage(imageId, raw, item.imageType || item.type);
-    list.push({ id: imageId, url });
+    list.push({ id: imageId, url, caption: clipCaption(item.caption) });
   }
   cur.galleries[pid] = list;
   await writeCatalog(cur);
   return list;
+}
+
+async function updateGalleryCaption(productId, imageId, caption) {
+  const pid = String(productId || "").trim();
+  const iid = String(imageId || "").trim();
+  if (!pid || !iid) throw new Error("product id and image id required");
+  const cur = await readCatalog();
+  const list = Array.isArray(cur.galleries[pid]) ? cur.galleries[pid] : [];
+  const text = clipCaption(caption);
+  cur.galleries[pid] = list.map((img) => (String(img.id) === iid ? { ...img, caption: text } : img));
+  await writeCatalog(cur);
+  return cur.galleries[pid];
 }
 
 async function removeGalleryImage(productId, imageId) {
@@ -316,6 +334,7 @@ function normalizeProduct(input, { id, existingIds } = {}) {
     category: String(input.category || categoryName(categoryId)).trim(),
     categoryId,
     img: String(input.img || "/images/stm32.jpg").trim() || "/images/stm32.jpg",
+    imgCaption: clipCaption(input.imgCaption),
     intro: String(input.intro || input.desc || name).trim(),
     features: features.length ? features : ["详情请见商品页"],
     specs: Array.isArray(input.specs) ? input.specs : [],
@@ -397,6 +416,7 @@ module.exports = {
   saveProductImage,
   readProductImage,
   addGalleryImages,
+  updateGalleryCaption,
   removeGalleryImage,
   attachGalleries,
   listVisibleProducts,

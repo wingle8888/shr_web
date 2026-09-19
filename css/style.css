@@ -1784,6 +1784,15 @@ footer {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
+.detail-img-caption,
+.detail-promo-item figcaption {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
 .detail-promo {
   margin-top: 22px;
 }
@@ -1792,12 +1801,21 @@ footer {
   margin-bottom: 12px;
 }
 
-.detail-promo img {
+.detail-promo img,
+.detail-promo-item img {
   width: 100%;
   display: block;
-  margin: 0 0 12px;
+  margin: 0;
   border-radius: 10px;
   border: 1px solid var(--border);
+}
+
+.detail-promo-item {
+  margin: 0 0 18px;
+}
+
+.detail-promo-item figcaption {
+  padding: 0 8px;
 }
 
 .detail-cat {

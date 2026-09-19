@@ -304,6 +304,10 @@
   background: rgba(7, 11, 20, 0.45);
 }
 
+.admin-gallery-box .form-group {
+  margin: 10px 0 12px;
+}
+
 .admin-gallery-list {
   display: flex;
   flex-wrap: wrap;
@@ -312,17 +316,38 @@
 }
 
 .admin-gallery-item {
-  width: 110px;
+  width: 220px;
 }
 
 .admin-gallery-item img {
-  width: 110px;
-  height: 82px;
+  width: 100%;
+  height: 124px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--border);
   display: block;
   margin-bottom: 6px;
+}
+
+.admin-gallery-item textarea {
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.admin-gallery-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-gallery-actions .btn,
+.admin-gallery-actions button {
+  flex: 1;
+  min-width: 0;
 }
 
 .admin-thumb {

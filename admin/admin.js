@@ -402,12 +402,17 @@ function renderGalleryPanel(productId) {
   const images = (state.galleries[id] || []).slice();
   listEl.innerHTML = images.length
     ? images
-        .map(
-          (img) => `<div class="admin-gallery-item">
+        .map((img) => {
+          const caption = escapeHtml(img.caption || "");
+          return `<div class="admin-gallery-item">
       <img src="${escapeHtml(img.url)}" alt="">
-      <button type="button" class="danger" data-del-gallery="${escapeHtml(img.id)}">删除</button>
-    </div>`
-        )
+      <textarea data-gallery-caption="${escapeHtml(img.id)}" rows="2" maxlength="200" placeholder="图片说明">${caption}</textarea>
+      <div class="admin-gallery-actions">
+        <button type="button" class="btn btn-sm" data-save-gallery-caption="${escapeHtml(img.id)}">保存说明</button>
+        <button type="button" class="danger" data-del-gallery="${escapeHtml(img.id)}">删除</button>
+      </div>
+    </div>`;
+        })
         .join("")
     : `<p class="admin-tip">还没有宣传图，请选择多张图片后上传。</p>`;
 }
@@ -895,6 +900,7 @@ function fillProductForm(p) {
   $("prodCategory").value = p.categoryId || "cat-mcu";
   $("prodTag").value = p.tag || "";
   $("prodImg").value = p.img || "";
+  if ($("prodImgCaption")) $("prodImgCaption").value = p.imgCaption || "";
   const preview = $("prodImgPreview");
   if (preview) {
     if (p.img) {
@@ -1191,6 +1197,7 @@ $("productForm").addEventListener("submit", async (e) => {
     categoryId: $("prodCategory").value,
     tag: $("prodTag").value.trim(),
     img: $("prodImg").value.trim(),
+    imgCaption: $("prodImgCaption") ? $("prodImgCaption").value.trim() : "",
     imageBase64,
     imageType: "image/jpeg",
     desc: $("prodDesc").value.trim(),
@@ -1309,6 +1316,7 @@ $("galleryUploadBtn").addEventListener("click", async () => {
       status.textContent = "上传中…";
     }
     const slice = files.slice(0, room);
+    const caption = $("galleryCaption") ? $("galleryCaption").value.trim() : "";
     for (let i = 0; i < slice.length; i++) {
       const imageBase64 = await fileToCompressedDataUrl(slice[i]);
       const data = await api("/api/admin/products", {
@@ -1316,13 +1324,14 @@ $("galleryUploadBtn").addEventListener("click", async () => {
         body: JSON.stringify({
           action: "gallery-add",
           id,
-          images: [{ imageBase64, imageType: "image/jpeg" }],
+          images: [{ imageBase64, imageType: "image/jpeg", caption }],
         }),
       });
       if (data.images) state.galleries[id] = data.images;
       if (status) status.textContent = `已上传 ${i + 1}/${slice.length}`;
     }
     if (input) input.value = "";
+    if ($("galleryCaption")) $("galleryCaption").value = "";
     await loadProductsBundle();
     if (status) status.textContent = `宣传图已保存，共 ${(state.galleries[id] || []).length} 张`;
   } catch (err) {
@@ -1334,6 +1343,35 @@ $("galleryUploadBtn").addEventListener("click", async () => {
 });
 
 $("galleryList").addEventListener("click", async (e) => {
+  const saveBtn = e.target.closest("[data-save-gallery-caption]");
+  if (saveBtn && state.galleryProductId) {
+    const status = $("galleryStatus");
+    const box = saveBtn.closest(".admin-gallery-item");
+    const ta = box && box.querySelector("[data-gallery-caption]");
+    try {
+      const data = await api("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "gallery-caption",
+          id: state.galleryProductId,
+          imageId: saveBtn.dataset.saveGalleryCaption,
+          caption: ta ? ta.value : "",
+        }),
+      });
+      if (data.images) state.galleries[state.galleryProductId] = data.images;
+      await loadProductsBundle();
+      if (status) {
+        status.className = "admin-status";
+        status.textContent = "图片说明已保存";
+      }
+    } catch (err) {
+      if (status) {
+        status.className = "admin-status error";
+        status.textContent = "保存说明失败：" + err.message;
+      }
+    }
+    return;
+  }
   const btn = e.target.closest("[data-del-gallery]");
   if (!btn || !state.galleryProductId) return;
   try {

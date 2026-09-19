@@ -133,6 +133,23 @@ async function fetchProductDownloads(productId) {
   return null;
 }
 
+function productGallery(product) {
+  const items = [];
+  const seen = new Set();
+  function push(url, caption) {
+    const src = String(url || "").trim();
+    if (!src || seen.has(src)) return;
+    seen.add(src);
+    items.push({ url: src, caption: String(caption || "").trim() });
+  }
+  push(product.img, product.imgCaption);
+  (product.images || []).forEach((item) => {
+    if (typeof item === "string") push(item, "");
+    else if (item && item.url) push(item.url, item.caption);
+  });
+  return items;
+}
+
 function renderDetail(product, remoteDownloads) {
   const main = document.getElementById("detailMain");
   document.title = `${product.name} - ${t("brand")}`;
@@ -152,20 +169,16 @@ function renderDetail(product, remoteDownloads) {
     ? remoteDownloads
     : product.downloads || [];
   const downloadsHtml = renderDownloadsHtml(downloads);
-  const gallery = [];
-  if (product.img) gallery.push(product.img);
-  (product.images || []).forEach((item) => {
-    const url = typeof item === "string" ? item : item && item.url;
-    if (url && !gallery.includes(url)) gallery.push(url);
-  });
-  const mainImg = gallery[0] || product.img || "";
+  const gallery = productGallery(product);
+  const mainImg = (gallery[0] && gallery[0].url) || product.img || "";
+  const mainCaption = (gallery[0] && gallery[0].caption) || "";
   const thumbsHtml =
     gallery.length > 1
       ? `<div class="detail-thumbs">${gallery
           .map(
-            (src, i) =>
-              `<button type="button" class="detail-thumb${i === 0 ? " active" : ""}" data-src="${escapeHtml(src)}">
-                <img src="${escapeHtml(src)}" alt="">
+            (item, i) =>
+              `<button type="button" class="detail-thumb${i === 0 ? " active" : ""}" data-src="${escapeHtml(item.url)}" data-caption="${escapeHtml(item.caption)}">
+                <img src="${escapeHtml(item.url)}" alt="">
               </button>`
           )
           .join("")}</div>`
@@ -174,7 +187,14 @@ function renderDetail(product, remoteDownloads) {
     gallery.length > 1
       ? `<div class="detail-promo">
           <h2>${escapeHtml(t("promoImages"))}</h2>
-          ${gallery.map((src) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(product.name)}">`).join("")}
+          ${gallery
+            .map(
+              (item) => `<figure class="detail-promo-item">
+            <img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.caption || product.name)}">
+            ${item.caption ? `<figcaption>${escapeHtml(item.caption)}</figcaption>` : ""}
+          </figure>`
+            )
+            .join("")}
         </div>`
       : "";
 
@@ -193,6 +213,7 @@ function renderDetail(product, remoteDownloads) {
           <img id="detailMainImg" src="${escapeHtml(mainImg)}" alt="${escapeHtml(product.name)}">
           <span class="card-tag">${escapeHtml(product.tag)}</span>
         </div>
+        <p class="detail-img-caption" id="detailMainCaption"${mainCaption ? "" : " hidden"}>${escapeHtml(mainCaption)}</p>
         ${thumbsHtml}
       </div>
       <div class="detail-buy">
@@ -282,6 +303,12 @@ function renderDetail(product, remoteDownloads) {
       if (!btn) return;
       const mainEl = document.getElementById("detailMainImg");
       if (mainEl && btn.dataset.src) mainEl.src = btn.dataset.src;
+      const capEl = document.getElementById("detailMainCaption");
+      if (capEl) {
+        const cap = btn.dataset.caption || "";
+        capEl.textContent = cap;
+        capEl.hidden = !cap;
+      }
       thumbs.querySelectorAll(".detail-thumb").forEach((b) => b.classList.toggle("active", b === btn));
     });
   }
