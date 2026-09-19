@@ -254,6 +254,9 @@
         <div class="form-group">
           <label for="loginPassword" data-i18n="authPassword">密码 *</label>
           <input type="password" id="loginPassword" required minlength="6" autocomplete="current-password" data-i18n-placeholder="authPasswordPh" placeholder="至少 6 位">
+          <p class="auth-extra">
+            <button type="button" class="link-btn" id="forgotPasswordBtn" data-i18n="forgotPassword">忘记密码？</button>
+          </p>
         </div>
         <p class="auth-error" id="loginError" hidden></p>
         <button type="submit" class="btn" style="width:100%" data-i18n="loginSubmit">登录</button>
@@ -282,18 +285,55 @@
           <input type="email" id="regEmail" required autocomplete="email" data-i18n-placeholder="authEmailPh" placeholder="you@example.com">
         </div>
         <div class="form-group">
-          <label for="regPhone" data-i18n="authPhone">手机号（选填）</label>
-          <input type="tel" id="regPhone" autocomplete="tel" data-i18n-placeholder="phonePh" placeholder="用于发货与订单查询">
+          <label for="regPhone" data-i18n="authPhone">手机号 *</label>
+          <input type="tel" id="regPhone" required autocomplete="tel" data-i18n-placeholder="authPhoneRequiredPh" placeholder="用于找回密码与订单查询">
         </div>
         <div class="form-group">
           <label for="regPassword" data-i18n="authPassword">密码 *</label>
           <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" data-i18n-placeholder="authPasswordPh" placeholder="至少 6 位">
+        </div>
+        <div class="form-group">
+          <label for="regPasswordConfirm" data-i18n="authPasswordConfirm">确认密码 *</label>
+          <input type="password" id="regPasswordConfirm" required minlength="6" autocomplete="new-password" data-i18n-placeholder="authPasswordConfirmPh" placeholder="再输入一次密码">
         </div>
         <p class="auth-error" id="registerError" hidden></p>
         <button type="submit" class="btn" style="width:100%" data-i18n="registerSubmit">创建账号</button>
         <p class="auth-switch">
           <span data-i18n="hasAccount">已有账号？</span>
           <button type="button" class="link-btn" id="switchToLogin" data-i18n="goLogin">去登录</button>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="forgotModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 data-i18n="forgotTitle">重置密码</h3>
+        <button class="modal-close" id="forgotClose" type="button">&times;</button>
+      </div>
+      <form class="modal-body checkout-form" id="forgotForm">
+        <p class="checkout-hint" data-i18n="forgotHint">请输入注册邮箱和手机号验证身份，然后设置新密码。</p>
+        <div class="form-group">
+          <label for="forgotEmail" data-i18n="authEmail">邮箱 *</label>
+          <input type="email" id="forgotEmail" required autocomplete="email" data-i18n-placeholder="authEmailPh" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="forgotPhone" data-i18n="authPhone">手机号 *</label>
+          <input type="tel" id="forgotPhone" required autocomplete="tel" data-i18n-placeholder="authPhoneRequiredPh" placeholder="用于找回密码与订单查询">
+        </div>
+        <div class="form-group">
+          <label for="forgotPassword" data-i18n="authNewPassword">新密码 *</label>
+          <input type="password" id="forgotPassword" required minlength="6" autocomplete="new-password" data-i18n-placeholder="authPasswordPh" placeholder="至少 6 位">
+        </div>
+        <div class="form-group">
+          <label for="forgotPasswordConfirm" data-i18n="authPasswordConfirm">确认密码 *</label>
+          <input type="password" id="forgotPasswordConfirm" required minlength="6" autocomplete="new-password" data-i18n-placeholder="authPasswordConfirmPh" placeholder="再输入一次密码">
+        </div>
+        <p class="auth-error" id="forgotError" hidden></p>
+        <button type="submit" class="btn" style="width:100%" data-i18n="forgotSubmit">重置密码</button>
+        <p class="auth-switch">
+          <button type="button" class="link-btn" id="switchForgotToLogin" data-i18n="goLogin">去登录</button>
         </p>
       </form>
     </div>
@@ -327,7 +367,7 @@
 
   <div class="toast" id="toast"></div>
   <script src="/js/i18n.js"></script>
-  <script src="/js/auth.js?v=20260919d"></script>
+  <script src="/js/auth.js?v=20260919e"></script>
   <script src="/js/products-data.js"></script>
   <script src="/js/products-en.js"></script>
   <script src="/js/products-loader.js"></script>

@@ -216,6 +216,16 @@ a {
   font-size: 13px;
 }
 
+.auth-extra {
+  margin: 8px 0 0;
+  text-align: right;
+}
+
+.auth-extra .link-btn {
+  font-size: 13px;
+  padding: 0;
+}
+
 .help-step em {
   font-style: normal;
 }

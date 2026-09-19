@@ -41,11 +41,20 @@ module.exports = async function handler(req, res) {
     .trim()
     .toLowerCase();
   const password = String(body.password || "");
+  const passwordConfirm = String(body.passwordConfirm != null ? body.passwordConfirm : password);
   const name = String(body.name || "").trim();
-  const phone = String(body.phone || "").trim();
+  const phone = String(body.phone || "").replace(/[\s-]/g, "").trim();
 
   if (!email || !password || !name) {
     sendJson(res, 400, { ok: false, error: "name, email and password required" });
+    return;
+  }
+  if (!phone) {
+    sendJson(res, 400, { ok: false, error: "phone required" });
+    return;
+  }
+  if (password !== passwordConfirm) {
+    sendJson(res, 400, { ok: false, error: "password mismatch" });
     return;
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

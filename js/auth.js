@@ -45,6 +45,10 @@
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
   }
 
+  function normalizePhone(value) {
+    return String(value || "").replace(/[\s\-()+]/g, "").trim();
+  }
+
   async function registerLocal({ name, email, password, phone }) {
     const users = localUsers();
     const key = email.toLowerCase();
@@ -155,6 +159,7 @@
       if (
         msg.includes("already") ||
         msg.includes("short") ||
+        msg.includes("mismatch") ||
         msg.includes("invalid email") ||
         msg.includes("required") ||
         msg.includes("storage") ||
@@ -211,11 +216,56 @@
     setSession(null);
   }
 
+  async function resetLocal({ email, phone, password }) {
+    const key = String(email || "").toLowerCase();
+    const users = localUsers();
+    const idx = users.findIndex((u) => u.email === key);
+    if (idx < 0) throw new Error("phone mismatch");
+    const storedPhone = normalizePhone(users[idx].phone);
+    if (!storedPhone) throw new Error("no phone");
+    if (storedPhone !== normalizePhone(phone)) throw new Error("phone mismatch");
+    users[idx] = { ...users[idx], hash: await sha256(`shr:${key}:${password}`) };
+    saveLocalUsers(users);
+    return { ok: true, reset: true, storage: "local" };
+  }
+
+  async function resetPassword(payload) {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, action: "reset" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) return data;
+      if (res.status >= 400 && data.error) throw new Error(data.error);
+      throw new Error("api unavailable");
+    } catch (err) {
+      const msg = String(err.message || "");
+      if (
+        msg.includes("mismatch") ||
+        msg.includes("short") ||
+        msg.includes("required") ||
+        msg.includes("no phone") ||
+        msg.includes("storage")
+      ) {
+        throw err;
+      }
+      const host = String(location.hostname || "");
+      if (host.includes("vercel.app") || host.includes("shr-web")) throw err;
+      return resetLocal(payload);
+    }
+  }
+
   function mapAuthError(err) {
     const msg = String(err && err.message ? err.message : err || "");
     if (msg.includes("already")) return "authEmailTaken";
+    if (msg.includes("mismatch") && msg.includes("password")) return "authPwdMismatch";
     if (msg.includes("short")) return "authPwdShort";
     if (msg.includes("invalid email")) return "authEmailInvalid";
+    if (msg.includes("no phone")) return "authNoPhone";
+    if (msg.includes("phone mismatch")) return "authPhoneMismatch";
+    if (msg.includes("phone required")) return "authPhoneRequired";
     if (msg.includes("invalid")) return "authBadCreds";
     if (msg.includes("required")) return "authRequired";
     return "authFailed";
@@ -291,18 +341,23 @@
     const logoutBtn = document.getElementById("logoutBtn");
     const loginForm = document.getElementById("loginForm");
     const registerForm = document.getElementById("registerForm");
+    const forgotForm = document.getElementById("forgotForm");
     const switchToRegister = document.getElementById("switchToRegister");
     const switchToLogin = document.getElementById("switchToLogin");
+    const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+    const switchForgotToLogin = document.getElementById("switchForgotToLogin");
 
     if (loginBtn) {
       loginBtn.addEventListener("click", () => {
         closeAuthModal("registerModal");
+        closeAuthModal("forgotModal");
         openAuthModal("loginModal");
       });
     }
     if (registerBtn) {
       registerBtn.addEventListener("click", () => {
         closeAuthModal("loginModal");
+        closeAuthModal("forgotModal");
         openAuthModal("registerModal");
       });
     }
@@ -316,25 +371,43 @@
     if (switchToRegister) {
       switchToRegister.addEventListener("click", () => {
         closeAuthModal("loginModal");
+        closeAuthModal("forgotModal");
         openAuthModal("registerModal");
       });
     }
     if (switchToLogin) {
       switchToLogin.addEventListener("click", () => {
         closeAuthModal("registerModal");
+        closeAuthModal("forgotModal");
+        openAuthModal("loginModal");
+      });
+    }
+    if (forgotPasswordBtn) {
+      forgotPasswordBtn.addEventListener("click", () => {
+        const email = document.getElementById("loginEmail");
+        const forgotEmail = document.getElementById("forgotEmail");
+        if (email && forgotEmail && email.value) forgotEmail.value = email.value;
+        closeAuthModal("loginModal");
+        closeAuthModal("registerModal");
+        openAuthModal("forgotModal");
+      });
+    }
+    if (switchForgotToLogin) {
+      switchForgotToLogin.addEventListener("click", () => {
+        closeAuthModal("forgotModal");
         openAuthModal("loginModal");
       });
     }
 
-    ["loginClose", "registerClose"].forEach((id) => {
+    ["loginClose", "registerClose", "forgotClose"].forEach((id) => {
       const btn = document.getElementById(id);
       if (!btn) return;
       btn.addEventListener("click", () => {
-        closeAuthModal(id === "loginClose" ? "loginModal" : "registerModal");
+        closeAuthModal(id.replace("Close", "Modal"));
       });
     });
 
-    ["loginModal", "registerModal"].forEach((id) => {
+    ["loginModal", "registerModal", "forgotModal"].forEach((id) => {
       const overlay = document.getElementById(id);
       if (!overlay) return;
       overlay.addEventListener("click", (e) => {
@@ -372,10 +445,15 @@
         const email = document.getElementById("regEmail").value.trim();
         const phone = document.getElementById("regPhone").value.trim();
         const password = document.getElementById("regPassword").value;
+        const passwordConfirm = document.getElementById("regPasswordConfirm")
+          ? document.getElementById("regPasswordConfirm").value
+          : password;
         const errEl = document.getElementById("registerError");
         if (errEl) errEl.hidden = true;
         try {
-          const result = await register({ name, email, phone, password });
+          if (!phone) throw new Error("phone required");
+          if (password !== passwordConfirm) throw new Error("password mismatch");
+          const result = await register({ name, email, phone, password, passwordConfirm });
           closeAuthModal("registerModal");
           registerForm.reset();
           afterAuth();
@@ -408,10 +486,36 @@
       });
     }
 
+    if (forgotForm) {
+      forgotForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("forgotEmail").value.trim();
+        const phone = document.getElementById("forgotPhone").value.trim();
+        const password = document.getElementById("forgotPassword").value;
+        const passwordConfirm = document.getElementById("forgotPasswordConfirm").value;
+        const errEl = document.getElementById("forgotError");
+        if (errEl) errEl.hidden = true;
+        try {
+          if (password !== passwordConfirm) throw new Error("password mismatch");
+          await resetPassword({ email, phone, password, passwordConfirm });
+          closeAuthModal("forgotModal");
+          forgotForm.reset();
+          openAuthModal("loginModal");
+          notify("authResetOk");
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = t(mapAuthError(err));
+            errEl.hidden = false;
+          } else if (toast) toast(t(mapAuthError(err)));
+        }
+      });
+    }
+
     const params = new URLSearchParams(location.search);
     const authParam = params.get("auth");
     if (authParam === "login") openAuthModal("loginModal");
     if (authParam === "register") openAuthModal("registerModal");
+    if (authParam === "forgot") openAuthModal("forgotModal");
   }
 
   window.Auth = {
@@ -420,6 +524,7 @@
     authHeader,
     register,
     login,
+    resetPassword,
     logout,
     refreshAuthUI,
     prefillCheckoutFromUser,
