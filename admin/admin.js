@@ -603,6 +603,15 @@ function updateChatBadge() {
   badge.textContent = n > 99 ? "99+" : String(n);
 }
 
+function chatDisplayName(t) {
+  if (t && t.displayName) return t.displayName;
+  if (t && (t.member || t.name || t.email)) {
+    return t.name || String(t.email || "").split("@")[0] || "会员";
+  }
+  const raw = String((t && t.visitorId) || "").replace(/^v/i, "") || "0";
+  return "游客" + raw;
+}
+
 function renderChatList() {
   updateChatBadge();
   const box = $("adminChatList");
@@ -614,7 +623,7 @@ function renderChatList() {
   }
   box.innerHTML = threads
     .map((t) => {
-      const title = t.name || t.email || t.visitorId;
+      const title = chatDisplayName(t);
       const unread = Number(t.unreadAdmin) || 0;
       const active = String(t.visitorId) === String(state.activeChatVisitorId) ? " is-active" : "";
       return `<button type="button" class="admin-chat-item${active}${unread ? " has-unread" : ""}" data-chat-visitor="${escapeHtml(t.visitorId)}">
@@ -642,8 +651,8 @@ function renderChatThread() {
     if (send) send.disabled = true;
     return;
   }
-  const title = thread.name || thread.email || thread.visitorId;
-  if (head) head.textContent = title + (thread.email && thread.name ? ` · ${thread.email}` : "");
+  const title = chatDisplayName(thread);
+  if (head) head.textContent = title;
   if (input) input.disabled = false;
   if (send) send.disabled = false;
   const msgs = thread.messages || [];
@@ -651,7 +660,7 @@ function renderChatThread() {
     box.innerHTML = msgs
       .map((m) => {
         const role = m.role === "admin" ? "admin" : m.role === "bot" ? "bot" : "user";
-        const label = role === "admin" ? "卖家" : role === "bot" ? "自动回复" : "客户";
+        const label = role === "admin" ? "卖家" : role === "bot" ? "自动回复" : chatDisplayName(thread);
         return `<div class="admin-chat-bubble ${role}">
           <div class="admin-chat-bubble-label">${label}</div>
           <div>${escapeHtml(m.text || "")}</div>

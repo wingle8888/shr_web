@@ -1,5 +1,6 @@
 const path = require("path");
 const { readJsonStore, writeJsonStore } = require("./blob-store");
+const { readUsers } = require("./auth-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "chats.json");
 const TMP_FILE = path.join("/tmp", "shr-chats.json");
@@ -92,14 +93,36 @@ function preview(text) {
   return s.length > 48 ? s.slice(0, 48) + "…" : s;
 }
 
+function guestLabel(visitorId) {
+  const raw = String(visitorId || "").trim();
+  const id = raw.replace(/^v/i, "") || raw || "0";
+  return "游客" + id;
+}
+
+function displayTitle(thread) {
+  const isMember = Boolean(
+    thread && (thread.member || thread.userId || String(thread.name || "").trim() || String(thread.email || "").trim())
+  );
+  if (isMember) {
+    const name = String(thread.name || "").trim();
+    if (name) return name;
+    const email = String(thread.email || "").trim();
+    if (email) return email.split("@")[0];
+    return "会员" + guestLabel(thread.visitorId).replace(/^游客/, "");
+  }
+  return guestLabel(thread && thread.visitorId);
+}
+
 function summarize(thread) {
   const msgs = Array.isArray(thread.messages) ? thread.messages : [];
   const last = msgs[msgs.length - 1];
   return {
     id: thread.id,
     visitorId: thread.visitorId,
+    member: Boolean(thread.member),
     name: thread.name || "",
     email: thread.email || "",
+    displayName: displayTitle(thread),
     updatedAt: thread.updatedAt,
     lastMessage: thread.lastMessage || (last ? preview(last.text) : ""),
     lastRole: last ? last.role : "",
@@ -116,7 +139,39 @@ async function getThread(visitorId) {
   return db.threads.find((t) => String(t.visitorId) === vid) || null;
 }
 
-async function appendMessage({ visitorId, role, text, name, email, mark }) {
+async function resolveMember({ name, email, member, userId }) {
+  const incomingName = String(name || "").trim().slice(0, 80);
+  const incomingEmail = String(email || "").trim().toLowerCase();
+  const incomingId = String(userId || "").trim();
+  try {
+    const users = await readUsers();
+    const found = (users || []).find((u) => {
+      if (!u) return false;
+      if (incomingId && String(u.id) === incomingId) return true;
+      if (incomingEmail && String(u.email || "").trim().toLowerCase() === incomingEmail) return true;
+      return false;
+    });
+    if (found) {
+      return {
+        member: true,
+        name: String(found.name || incomingName || "").trim().slice(0, 80),
+        email: String(found.email || incomingEmail || "").trim().slice(0, 120),
+        userId: String(found.id || incomingId || ""),
+      };
+    }
+  } catch (_) {}
+  if (member) {
+    return {
+      member: true,
+      name: incomingName,
+      email: incomingEmail,
+      userId: incomingId,
+    };
+  }
+  return { member: false, name: "", email: incomingEmail, userId: incomingId };
+}
+
+async function appendMessage({ visitorId, role, text, name, email, mark, member, userId }) {
   const vid = String(visitorId || "").trim().slice(0, 64);
   const msg = makeMessage(role, text);
   if (!vid || !msg.text) throw new Error("visitorId and text required");
@@ -126,6 +181,8 @@ async function appendMessage({ visitorId, role, text, name, email, mark }) {
     thread = {
       id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       visitorId: vid,
+      member: false,
+      userId: "",
       name: "",
       email: "",
       createdAt: new Date().toISOString(),
@@ -136,8 +193,20 @@ async function appendMessage({ visitorId, role, text, name, email, mark }) {
     };
     db.threads.unshift(thread);
   }
-  if (name) thread.name = String(name).trim().slice(0, 80);
-  if (email) thread.email = String(email).trim().slice(0, 120);
+  if (role === "user") {
+    const ident = await resolveMember({ name, email, member, userId });
+    if (ident.member) {
+      thread.member = true;
+      if (ident.name) thread.name = ident.name;
+      if (ident.email) thread.email = ident.email;
+      if (ident.userId) thread.userId = ident.userId;
+    } else if (!thread.member) {
+      thread.member = false;
+      thread.name = "";
+      thread.email = "";
+      thread.userId = "";
+    }
+  }
   thread.messages = Array.isArray(thread.messages) ? thread.messages : [];
   thread.messages.push(msg);
   if (thread.messages.length > MAX_MESSAGES) thread.messages = thread.messages.slice(-MAX_MESSAGES);
@@ -198,6 +267,7 @@ module.exports = {
   listThreads,
   markRead,
   summarize,
+  displayTitle,
   getAutoReply,
   setAutoReply,
 };

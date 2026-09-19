@@ -58,6 +58,8 @@ module.exports = async function handler(req, res) {
         text,
         name: body.name,
         email: body.email,
+        member: Boolean(body.member),
+        userId: body.userId,
         mark: "admin",
       });
       sendJson(res, 200, {

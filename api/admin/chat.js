@@ -1,5 +1,5 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
-const { listThreads, getThread, appendMessage, markRead, getAutoReply, setAutoReply } = require("../_lib/chat-store");
+const { listThreads, getThread, appendMessage, markRead, getAutoReply, setAutoReply, displayTitle } = require("../_lib/chat-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
         sendJson(res, 200, {
           ok: true,
           conversation: thread
-            ? { ...thread, unreadAdmin: 0 }
+            ? { ...thread, unreadAdmin: 0, displayName: displayTitle(thread) }
             : null,
         });
         return;
@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
       await markRead(visitorId, "admin");
       sendJson(res, 200, {
         ok: true,
-        conversation: { ...thread, unreadAdmin: 0 },
+        conversation: { ...thread, unreadAdmin: 0, displayName: displayTitle(thread) },
       });
     } catch (err) {
       sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {

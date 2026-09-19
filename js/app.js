@@ -550,8 +550,10 @@ function chatIdentity() {
   const user = window.Auth && window.Auth.currentUser ? window.Auth.currentUser() : null;
   return {
     visitorId: chatVisitorId(),
-    name: user && (user.name || user.email) ? user.name || user.email : "",
-    email: user && user.email ? user.email : "",
+    member: Boolean(user && (user.id || user.email)),
+    userId: user && user.id ? String(user.id) : "",
+    name: user && user.name ? String(user.name) : "",
+    email: user && user.email ? String(user.email) : "",
   };
 }
 
@@ -605,6 +607,8 @@ async function sendChatToServer(text) {
       text,
       name: ident.name,
       email: ident.email,
+      member: ident.member,
+      userId: ident.userId,
     }),
   });
   const data = await res.json().catch(() => ({}));
