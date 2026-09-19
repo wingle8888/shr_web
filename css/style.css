@@ -982,13 +982,22 @@ footer {
 /* Modals */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: var(--vv-offset-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100dvh);
+  max-height: var(--vv-height, 100%);
   background: rgba(2, 6, 14, 0.72);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 1500;
   padding: 16px;
+  padding-bottom: calc(16px + var(--kb-inset, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   backdrop-filter: blur(6px);
 }
 
@@ -999,7 +1008,7 @@ footer {
 .modal {
   width: 100%;
   max-width: 440px;
-  max-height: 90vh;
+  max-height: min(90vh, calc(var(--vv-height, 100dvh) - 24px));
   background: linear-gradient(180deg, #121a2e, #0b1220);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1657,6 +1666,24 @@ footer {
 
   .auth-area {
     gap: 8px;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 8px;
+    padding-bottom: calc(12px + var(--kb-inset, 0px));
+  }
+
+  .modal {
+    max-height: none;
+    margin: 4px 0 20px;
+    overflow: visible;
+  }
+
+  .modal-body {
+    overflow: visible;
+    flex: none;
+    padding-bottom: 28px;
   }
 }
 

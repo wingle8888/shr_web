@@ -323,6 +323,8 @@
   function openAuthModal(id) {
     const el = document.getElementById(id);
     if (el) el.classList.add("show");
+    bindModalKeyboardAvoid();
+    syncVisualViewport();
   }
 
   function closeAuthModal(id) {
@@ -538,6 +540,64 @@
     if (authParam === "login") openAuthModal("loginModal");
     if (authParam === "register") openAuthModal("registerModal");
     if (authParam === "forgot") openAuthModal("forgotModal");
+    bindModalKeyboardAvoid();
+  }
+
+  function syncVisualViewport() {
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    if (!vv) {
+      root.style.setProperty("--vv-offset-top", "0px");
+      root.style.setProperty("--vv-height", (window.innerHeight || 0) + "px");
+      root.style.setProperty("--kb-inset", "0px");
+      return;
+    }
+    const layoutH = window.innerHeight || root.clientHeight || 0;
+    const offsetTop = Math.max(0, vv.offsetTop || 0);
+    const height = Math.max(0, vv.height || layoutH);
+    const inset = Math.max(0, layoutH - height - offsetTop);
+    root.style.setProperty("--vv-offset-top", offsetTop + "px");
+    root.style.setProperty("--vv-height", height + "px");
+    root.style.setProperty("--kb-inset", inset + "px");
+  }
+
+  function revealModalField(el) {
+    const overlay = el && el.closest ? el.closest(".modal-overlay.show") : null;
+    if (!overlay) return;
+    const run = () => {
+      try {
+        el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      } catch (_) {
+        el.scrollIntoView(true);
+      }
+    };
+    run();
+    window.setTimeout(run, 300);
+    window.setTimeout(run, 600);
+  }
+
+  function bindModalKeyboardAvoid() {
+    if (bindModalKeyboardAvoid.bound) return;
+    bindModalKeyboardAvoid.bound = true;
+    syncVisualViewport();
+    const onViewChange = () => {
+      syncVisualViewport();
+      const active = document.activeElement;
+      if (active && active.closest && active.closest(".modal-overlay.show")) revealModalField(active);
+    };
+    window.addEventListener("resize", onViewChange);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", onViewChange);
+      window.visualViewport.addEventListener("scroll", onViewChange);
+    }
+    document.addEventListener("focusin", (e) => {
+      const el = e.target;
+      if (!el || !el.closest) return;
+      if (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA" && el.tagName !== "SELECT") return;
+      if (!el.closest(".modal-overlay.show")) return;
+      syncVisualViewport();
+      revealModalField(el);
+    });
   }
 
   window.Auth = {
@@ -555,4 +615,5 @@
     parseSyncCode,
     localUsers,
   };
+  bindModalKeyboardAvoid();
 })();
