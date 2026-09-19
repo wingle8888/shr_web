@@ -1,5 +1,6 @@
+const fs = require("fs");
 const path = require("path");
-const { readJsonStore, writeJsonStore } = require("./blob-store");
+const { readJsonStore, writeJsonStore, blobPutFile, blobGetFile, hasBlob, isVercel } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
@@ -105,6 +106,56 @@ function normalizeProduct(input, { id, existingIds } = {}) {
   };
 }
 
+function productImageBlobPath(id) {
+  return `shr-admin/product-images/${String(id)}`;
+}
+
+function decodeImagePayload(raw, typeHint) {
+  const text = String(raw || "");
+  const match = text.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  const mime = match ? match[1] : String(typeHint || "image/jpeg").split(";")[0];
+  const b64 = match ? match[2] : text;
+  const buffer = Buffer.from(b64, "base64");
+  if (!buffer.length) throw new Error("invalid image");
+  if (buffer.length > 4.2 * 1024 * 1024) throw new Error("image too large");
+  const safeType = /^image\/(jpeg|png|webp|gif)$/.test(mime) ? mime : "image/jpeg";
+  return { buffer, contentType: safeType };
+}
+
+async function saveProductImage(id, raw, typeHint) {
+  const { buffer, contentType } = decodeImagePayload(raw, typeHint);
+  const blobPath = productImageBlobPath(id);
+  if (hasBlob()) {
+    await blobPutFile(blobPath, buffer, contentType);
+  } else if (isVercel()) {
+    const err = new Error("BLOB_STORE_ID / BLOB_READ_WRITE_TOKEN not configured");
+    err.code = "BLOB_MISSING";
+    throw err;
+  } else {
+    const dir = path.join(process.cwd(), "images", "uploads");
+    fs.mkdirSync(dir, { recursive: true });
+    const ext = contentType === "image/png" ? ".png" : contentType === "image/webp" ? ".webp" : ".jpg";
+    fs.writeFileSync(path.join(dir, `${id}${ext}`), buffer);
+    return `/images/uploads/${id}${ext}`;
+  }
+  return `/api/products?img=${encodeURIComponent(id)}&v=${Date.now()}`;
+}
+
+async function readProductImage(id) {
+  const file = await blobGetFile(productImageBlobPath(id));
+  if (file) return file;
+  const dir = path.join(process.cwd(), "images", "uploads");
+  for (const ext of [".jpg", ".jpeg", ".png", ".webp", ".gif"]) {
+    const abs = path.join(dir, `${id}${ext}`);
+    if (fs.existsSync(abs)) {
+      const type =
+        ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : ext === ".gif" ? "image/gif" : "image/jpeg";
+      return { buffer: fs.readFileSync(abs), contentType: type };
+    }
+  }
+  return null;
+}
+
 module.exports = {
   CATEGORIES,
   readCustomProducts,
@@ -112,4 +163,6 @@ module.exports = {
   normalizeProduct,
   nextProductId,
   categoryName,
+  saveProductImage,
+  readProductImage,
 };

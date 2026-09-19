@@ -1,5 +1,5 @@
 const { cors, sendJson, parseBody } = require("./_lib/docs-store");
-const { readCustomProducts } = require("./_lib/products-store");
+const { readCustomProducts, readProductImage } = require("./_lib/products-store");
 const { recordVisit } = require("./_lib/visits-store");
 
 module.exports = async function handler(req, res) {
@@ -11,6 +11,21 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
+    const url = new URL(req.url, "http://localhost");
+    const imgId = String(url.searchParams.get("img") || "").trim();
+    if (imgId) {
+      const file = await readProductImage(imgId);
+      if (!file) {
+        res.statusCode = 404;
+        res.end();
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", file.contentType || "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.end(file.buffer);
+      return;
+    }
     sendJson(res, 200, { ok: true, products: await readCustomProducts() });
     return;
   }

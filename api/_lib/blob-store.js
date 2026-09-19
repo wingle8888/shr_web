@@ -89,6 +89,29 @@ async function blobPutFile(pathname, buffer, contentType) {
   });
 }
 
+async function streamToBuffer(stream) {
+  if (!stream) return Buffer.alloc(0);
+  if (Buffer.isBuffer(stream)) return stream;
+  if (typeof stream === "string") return Buffer.from(stream);
+  const ab = await new Response(stream).arrayBuffer();
+  return Buffer.from(ab);
+}
+
+async function blobGetFile(pathname) {
+  if (!hasBlob()) return null;
+  try {
+    const { get } = require("@vercel/blob");
+    const result = await get(pathname, { access: "private", ...blobAuthOpts() });
+    if (!result || result.statusCode !== 200) return null;
+    return {
+      buffer: await streamToBuffer(result.stream),
+      contentType: (result.blob && result.blob.contentType) || "application/octet-stream",
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * 读 JSON：内存 → 本地/tmp → Blob，并用 merge 合并。
  */
@@ -129,6 +152,7 @@ module.exports = {
   blobGetJson,
   blobPutJson,
   blobPutFile,
+  blobGetFile,
   readJsonStore,
   writeJsonStore,
 };

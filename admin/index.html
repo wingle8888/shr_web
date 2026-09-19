@@ -125,8 +125,13 @@
               </div>
             </div>
             <div class="form-group">
-              <label for="prodImg">图片 URL</label>
-              <input type="text" id="prodImg" placeholder="/images/stm32.jpg 或 https://…">
+              <label for="prodImgFile">产品图片</label>
+              <input type="file" id="prodImgFile" accept="image/jpeg,image/png,image/webp,image/gif">
+              <img class="admin-img-preview" id="prodImgPreview" alt="预览" hidden>
+            </div>
+            <div class="form-group">
+              <label for="prodImg">或图片地址</label>
+              <input type="text" id="prodImg" placeholder="/images/stm32.jpg 或已上传图片">
             </div>
             <div class="form-group">
               <label for="prodDesc">一句话简介 *</label>
@@ -157,7 +162,7 @@
           <div class="admin-table-wrap">
             <table class="admin-table" id="productsTable">
               <thead>
-                <tr><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>来源</th><th>操作</th></tr>
+                <tr><th>图片</th><th>ID</th><th>名称</th><th>分类</th><th>价格</th><th>来源</th><th>操作</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -308,6 +313,6 @@
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919e"></script>
+  <script src="/admin/admin.js?v=20260919f"></script>
 </body>
 </html>

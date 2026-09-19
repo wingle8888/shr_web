@@ -272,7 +272,9 @@ function renderProductsTable() {
     ? list
         .map((p) => {
           const custom = p.source === "custom";
+          const img = p.img ? `<img class="admin-thumb" src="${escapeHtml(p.img)}" alt="">` : "";
           return `<tr>
+        <td>${img}</td>
         <td>${p.id}</td>
         <td>${escapeHtml(p.name)}</td>
         <td>${escapeHtml(p.category || p.categoryId || "")}</td>
@@ -289,7 +291,7 @@ function renderProductsTable() {
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="6" class="admin-empty">暂无产品</td></tr>`;
+    : `<tr><td colspan="7" class="admin-empty">暂无产品</td></tr>`;
 }
 
 function renderOrders() {
@@ -544,6 +546,11 @@ function resetProductForm() {
   $("productSubmitBtn").textContent = "上传产品";
   $("productStatus").textContent = "";
   $("productStatus").className = "admin-status";
+  const preview = $("prodImgPreview");
+  if (preview) {
+    preview.hidden = true;
+    preview.removeAttribute("src");
+  }
 }
 
 function fillProductForm(p) {
@@ -553,12 +560,47 @@ function fillProductForm(p) {
   $("prodCategory").value = p.categoryId || "cat-mcu";
   $("prodTag").value = p.tag || "";
   $("prodImg").value = p.img || "";
+  const preview = $("prodImgPreview");
+  if (preview) {
+    if (p.img) {
+      preview.src = p.img;
+      preview.hidden = false;
+    } else {
+      preview.hidden = true;
+      preview.removeAttribute("src");
+    }
+  }
   $("prodDesc").value = p.desc || "";
   $("prodIntro").value = p.intro || "";
   $("prodFeatures").value = (p.features || []).join("\n");
   $("prodPackage").value = (p.package || []).join("\n");
   $("productSubmitBtn").textContent = "保存修改";
   switchTab("products");
+}
+
+function fileToCompressedDataUrl(file, maxW = 900, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxW / Math.max(image.width, 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image read failed"));
+    };
+    image.src = url;
+  });
 }
 
 function fileToBase64(file) {
@@ -688,12 +730,38 @@ $("refreshDocs").addEventListener("click", () => refreshList().catch((e) => aler
 
 $("productResetBtn").addEventListener("click", resetProductForm);
 
+const prodImgFile = $("prodImgFile");
+if (prodImgFile) {
+  prodImgFile.addEventListener("change", () => {
+    const file = prodImgFile.files && prodImgFile.files[0];
+    const preview = $("prodImgPreview");
+    if (!preview) return;
+    if (!file) {
+      preview.hidden = true;
+      return;
+    }
+    preview.src = URL.createObjectURL(file);
+    preview.hidden = false;
+  });
+}
+
 $("productForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = $("productStatus");
   status.textContent = "保存中…";
   status.className = "admin-status";
   const editId = $("editProductId").value.trim();
+  const file = $("prodImgFile") && $("prodImgFile").files ? $("prodImgFile").files[0] : null;
+  let imageBase64 = "";
+  if (file) {
+    try {
+      imageBase64 = await fileToCompressedDataUrl(file);
+    } catch (err) {
+      status.textContent = "图片读取失败：" + err.message;
+      status.className = "admin-status error";
+      return;
+    }
+  }
   const payload = {
     action: editId ? "update" : "create",
     id: editId || undefined,
@@ -702,6 +770,8 @@ $("productForm").addEventListener("submit", async (e) => {
     categoryId: $("prodCategory").value,
     tag: $("prodTag").value.trim(),
     img: $("prodImg").value.trim(),
+    imageBase64,
+    imageType: "image/jpeg",
     desc: $("prodDesc").value.trim(),
     intro: $("prodIntro").value.trim(),
     featuresText: $("prodFeatures").value,

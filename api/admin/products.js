@@ -4,6 +4,7 @@ const {
   readCustomProducts,
   writeCustomProducts,
   normalizeProduct,
+  saveProductImage,
 } = require("../_lib/products-store");
 
 module.exports = async function handler(req, res) {
@@ -62,9 +63,12 @@ module.exports = async function handler(req, res) {
           return;
         }
         const updated = normalizeProduct(
-          { ...list[idx], ...body, createdAt: list[idx].createdAt },
+          { ...list[idx], ...body, createdAt: list[idx].createdAt, img: body.img || list[idx].img },
           { id: list[idx].id }
         );
+        if (body.imageBase64) {
+          updated.img = await saveProductImage(updated.id, body.imageBase64, body.imageType);
+        }
         list[idx] = updated;
         await writeCustomProducts(list);
         sendJson(res, 200, { ok: true, product: updated });
@@ -74,6 +78,9 @@ module.exports = async function handler(req, res) {
       const existingIds = list.map((p) => p.id);
       if (Array.isArray(body.seedIds)) existingIds.push(...body.seedIds);
       const product = normalizeProduct(body, { existingIds });
+      if (body.imageBase64) {
+        product.img = await saveProductImage(product.id, body.imageBase64, body.imageType);
+      }
       list.unshift(product);
       await writeCustomProducts(list);
       sendJson(res, 200, { ok: true, product });
