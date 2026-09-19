@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260919l">
+  <link rel="stylesheet" href="/css/style.css?v=20260919m">
 </head>
 <body data-i18n-title="siteTitle">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -341,7 +341,7 @@
 
   <div class="chat-widget" id="chatWidget">
     <div class="chat-panel" id="chatPanel" hidden>
-      <div class="chat-header">
+      <div class="chat-header" id="chatHeader">
         <div class="chat-agent">
           <div class="chat-avatar-wrap">
             <div class="chat-avatar">客</div>
@@ -352,7 +352,11 @@
             <div class="chat-agent-status" id="chatAgentStatus">离线</div>
           </div>
         </div>
-        <button class="chat-close" id="chatClose" type="button" aria-label="Close">&times;</button>
+        <div class="chat-window-actions">
+          <button class="chat-win-btn" id="chatMin" type="button" title="最小化" aria-label="最小化">—</button>
+          <button class="chat-win-btn" id="chatMax" type="button" title="最大化" aria-label="最大化">□</button>
+          <button class="chat-win-btn chat-close" id="chatClose" type="button" title="关闭" aria-label="关闭">&times;</button>
+        </div>
       </div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-quick" id="chatQuick">
@@ -365,16 +369,29 @@
         <input type="text" id="chatInput" data-i18n-placeholder="chatPlaceholder" placeholder="输入消息..." autocomplete="off" maxlength="500" required>
         <button type="submit" class="chat-send" data-i18n="send" data-i18n-aria="send">发送</button>
       </form>
+      <span class="chat-resize n" data-resize="n"></span>
+      <span class="chat-resize s" data-resize="s"></span>
+      <span class="chat-resize e" data-resize="e"></span>
+      <span class="chat-resize w" data-resize="w"></span>
+      <span class="chat-resize ne" data-resize="ne"></span>
+      <span class="chat-resize nw" data-resize="nw"></span>
+      <span class="chat-resize se" data-resize="se"></span>
+      <span class="chat-resize sw" data-resize="sw"></span>
     </div>
+    <button class="chat-mini-bar" id="chatMiniBar" type="button" hidden>
+      <span class="presence-dot" id="chatMiniDot" aria-hidden="true"></span>
+      <span data-i18n="chatName">开发板商城客服</span>
+    </button>
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/js/i18n.js?v=20260919l"></script>
+  <script src="/js/i18n.js?v=20260919m"></script>
   <script src="/js/auth.js?v=20260919k"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
   <script src="/js/products-en.js"></script>
   <script src="/js/products-loader.js?v=20260919j"></script>
-  <script src="/js/app.js?v=20260919n"></script>
+  <script src="/js/app.js?v=20260919o"></script>
+  <script src="/js/chat.js?v=20260919a"></script>
   <script src="/js/analytics.js?v=20260919e"></script>
 </body>
 </html>

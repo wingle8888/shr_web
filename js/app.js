@@ -8,7 +8,6 @@ const CATEGORY_ORDER = [
 
 const CART_KEY = "shr_cart";
 const ORDERS_KEY = "shr_orders";
-const CHAT_STORAGE_KEY = "shr_chat_messages";
 
 let products = window.PRODUCTS || [];
 let cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
@@ -319,6 +318,7 @@ function openLookup() {
   document.getElementById("lookupResult").innerHTML = "";
   openModal("lookupModal");
 }
+window.openLookup = openLookup;
 
 async function handleLookup(e) {
   e.preventDefault();
@@ -427,7 +427,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateCartBadge();
   initNav();
   initSearchAndFilter();
-  initChat();
 
   if (window.Auth) {
     window.Auth.initAuthUI({
@@ -454,6 +453,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("lookupForm").addEventListener("submit", handleLookup);
 
   ["cartModal", "checkoutModal", "successModal", "lookupModal"].forEach(bindModalDismiss);
+
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin) return;
+    if (e.data && e.data.type === "shr-open-lookup") openLookup();
+  });
 });
 
 function initLangSwitch() {
@@ -470,266 +474,10 @@ function initLangSwitch() {
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();
-      updateSellerPresence(lastSellerOnline);
-      if (loadChatHistory().length) renderChatMessages(loadChatHistory());
     });
   });
 }
 
 function refreshChatWelcome() {
-  const messages = loadChatHistory();
-  if (messages.length <= 1) {
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-    renderChatHistory();
-  }
-}
-
-/* ---------- 在线客服 ---------- */
-function formatChatTime(date = new Date()) {
-  const locale = window.I18N?.getLang() === "en" ? "en-US" : "zh-CN";
-  return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
-}
-
-function chatVisitorId() {
-  try {
-    let id = localStorage.getItem("shr_visitor_id");
-    if (!id) {
-      id = "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-      localStorage.setItem("shr_visitor_id", id);
-    }
-    return id;
-  } catch {
-    return "anon";
-  }
-}
-
-function loadChatHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveChatHistory(messages) {
-  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-40)));
-}
-
-function appendChatBubble(role, text, time) {
-  const box = document.getElementById("chatMessages");
-  const el = document.createElement("div");
-  el.className = `chat-bubble ${role === "admin" ? "admin" : role}`;
-  const label =
-    role === "admin"
-      ? `<div class="chat-bubble-label">${escapeHtml(
-          lastSellerOnline ? chatText("chatSellerOnline", "卖家 · 在线") : chatText("chatSellerOffline", "卖家 · 离线")
-        )}</div>`
-      : "";
-  el.innerHTML = `${label}${escapeHtml(text)}<div class="chat-time">${time || formatChatTime()}</div>`;
-  box.appendChild(el);
-  box.scrollTop = box.scrollHeight;
-}
-
-function messageTime(item) {
-  if (item.time) return item.time;
-  if (item.createdAt) {
-    try {
-      return formatChatTime(new Date(item.createdAt));
-    } catch (_) {}
-  }
-  return formatChatTime();
-}
-
-function renderChatMessages(messages) {
-  const box = document.getElementById("chatMessages");
-  box.innerHTML = "";
-  messages.forEach((m) => appendChatBubble(m.role, m.text, messageTime(m)));
-}
-
-function pushMessage(role, text) {
-  const messages = loadChatHistory();
-  const item = { role, text, time: formatChatTime() };
-  messages.push(item);
-  saveChatHistory(messages);
-  appendChatBubble(role, text, item.time);
-}
-
-function chatIdentity() {
-  const user = window.Auth && window.Auth.currentUser ? window.Auth.currentUser() : null;
-  return {
-    visitorId: chatVisitorId(),
-    member: Boolean(user && (user.id || user.email)),
-    userId: user && user.id ? String(user.id) : "",
-    name: user && user.name ? String(user.name) : "",
-    email: user && user.email ? String(user.email) : "",
-  };
-}
-
-let lastSellerOnline = false;
-
-function chatText(key, fallback) {
-  return (window.I18N && window.I18N.t ? window.I18N.t(key) : "") || fallback;
-}
-
-function updateSellerPresence(online) {
-  lastSellerOnline = Boolean(online);
-  const status = document.getElementById("chatAgentStatus");
-  const dot = document.getElementById("chatSellerDot");
-  if (status) {
-    status.textContent = lastSellerOnline ? chatText("chatOnline", "在线") : chatText("chatOffline", "离线");
-    status.classList.toggle("is-online", lastSellerOnline);
-  }
-  if (dot) {
-    dot.classList.toggle("is-online", lastSellerOnline);
-  }
-}
-
-function chatPanelOpen() {
-  const panel = document.getElementById("chatPanel");
-  return Boolean(panel && !panel.hidden && !document.hidden);
-}
-
-async function fetchChatThread() {
-  const { visitorId } = chatIdentity();
-  const presence = chatPanelOpen() ? "1" : "0";
-  const res = await fetch(
-    "/api/chat?visitorId=" + encodeURIComponent(visitorId) + "&presence=" + presence,
-    { cache: "no-store" }
-  );
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) return null;
-  updateSellerPresence(data.sellerOnline);
-  return data.conversation || null;
-}
-
-function applyServerMessages(conversation) {
-  const messages = ((conversation && conversation.messages) || []).map((m) => ({
-    role: m.role,
-    text: m.text,
-    time: messageTime(m),
-    createdAt: m.createdAt,
-  }));
-  if (!messages.length) return false;
-  saveChatHistory(messages);
-  renderChatMessages(messages);
-  return true;
-}
-
-async function syncChatFromServer() {
-  try {
-    const conversation = await fetchChatThread();
-    if (conversation && applyServerMessages(conversation)) return true;
-  } catch (_) {}
-  return false;
-}
-
-function renderChatHistory() {
-  const messages = loadChatHistory();
-  if (messages.length === 0) {
-    const box = document.getElementById("chatMessages");
-    box.innerHTML = "";
-    pushMessage("bot", t("welcome"));
-    return;
-  }
-  renderChatMessages(messages);
-}
-
-async function sendChatToServer(text) {
-  const ident = chatIdentity();
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      visitorId: ident.visitorId,
-      text,
-      name: ident.name,
-      email: ident.email,
-      member: ident.member,
-      userId: ident.userId,
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || "send failed");
-  updateSellerPresence(data.sellerOnline);
-  applyServerMessages(data.conversation);
-}
-
-function openChat() {
-  document.getElementById("chatPanel").hidden = false;
-  document.getElementById("chatUnread").style.display = "none";
-  document.getElementById("chatInput").focus();
-  const box = document.getElementById("chatMessages");
-  box.scrollTop = box.scrollHeight;
-  syncChatFromServer().catch(() => {});
-  startCustomerChatPoll();
-}
-
-function closeChat() {
-  document.getElementById("chatPanel").hidden = true;
-  stopCustomerChatPoll();
-}
-
-function handleChatSend(text) {
-  const msg = text.trim();
-  if (!msg) return;
-  pushMessage("user", msg);
-  sendChatToServer(msg).catch(() => {});
-}
-
-let customerChatTimer = null;
-
-function startCustomerChatPoll() {
-  if (customerChatTimer) return;
-  customerChatTimer = setInterval(() => {
-    const panel = document.getElementById("chatPanel");
-    if (!panel || panel.hidden || document.hidden) return;
-    syncChatFromServer().catch(() => {});
-  }, 4000);
-}
-
-function stopCustomerChatPoll() {
-  if (!customerChatTimer) return;
-  clearInterval(customerChatTimer);
-  customerChatTimer = null;
-}
-
-function initChat() {
-  const launcher = document.getElementById("chatLauncher");
-  const form = document.getElementById("chatForm");
-  const input = document.getElementById("chatInput");
-  const unread = document.getElementById("chatUnread");
-
-  renderChatHistory();
-  updateSellerPresence(false);
-  if (loadChatHistory().length <= 1) unread.style.display = "inline-flex";
-  syncChatFromServer()
-    .then((ok) => {
-      if (ok) unread.style.display = "inline-flex";
-    })
-    .catch(() => {});
-
-  document.addEventListener("visibilitychange", () => {
-    if (chatPanelOpen()) syncChatFromServer().catch(() => {});
-  });
-
-  launcher.addEventListener("click", () => {
-    const panel = document.getElementById("chatPanel");
-    if (panel.hidden) openChat();
-    else closeChat();
-  });
-  document.getElementById("chatClose").addEventListener("click", closeChat);
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    handleChatSend(input.value);
-    input.value = "";
-  });
-  document.getElementById("chatQuick").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-q]");
-    if (!btn) return;
-    if (btn.dataset.q === "order") {
-      openLookup();
-      return;
-    }
-    handleChatSend(btn.dataset.q);
-  });
+  if (window.SHRChat && window.SHRChat.onLangChange) window.SHRChat.onLangChange();
 }

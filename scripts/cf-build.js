@@ -3,7 +3,7 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const OUT = path.join(ROOT, "dist-assets");
-const FILES = ["index.html", "product.html", "favicon.ico", "_headers"];
+const FILES = ["index.html", "product.html", "chat.html", "favicon.ico", "_headers"];
 const DIRS = ["css", "js", "images", "admin", "client", "downloads"];
 
 function copyFile(src, dest) {

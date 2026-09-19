@@ -23,12 +23,14 @@ module.exports = async function handler(req, res) {
     try {
       const url = new URL(req.url, "http://localhost");
       const wantPresence = String(url.searchParams.get("presence") || "") === "1";
+      const peek = String(url.searchParams.get("peek") || "") === "1";
       const presence = wantPresence
         ? await touchPresence({ role: "user", visitorId })
         : await readPresence();
       const flags = presenceFlags(presence, visitorId);
       const thread = await getThread(visitorId);
-      if (thread && Number(thread.unreadCustomer) > 0) {
+      const unreadCustomer = Number(thread && thread.unreadCustomer) || 0;
+      if (!peek && thread && unreadCustomer > 0) {
         await markRead(visitorId, "customer");
         thread.unreadCustomer = 0;
       }
@@ -36,6 +38,7 @@ module.exports = async function handler(req, res) {
         ok: true,
         sellerOnline: flags.sellerOnline,
         customerOnline: flags.customerOnline,
+        unreadCustomer: peek ? unreadCustomer : 0,
         conversation: thread
           ? {
               id: thread.id,
