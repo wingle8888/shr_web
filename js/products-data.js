@@ -5,7 +5,8 @@ window.PRODUCTS = [
     desc: "480MHz Cortex-M7，1MB Flash，外置 SDRAM，适合高性能嵌入式应用",
     price: 189,
     tag: "热卖",
-    category: "开发板",
+    category: "MCU 开发板",
+    categoryId: "cat-mcu",
     img: "/images/stm32.jpg",
     intro:
       "基于 ST 官方 STM32H750VBT6 的高性能 MCU 开发板，主频可达 480MHz，片内 1MB Flash、562KB SRAM，板载外扩 SDRAM，适合 GUI、音频、工业控制与实时算法验证。提供完整原理图、原理图封装与示例工程，开箱即可调试。",
@@ -43,7 +44,8 @@ window.PRODUCTS = [
     desc: "WiFi + BLE 5.0，双核 240MHz，内置 AI 加速，IoT 首选",
     price: 68,
     tag: "推荐",
-    category: "开发板",
+    category: "无线 IoT",
+    categoryId: "cat-iot",
     img: "/images/esp32.jpg",
     intro:
       "乐鑫 ESP32-S3 双核 Xtensa LX7 开发套件，集成 2.4GHz Wi‑Fi 与 Bluetooth LE 5，片内向量指令适合轻量 AI 推理与语音唤醒。板载 USB 原生下载、RGB LED 与扩展排针，兼容 Arduino / ESP-IDF / MicroPython。",
@@ -81,7 +83,8 @@ window.PRODUCTS = [
     desc: "博通 BCM2712 四核 2.4GHz，8GB RAM，PCIe 2.0 接口",
     price: 599,
     tag: "新品",
-    category: "单板机",
+    category: "单板计算机",
+    categoryId: "cat-sbc",
     img: "/images/rpi5.jpg",
     intro:
       "树莓派 5 采用 Broadcom BCM2712 四核 Cortex-A76 @ 2.4GHz，可选 8GB LPDDR4X 内存，新增 PCIe 2.0 接口可外接 NVMe SSD。双 4K 显示、千兆网口与更快的 USB 3.0，适合桌面 Linux、边缘计算与机器人主控。",
@@ -119,7 +122,8 @@ window.PRODUCTS = [
     desc: "4.3 寸 IPS 电容屏 + STM32F429，预装 LVGL 图形库 Demo",
     price: 258,
     tag: "套装",
-    category: "套件",
+    category: "显示套件",
+    categoryId: "cat-display",
     img: "/images/lvgl.jpg",
     intro:
       "4.3 寸 IPS 电容触摸屏与 STM32F429 核心板组合套件，出厂预烧录 LVGL Demo，适合人机界面（HMI）、仪表盘与嵌入式 UI 学习。提供触摸校准、控件示例与字体工程模板。",
@@ -158,6 +162,7 @@ window.PRODUCTS = [
     price: 12,
     tag: "传感器",
     category: "传感器",
+    categoryId: "cat-sensor",
     img: "/images/mpu6050.jpg",
     intro:
       "基于 InvenSense MPU-6050 的六轴运动传感器模块，集成三轴陀螺仪与三轴加速度计，I2C 数字输出。常用于平衡车、姿态解算、手势识别与无人机飞控入门实验。",
@@ -194,7 +199,8 @@ window.PRODUCTS = [
     desc: "Renesas RA4M1 芯片，内置 WiFi，兼容 Arduino 生态",
     price: 145,
     tag: "入门",
-    category: "开发板",
+    category: "MCU 开发板",
+    categoryId: "cat-mcu",
     img: "/images/arduino.jpg",
     intro:
       "Arduino UNO R4 WiFi 采用 Renesas RA4M1（Cortex-M4）与 ESP32-S3 协处理器，在保留经典 UNO 外形与 5V 逻辑的同时提供 Wi‑Fi / 蓝牙。兼容大量现有 Arduino 盾板与教程，适合教学与快速原型。",

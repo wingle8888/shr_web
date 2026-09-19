@@ -50,9 +50,13 @@
     <nav id="mainNav">
       <a href="#home" class="active">首页</a>
       <a href="#products">全部商品</a>
+      <a href="#cat-mcu">MCU 开发板</a>
+      <a href="#cat-iot">无线 IoT</a>
+      <a href="#cat-sbc">单板计算机</a>
+      <a href="#cat-display">显示套件</a>
+      <a href="#cat-sensor">传感器</a>
       <a href="#services">服务保障</a>
       <a href="#orders-help">售后说明</a>
-      <a href="#contact">联系我们</a>
     </nav>
   </header>
 
@@ -66,10 +70,10 @@
         <button class="btn" id="heroBtn" type="button">浏览商品</button>
       </div>
       <div class="banner-side">
-        <div class="side-card"><span class="side-icon">01</span>正品保障</div>
-        <div class="side-card"><span class="side-icon">02</span>国际支付</div>
-        <div class="side-card"><span class="side-icon">03</span>快速发货</div>
-        <div class="side-card"><span class="side-icon">04</span>技术支持</div>
+        <a class="side-card" href="#cat-mcu"><span class="side-icon">01</span>MCU 开发板</a>
+        <a class="side-card" href="#cat-iot"><span class="side-icon">02</span>无线 IoT</a>
+        <a class="side-card" href="#cat-sbc"><span class="side-icon">03</span>单板计算机</a>
+        <a class="side-card" href="#cat-sensor"><span class="side-icon">04</span>传感器模块</a>
       </div>
     </div>
   </section>
@@ -77,16 +81,18 @@
   <section id="products" class="products-section">
     <div class="container">
       <div class="section-bar">
-        <h2>全部商品</h2>
+        <h2>商品分类</h2>
         <div class="category-tabs" id="categoryTabs">
           <button type="button" class="active" data-cat="all">全部</button>
-          <button type="button" data-cat="开发板">开发板</button>
-          <button type="button" data-cat="套件">套件</button>
+          <button type="button" data-cat="MCU 开发板">MCU 开发板</button>
+          <button type="button" data-cat="无线 IoT">无线 IoT</button>
+          <button type="button" data-cat="单板计算机">单板计算机</button>
+          <button type="button" data-cat="显示套件">显示套件</button>
           <button type="button" data-cat="传感器">传感器</button>
-          <button type="button" data-cat="单板机">单板机</button>
         </div>
       </div>
-      <div class="products-grid" id="productsGrid"></div>
+      <div id="categorySections"></div>
+      <div class="products-grid" id="productsGrid" hidden></div>
     </div>
   </section>
 
@@ -112,65 +118,12 @@
     </div>
   </section>
 
-  <section id="contact">
-    <div class="container">
-      <h2 class="section-title">联系我们</h2>
-      <p class="section-subtitle">批量采购、技术方案或订单售后咨询</p>
-      <div class="contact-grid">
-        <div class="contact-info">
-          <div class="contact-item">
-            <span class="icon">💬</span>
-            <div>
-              <h4>微信咨询</h4>
-              <p>shr_tech（请替换为您的微信号）</p>
-            </div>
-          </div>
-          <div class="contact-item">
-            <span class="icon">📧</span>
-            <div>
-              <h4>电子邮箱</h4>
-              <p>sales@shrtech.com</p>
-            </div>
-          </div>
-          <div class="contact-item">
-            <span class="icon">📞</span>
-            <div>
-              <h4>电话咨询</h4>
-              <p>400-XXX-XXXX</p>
-            </div>
-          </div>
-          <div class="contact-item">
-            <span class="icon">📍</span>
-            <div>
-              <h4>公司地址</h4>
-              <p>深圳市南山区科技园</p>
-            </div>
-          </div>
-        </div>
-        <form class="contact-form" id="contactForm">
-          <div class="form-group">
-            <label for="formName">您的姓名</label>
-            <input type="text" id="formName" placeholder="请输入姓名" required>
-          </div>
-          <div class="form-group">
-            <label for="formPhone">联系电话</label>
-            <input type="tel" id="formPhone" placeholder="请输入电话">
-          </div>
-          <div class="form-group">
-            <label for="formMessage">留言内容</label>
-            <textarea id="formMessage" placeholder="产品型号、数量或售后订单号" required></textarea>
-          </div>
-          <button type="submit" class="btn" style="width:100%">提交咨询</button>
-        </form>
-      </div>
-    </div>
-  </section>
-
   <footer>
     <div class="footer-links">
       <a href="#products">全部商品</a>
+      <a href="#cat-mcu">MCU 开发板</a>
+      <a href="#cat-iot">无线 IoT</a>
       <a href="#orders-help">购买说明</a>
-      <a href="#contact">联系我们</a>
       <button type="button" class="link-btn" id="footerOrderBtn">订单查询</button>
     </div>
     <p class="footer-payments">国际支付：PayPal · Visa / Mastercard · Apple Pay · Google Pay</p>

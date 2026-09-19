@@ -1,5 +1,13 @@
 const products = window.PRODUCTS || [];
 
+const CATEGORY_ORDER = [
+  { id: "cat-mcu", name: "MCU 开发板", desc: "STM32 / Arduino 等高性能与入门 MCU 板卡" },
+  { id: "cat-iot", name: "无线 IoT", desc: "Wi‑Fi / BLE 物联网模组与开发套件" },
+  { id: "cat-sbc", name: "单板计算机", desc: "Raspberry Pi 等 Linux 单板机" },
+  { id: "cat-display", name: "显示套件", desc: "触摸屏与 LVGL 人机界面方案" },
+  { id: "cat-sensor", name: "传感器", desc: "姿态、环境等传感器模块" },
+];
+
 const CART_KEY = "shr_cart";
 const ORDERS_KEY = "shr_orders";
 const CHAT_STORAGE_KEY = "shr_chat_messages";
@@ -51,16 +59,8 @@ function getFilteredProducts() {
   });
 }
 
-function renderProducts() {
-  const grid = document.getElementById("productsGrid");
-  const list = getFilteredProducts();
-  if (list.length === 0) {
-    grid.innerHTML = '<div class="empty-products">未找到相关商品，请换个关键词试试</div>';
-    return;
-  }
-  grid.innerHTML = list
-    .map(
-      (p) => `
+function productCardHtml(p) {
+  return `
     <div class="card">
       <a class="card-link" href="/product.html?id=${p.id}">
         <div class="card-img-wrap">
@@ -77,9 +77,47 @@ function renderProducts() {
         <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">加入购物车</button>
       </div>
     </div>
-  `
-    )
-    .join("");
+  `;
+}
+
+function renderProducts() {
+  const sectionsEl = document.getElementById("categorySections");
+  const grid = document.getElementById("productsGrid");
+  const list = getFilteredProducts();
+
+  if (currentCategory === "all" && !searchKeyword.trim()) {
+    grid.hidden = true;
+    grid.innerHTML = "";
+    sectionsEl.hidden = false;
+    sectionsEl.innerHTML = CATEGORY_ORDER.map((cat) => {
+      const items = products.filter((p) => p.category === cat.name);
+      if (items.length === 0) return "";
+      return `
+        <div class="category-block" id="${cat.id}">
+          <div class="category-head">
+            <div>
+              <h3>${escapeHtml(cat.name)}</h3>
+              <p>${escapeHtml(cat.desc)}</p>
+            </div>
+            <span class="category-count">${items.length} 款</span>
+          </div>
+          <div class="products-grid">
+            ${items.map(productCardHtml).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+    return;
+  }
+
+  sectionsEl.hidden = true;
+  sectionsEl.innerHTML = "";
+  grid.hidden = false;
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty-products">未找到相关商品，请换个关键词试试</div>';
+    return;
+  }
+  grid.innerHTML = list.map(productCardHtml).join("");
 }
 
 function addToCart(id) {
@@ -319,9 +357,6 @@ async function handleLookup(e) {
 
 function handleContactSubmit(e) {
   e.preventDefault();
-  const name = document.getElementById("formName").value.trim();
-  showToast(`感谢 ${name || "您"} 的留言，我们会尽快回复！`);
-  e.target.reset();
 }
 
 function initNav() {
@@ -353,6 +388,9 @@ function initSearchAndFilter() {
     btn.classList.add("active");
     currentCategory = btn.dataset.cat;
     renderProducts();
+    if (currentCategory !== "all") {
+      document.getElementById("products").scrollIntoView({ behavior: "smooth" });
+    }
   });
 }
 
@@ -369,7 +407,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initSearchAndFilter();
   initChat();
 
-  document.getElementById("contactForm").addEventListener("submit", handleContactSubmit);
   document.getElementById("heroBtn").addEventListener("click", () => {
     document.getElementById("products").scrollIntoView({ behavior: "smooth" });
   });
@@ -434,7 +471,7 @@ function getBotReply(text) {
     return "本商城无需注册，游客填写收货信息即可购买；订单号+手机号可查询记录。";
   }
   if (/人工|微信|电话|客服/.test(t)) {
-    return "可添加微信 shr_tech，或发邮件 sales@shrtech.com，也可在「联系我们」留言。";
+    return "可通过顶部在线客服咨询，或添加微信 shr_tech / 邮件 sales@shrtech.com。";
   }
   if (/你好|您好|hi|hello/.test(t)) {
     return "您好！想选哪款开发板？也可以直接告诉我项目需求。";
