@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
       sendJson(res, 401, { ok: false, error: "unauthorized" });
       return;
     }
-    sendJson(res, 200, { ok: true, downloads: readManifest() });
+    sendJson(res, 200, { ok: true, downloads: await readManifest() });
     return;
   }
 
@@ -44,7 +44,7 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const manifest = readManifest();
+    const manifest = await readManifest();
     const list = Array.isArray(manifest[productId]) ? manifest[productId] : [];
     const next = list.filter((x) => x.id !== fileId);
     if (next.length === list.length) {
@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
       return;
     }
     manifest[productId] = next;
-    writeManifest(manifest);
+    await writeManifest(manifest);
     sendJson(res, 200, { ok: true });
     return;
   }

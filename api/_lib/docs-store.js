@@ -1,10 +1,12 @@
 const fs = require("fs");
 const path = require("path");
+const { readJsonStore, writeJsonStore } = require("./blob-store");
 
 const ROOT = process.cwd();
 const MANIFEST_PATH = path.join(ROOT, "data", "downloads-manifest.json");
 const TMP_MANIFEST = path.join("/tmp", "shr-downloads-manifest.json");
 const UPLOAD_DIR = path.join(ROOT, "downloads", "uploads");
+const BLOB_PATH = "shr-admin/downloads-manifest.json";
 
 const ALLOWED_EXT = [".zip", ".rar", ".7z"];
 
@@ -28,6 +30,20 @@ function checkAdmin(req) {
   return fromHeader === expected || bodyPass === expected;
 }
 
+function mergeManifest(a, b) {
+  const left = a && typeof a === "object" && !Array.isArray(a) ? a : {};
+  const right = b && typeof b === "object" && !Array.isArray(b) ? b : {};
+  const out = { ...left };
+  Object.keys(right).forEach((pid) => {
+    const map = new Map();
+    [...(Array.isArray(out[pid]) ? out[pid] : []), ...(Array.isArray(right[pid]) ? right[pid] : [])].forEach((f) => {
+      if (f && f.id) map.set(String(f.id), f);
+    });
+    out[pid] = Array.from(map.values());
+  });
+  return out;
+}
+
 function readSeedManifest() {
   try {
     return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
@@ -36,26 +52,24 @@ function readSeedManifest() {
   }
 }
 
-function readManifest() {
-  try {
-    if (fs.existsSync(TMP_MANIFEST)) {
-      return JSON.parse(fs.readFileSync(TMP_MANIFEST, "utf8"));
-    }
-  } catch (_) {}
-  return readSeedManifest();
+async function readManifest() {
+  const data = await readJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_MANIFEST, MANIFEST_PATH],
+    empty: readSeedManifest(),
+    merge: mergeManifest,
+  });
+  return data && typeof data === "object" ? data : {};
 }
 
-function writeManifest(data) {
-  const text = JSON.stringify(data, null, 2);
-  try {
-    fs.mkdirSync(path.dirname(MANIFEST_PATH), { recursive: true });
-    fs.writeFileSync(MANIFEST_PATH, text);
-  } catch (_) {
-    /* Vercel 只读文件系统时写到 /tmp */
-  }
-  try {
-    fs.writeFileSync(TMP_MANIFEST, text);
-  } catch (_) {}
+async function writeManifest(data) {
+  const payload = mergeManifest({}, data);
+  await writeJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_MANIFEST, MANIFEST_PATH],
+    data: payload,
+  });
+  return payload;
 }
 
 function extOf(name) {

@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
 
   const url = new URL(req.url, "http://localhost");
   const productId = String(url.searchParams.get("productId") || "").trim();
-  const manifest = readManifest();
+  const manifest = await readManifest();
 
   if (!productId) {
     sendJson(res, 200, { ok: true, downloads: manifest });

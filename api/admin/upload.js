@@ -14,6 +14,7 @@ const {
   UPLOAD_DIR,
   parseBody,
 } = require("../_lib/docs-store");
+const { hasBlob, blobPutFile, isVercel } = require("../_lib/blob-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -70,31 +71,22 @@ module.exports = async function handler(req, res) {
   const storedName = `${productId}_${id}${ext}`;
   let fileUrl = "";
 
-  const blobToken = String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
-  const blobReady = Boolean(blobToken || process.env.BLOB_STORE_ID);
+  const blobReady = hasBlob();
   if (blobReady) {
     try {
-      const { put } = require("@vercel/blob");
-      const auth = blobToken ? { token: blobToken } : {};
-      let blob;
-      try {
-        blob = await put(`product-docs/${storedName}`, buffer, {
-          access: "private",
-          contentType: "application/octet-stream",
-          ...auth,
-        });
-      } catch (_) {
-        blob = await put(`product-docs/${storedName}`, buffer, {
-          access: "public",
-          contentType: "application/octet-stream",
-          ...auth,
-        });
-      }
-      fileUrl = blob.url;
+      const blob = await blobPutFile(`product-docs/${storedName}`, buffer, "application/octet-stream");
+      fileUrl = blob && blob.url ? blob.url : "";
     } catch (err) {
       sendJson(res, 500, { ok: false, error: "blob upload failed", detail: String(err.message || err) });
       return;
     }
+  } else if (isVercel()) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "server storage not configured",
+      detail: "请确认 Vercel Blob 已关联本项目",
+    });
+    return;
   } else {
     try {
       ensureUploadDir();
@@ -122,10 +114,10 @@ module.exports = async function handler(req, res) {
     uploadedAt: new Date().toISOString(),
   };
 
-  const manifest = readManifest();
+  const manifest = await readManifest();
   if (!Array.isArray(manifest[productId])) manifest[productId] = [];
   manifest[productId].unshift(item);
-  writeManifest(manifest);
+  await writeManifest(manifest);
 
   sendJson(res, 200, { ok: true, item, note: blobReady ? "blob" : "local" });
 };

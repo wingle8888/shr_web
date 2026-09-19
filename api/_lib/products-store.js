@@ -1,8 +1,9 @@
-const fs = require("fs");
 const path = require("path");
+const { readJsonStore, writeJsonStore } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "products-custom.json");
 const TMP_FILE = path.join("/tmp", "shr-products-custom.json");
+const BLOB_PATH = "shr-admin/products-db.json";
 
 const CATEGORIES = [
   { id: "cat-mcu", name: "MCU 开发板" },
@@ -12,26 +13,40 @@ const CATEGORIES = [
   { id: "cat-sensor", name: "传感器" },
 ];
 
-function readCustomProducts() {
-  try {
-    if (fs.existsSync(TMP_FILE)) return JSON.parse(fs.readFileSync(TMP_FILE, "utf8"));
-  } catch (_) {}
-  try {
-    if (fs.existsSync(DATA_FILE)) return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-  } catch (_) {}
-  return [];
+function mergeProducts(a, b) {
+  const map = new Map();
+  [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach((p) => {
+    if (!p || p.id == null) return;
+    const key = String(p.id);
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, p);
+      return;
+    }
+    const prevT = String(prev.updatedAt || prev.createdAt || "");
+    const nextT = String(p.updatedAt || p.createdAt || "");
+    map.set(key, nextT >= prevT ? { ...prev, ...p } : { ...p, ...prev });
+  });
+  return Array.from(map.values()).sort((x, y) => Number(y.id) - Number(x.id));
 }
 
-function writeCustomProducts(list) {
-  const products = Array.isArray(list) ? list : [];
-  const text = JSON.stringify(products, null, 2);
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, text);
-  } catch (_) {}
-  try {
-    fs.writeFileSync(TMP_FILE, text);
-  } catch (_) {}
+async function readCustomProducts() {
+  const list = await readJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    empty: [],
+    merge: mergeProducts,
+  });
+  return Array.isArray(list) ? list : [];
+}
+
+async function writeCustomProducts(list) {
+  const products = mergeProducts([], list);
+  await writeJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    data: products,
+  });
   return products;
 }
 

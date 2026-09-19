@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    sendJson(res, 200, { ok: true, products: readCustomProducts() });
+    sendJson(res, 200, { ok: true, products: await readCustomProducts() });
     return;
   }
 

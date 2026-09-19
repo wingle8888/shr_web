@@ -1,29 +1,46 @@
-const fs = require("fs");
 const path = require("path");
+const { readJsonStore, writeJsonStore } = require("./blob-store");
 
 const DATA_FILE = path.join(process.cwd(), "data", "orders.json");
 const TMP_FILE = path.join("/tmp", "shr-orders.json");
+const BLOB_PATH = "shr-admin/orders-db.json";
 
-function readOrders() {
-  try {
-    if (fs.existsSync(TMP_FILE)) return JSON.parse(fs.readFileSync(TMP_FILE, "utf8"));
-  } catch (_) {}
-  try {
-    if (fs.existsSync(DATA_FILE)) return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-  } catch (_) {}
-  return [];
+function mergeOrders(a, b) {
+  const map = new Map();
+  [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach((o) => {
+    if (!o || !o.id) return;
+    const key = String(o.id);
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, o);
+      return;
+    }
+    const prevT = String(prev.updatedAt || prev.createdAt || "");
+    const nextT = String(o.updatedAt || o.createdAt || "");
+    map.set(key, nextT >= prevT ? { ...prev, ...o } : { ...o, ...prev });
+  });
+  return Array.from(map.values())
+    .sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || "")))
+    .slice(0, 500);
 }
 
-function writeOrders(orders) {
-  const list = (orders || []).slice(0, 500);
-  const text = JSON.stringify(list, null, 2);
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, text);
-  } catch (_) {}
-  try {
-    fs.writeFileSync(TMP_FILE, text);
-  } catch (_) {}
+async function readOrders() {
+  const list = await readJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    empty: [],
+    merge: mergeOrders,
+  });
+  return Array.isArray(list) ? list : [];
+}
+
+async function writeOrders(orders) {
+  const list = mergeOrders([], orders).slice(0, 500);
+  await writeJsonStore({
+    blobPath: BLOB_PATH,
+    localPaths: [TMP_FILE, DATA_FILE],
+    data: list,
+  });
   return list;
 }
 
@@ -31,10 +48,11 @@ function normalizePhone(phone) {
   return String(phone || "").replace(/\s|-/g, "");
 }
 
-function findOrder(id, phone) {
+async function findOrder(id, phone) {
   const oid = String(id || "").toUpperCase();
   const p = normalizePhone(phone);
-  return readOrders().find(
+  const orders = await readOrders();
+  return orders.find(
     (o) =>
       String(o.id).toUpperCase() === oid && normalizePhone(o.shipping && o.shipping.phone) === p
   );
@@ -49,10 +67,10 @@ function monthKey(iso) {
 }
 
 function buildStats(orders) {
-  const list = orders || readOrders();
+  const list = Array.isArray(orders) ? orders : [];
   const byMonth = {};
   let totalAmount = 0;
-  let totalOrders = list.length;
+  const totalOrders = list.length;
 
   list.forEach((o) => {
     const amount = Number(o.total) || 0;
@@ -79,7 +97,7 @@ function buildStats(orders) {
 
 function extractCustomers(orders) {
   const map = new Map();
-  (orders || readOrders()).forEach((o) => {
+  (Array.isArray(orders) ? orders : []).forEach((o) => {
     const s = o.shipping || {};
     const phone = normalizePhone(s.phone);
     if (!phone) return;
@@ -113,7 +131,7 @@ function extractCustomers(orders) {
 
 function extractAddressStats(orders) {
   const map = new Map();
-  (orders || readOrders()).forEach((o) => {
+  (Array.isArray(orders) ? orders : []).forEach((o) => {
     const s = o.shipping || {};
     const region = String(s.region || "").trim() || "未填写地区";
     const address = String(s.address || "").trim();

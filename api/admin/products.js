@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     }
     sendJson(res, 200, {
       ok: true,
-      products: readCustomProducts(),
+      products: await readCustomProducts(),
       categories: CATEGORIES,
     });
     return;
@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "POST") {
     const action = String(body.action || "create").trim();
-    const list = readCustomProducts();
+    const list = await readCustomProducts();
 
     if (action === "delete") {
       const id = String(body.id || "").trim();
@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
         sendJson(res, 404, { ok: false, error: "product not found" });
         return;
       }
-      writeCustomProducts(next);
+      await writeCustomProducts(next);
       sendJson(res, 200, { ok: true });
       return;
     }
@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
           { id: list[idx].id }
         );
         list[idx] = updated;
-        writeCustomProducts(list);
+        await writeCustomProducts(list);
         sendJson(res, 200, { ok: true, product: updated });
         return;
       }
@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
       if (Array.isArray(body.seedIds)) existingIds.push(...body.seedIds);
       const product = normalizeProduct(body, { existingIds });
       list.unshift(product);
-      writeCustomProducts(list);
+      await writeCustomProducts(list);
       sendJson(res, 200, { ok: true, product });
     } catch (err) {
       sendJson(res, 400, { ok: false, error: String(err.message || err) });

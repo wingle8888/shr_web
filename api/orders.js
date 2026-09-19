@@ -27,11 +27,18 @@ module.exports = async function handler(req, res) {
       res.end(JSON.stringify({ ok: false, error: "missing fields" }));
       return;
     }
-    const orders = readOrders();
-    const idx = orders.findIndex((o) => String(o.id) === String(body.id));
-    if (idx >= 0) orders[idx] = body;
-    else orders.unshift(body);
-    writeOrders(orders);
+    try {
+      const orders = await readOrders();
+      const idx = orders.findIndex((o) => String(o.id) === String(body.id));
+      if (idx >= 0) orders[idx] = body;
+      else orders.unshift(body);
+      await writeOrders(orders);
+    } catch (err) {
+      res.statusCode = err && err.code === "BLOB_MISSING" ? 503 : 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: String(err.message || err) }));
+      return;
+    }
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ ok: true, id: body.id }));
@@ -47,7 +54,7 @@ module.exports = async function handler(req, res) {
       res.end(JSON.stringify({ ok: false, error: "id and phone required" }));
       return;
     }
-    const order = findOrder(id, phone);
+    const order = await findOrder(id, phone);
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ ok: true, order: order || null }));

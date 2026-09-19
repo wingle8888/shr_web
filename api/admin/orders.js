@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const { readOrders, writeOrders, buildStats, extractCustomers, extractAddressStats } = require("../_lib/orders-store");
 const { loadVisitStats } = require("../_lib/visits-store");
@@ -29,7 +27,7 @@ module.exports = async function handler(req, res) {
       sendJson(res, 200, { ok: true, visits });
       return;
     }
-    const orders = readOrders();
+    const orders = await readOrders();
     sendJson(res, 200, {
       ok: true,
       orders,
@@ -45,7 +43,7 @@ module.exports = async function handler(req, res) {
     const action = String(body.action || "").trim();
     if (action === "import") {
       const incoming = Array.isArray(body.orders) ? body.orders : [];
-      const current = readOrders();
+      const current = await readOrders();
       const map = new Map();
       [...current, ...incoming].forEach((o) => {
         if (o && o.id) map.set(String(o.id), o);
@@ -53,7 +51,7 @@ module.exports = async function handler(req, res) {
       const merged = Array.from(map.values()).sort((a, b) =>
         String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
       );
-      writeOrders(merged);
+      await writeOrders(merged);
       sendJson(res, 200, { ok: true, count: merged.length });
       return;
     }
@@ -64,14 +62,15 @@ module.exports = async function handler(req, res) {
         sendJson(res, 400, { ok: false, error: "id and status required" });
         return;
       }
-      const orders = readOrders();
+      const orders = await readOrders();
       const idx = orders.findIndex((o) => String(o.id) === id);
       if (idx < 0) {
         sendJson(res, 404, { ok: false, error: "order not found" });
         return;
       }
       orders[idx].status = status;
-      writeOrders(orders);
+      orders[idx].updatedAt = new Date().toISOString();
+      await writeOrders(orders);
       sendJson(res, 200, { ok: true, order: orders[idx] });
       return;
     }
