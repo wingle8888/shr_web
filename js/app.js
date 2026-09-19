@@ -405,10 +405,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initSearchAndFilter();
   initChat();
 
-  document.getElementById("heroBtn").addEventListener("click", () => {
-    document.getElementById("products").scrollIntoView({ behavior: "smooth" });
-  });
-
   document.getElementById("cartBtn").addEventListener("click", openCart);
   document.getElementById("modalClose").addEventListener("click", () => closeModal("cartModal"));
   document.getElementById("goCheckoutBtn").addEventListener("click", openCheckout);
