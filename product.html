@@ -12,13 +12,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="detail-page">
+<body class="detail-page" data-i18n-title="detailTitle">
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow" aria-hidden="true"></div>
   <div class="top-bar">
     <div class="container top-bar-inner">
-      <span>免注册购买 · 支持国际支付 · 现货 24h 发货</span>
-      <a href="/#orders-help" class="link-btn">购买说明</a>
+      <span data-i18n="topBar">免注册购买 · 支持国际支付 · 现货 24h 发货</span>
+      <div class="top-bar-actions">
+        <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+          <button type="button" class="lang-btn active" data-lang="zh">中文</button>
+          <button type="button" class="lang-btn" data-lang="en">EN</button>
+        </div>
+        <a href="/#orders-help" class="link-btn" data-i18n="buyGuide">购买说明</a>
+      </div>
     </div>
   </div>
 
@@ -26,12 +32,12 @@
     <div class="header-inner">
       <a href="/" class="logo">
         <div class="logo-icon">SHR</div>
-        <span class="logo-text">开发板商城</span>
+        <span class="logo-text" data-i18n="brand">开发板商城</span>
       </a>
       <div class="header-actions" style="margin-left:auto">
-        <a href="/#products" class="header-cart">返回商城</a>
+        <a href="/#products" class="header-cart" data-i18n="backMall">返回商城</a>
         <button class="header-cart" id="cartBtn" type="button">
-          购物车
+          <span data-i18n="cart">购物车</span>
           <span class="cart-badge" id="cartBadge" style="display:none">0</span>
         </button>
       </div>
@@ -39,25 +45,27 @@
   </header>
 
   <main class="container detail-main" id="detailMain">
-    <p class="detail-loading">正在加载商品详情…</p>
+    <p class="detail-loading" data-i18n="loading">正在加载商品详情…</p>
   </main>
 
   <div class="modal-overlay" id="cartModal">
     <div class="modal modal-wide">
       <div class="modal-header">
-        <h3>购物车</h3>
+        <h3 data-i18n="cartTitle">购物车</h3>
         <button class="modal-close" id="modalClose" type="button">&times;</button>
       </div>
       <div class="modal-body" id="cartBody"></div>
       <div class="modal-footer">
-        <div class="cart-total">合计：¥<span id="cartTotal">0.00</span></div>
-        <a class="btn checkout-btn" href="/#products" id="goMallBtn">去商城结算</a>
+        <div class="cart-total"><span data-i18n="total">合计：¥</span><span id="cartTotal">0.00</span></div>
+        <a class="btn checkout-btn" href="/#products" id="goMallBtn" data-i18n="goCheckoutMall">去商城结算</a>
       </div>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
+  <script src="/js/i18n.js"></script>
   <script src="/js/products-data.js"></script>
+  <script src="/js/products-en.js"></script>
   <script src="/js/product-detail.js"></script>
 </body>
 </html>

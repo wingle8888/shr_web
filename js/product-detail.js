@@ -1,6 +1,10 @@
 const CART_KEY = "shr_cart";
 let cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
 
+function t(key, vars) {
+  return window.I18N ? window.I18N.t(key, vars) : key;
+}
+
 function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
@@ -42,7 +46,7 @@ function addToCart(id, qty = 1) {
       qty,
     });
   saveCart();
-  showToast(`已加入购物车：${product.name}`);
+  showToast(t("addedCart", { name: product.name }));
   renderCart();
 }
 
@@ -70,7 +74,7 @@ function renderCart() {
   const totalEl = document.getElementById("cartTotal");
   if (!body) return;
   if (cart.length === 0) {
-    body.innerHTML = '<div class="cart-empty">购物车是空的</div>';
+    body.innerHTML = `<div class="cart-empty">${t("cartEmptyShort")}</div>`;
     totalEl.textContent = "0.00";
     return;
   }
@@ -88,7 +92,7 @@ function renderCart() {
           <button type="button" onclick="changeQty(${item.id}, 1)">+</button>
         </div>
       </div>
-      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">删除</button>
+      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">${t("remove")}</button>
     </div>
   `
     )
@@ -98,14 +102,11 @@ function renderCart() {
 
 function renderDetail(product) {
   const main = document.getElementById("detailMain");
-  document.title = `${product.name} - 开发板商城`;
+  document.title = `${product.name} - ${t("brand")}`;
 
   const features = (product.features || []).map((f) => `<li>${escapeHtml(f)}</li>`).join("");
   const specs = (product.specs || [])
-    .map(
-      ([k, v]) =>
-        `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`
-    )
+    .map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`)
     .join("");
   const pins = (product.pins || [])
     .map(
@@ -117,9 +118,9 @@ function renderDetail(product) {
 
   main.innerHTML = `
     <nav class="breadcrumb">
-      <a href="/">首页</a>
+      <a href="/">${escapeHtml(t("home"))}</a>
       <span>/</span>
-      <a href="/#products">全部商品</a>
+      <a href="/#products">${escapeHtml(t("allProducts"))}</a>
       <span>/</span>
       <span>${escapeHtml(product.name)}</span>
     </nav>
@@ -136,54 +137,52 @@ function renderDetail(product) {
         <div class="detail-price"><small>¥</small>${product.price}</div>
         <div class="detail-qty-buy">
           <label>
-            数量
+            ${escapeHtml(t("qty"))}
             <input type="number" id="buyQty" min="1" max="99" value="1">
           </label>
-          <button class="btn" type="button" id="detailAddCart">加入购物车</button>
-          <button class="btn btn-outline-orange" type="button" id="detailBuyNow">立即购买</button>
+          <button class="btn" type="button" id="detailAddCart">${escapeHtml(t("addToCart"))}</button>
+          <button class="btn btn-outline-orange" type="button" id="detailBuyNow">${escapeHtml(t("buyNow"))}</button>
         </div>
-        <p class="detail-ship-tip">免注册购买 · 结算时填写收货地址 · 订单号可查</p>
+        <p class="detail-ship-tip">${escapeHtml(t("shipTip"))}</p>
       </div>
     </section>
 
     <section class="detail-tabs-section">
       <div class="detail-tabs" id="detailTabs">
-        <button type="button" class="active" data-tab="intro">产品介绍</button>
-        <button type="button" data-tab="features">功能特点</button>
-        <button type="button" data-tab="specs">规格参数</button>
-        <button type="button" data-tab="pins">引脚定义</button>
-        <button type="button" data-tab="package">包装清单</button>
+        <button type="button" class="active" data-tab="intro">${escapeHtml(t("intro"))}</button>
+        <button type="button" data-tab="features">${escapeHtml(t("features"))}</button>
+        <button type="button" data-tab="specs">${escapeHtml(t("specs"))}</button>
+        <button type="button" data-tab="pins">${escapeHtml(t("pins"))}</button>
+        <button type="button" data-tab="package">${escapeHtml(t("package"))}</button>
       </div>
 
       <div class="detail-panels">
         <article class="detail-panel active" id="tab-intro">
-          <h2>产品介绍</h2>
+          <h2>${escapeHtml(t("intro"))}</h2>
           <p>${escapeHtml(product.intro || product.desc)}</p>
         </article>
         <article class="detail-panel" id="tab-features">
-          <h2>功能特点</h2>
+          <h2>${escapeHtml(t("features"))}</h2>
           <ul class="feature-list">${features}</ul>
         </article>
         <article class="detail-panel" id="tab-specs">
-          <h2>规格参数</h2>
-          <table class="spec-table">
-            <tbody>${specs}</tbody>
-          </table>
+          <h2>${escapeHtml(t("specs"))}</h2>
+          <table class="spec-table"><tbody>${specs}</tbody></table>
         </article>
         <article class="detail-panel" id="tab-pins">
-          <h2>引脚定义</h2>
-          <p class="pin-note">下表为常用/典型引脚说明，实际丝印与原理图请以随货资料为准。</p>
+          <h2>${escapeHtml(t("pins"))}</h2>
+          <p class="pin-note">${escapeHtml(t("pinNote"))}</p>
           <div class="table-scroll">
             <table class="pin-table">
               <thead>
-                <tr><th>引脚</th><th>功能</th><th>说明</th></tr>
+                <tr><th>${escapeHtml(t("pinCol"))}</th><th>${escapeHtml(t("funcCol"))}</th><th>${escapeHtml(t("noteCol"))}</th></tr>
               </thead>
               <tbody>${pins}</tbody>
             </table>
           </div>
         </article>
         <article class="detail-panel" id="tab-package">
-          <h2>包装清单</h2>
+          <h2>${escapeHtml(t("package"))}</h2>
           <ul class="feature-list">${pack}</ul>
         </article>
       </div>
@@ -208,27 +207,50 @@ function renderDetail(product) {
     const qty = Math.max(1, parseInt(document.getElementById("buyQty").value, 10) || 1);
     addToCart(product.id, qty);
     location.href = "/#products";
-    showToast("已加入购物车，请点击顶部购物车结算");
+    showToast(t("boughtHint"));
+  });
+}
+
+function loadCurrentProduct() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  const product = window.getProductById(id);
+  if (!product) {
+    document.getElementById("detailMain").innerHTML = `
+      <div class="detail-empty">
+        <h1>${escapeHtml(t("notFound"))}</h1>
+        <a class="btn" href="/#products">${escapeHtml(t("backToMall"))}</a>
+      </div>
+    `;
+    return null;
+  }
+  renderDetail(product);
+  return product;
+}
+
+function initLangSwitch() {
+  const wrap = document.getElementById("langSwitch");
+  if (!wrap) return;
+  const lang = window.I18N.getLang();
+  wrap.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === lang);
+    btn.addEventListener("click", () => {
+      window.I18N.setLang(btn.dataset.lang);
+      wrap.querySelectorAll(".lang-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.lang === btn.dataset.lang)
+      );
+      window.I18N.applyI18n();
+      loadCurrentProduct();
+      if (document.getElementById("cartModal").classList.contains("show")) renderCart();
+    });
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initLangSwitch();
+  window.I18N.applyI18n();
   updateCartBadge();
-  const params = new URLSearchParams(location.search);
-  const id = params.get("id");
-  const product = window.getProductById(id);
-
-  if (!product) {
-    document.getElementById("detailMain").innerHTML = `
-      <div class="detail-empty">
-        <h1>未找到该商品</h1>
-        <a class="btn" href="/#products">返回商城</a>
-      </div>
-    `;
-    return;
-  }
-
-  renderDetail(product);
+  loadCurrentProduct();
 
   document.getElementById("cartBtn").addEventListener("click", () => {
     renderCart();

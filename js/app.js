@@ -1,22 +1,28 @@
 const products = window.PRODUCTS || [];
 
 const CATEGORY_ORDER = [
-  { id: "cat-mcu", name: "MCU 开发板", desc: "STM32 / Arduino 等高性能与入门 MCU 板卡" },
-  { id: "cat-iot", name: "无线 IoT", desc: "Wi‑Fi / BLE 物联网模组与开发套件" },
-  { id: "cat-sbc", name: "单板计算机", desc: "Raspberry Pi 等 Linux 单板机" },
-  { id: "cat-display", name: "显示套件", desc: "触摸屏与 LVGL 人机界面方案" },
-  { id: "cat-sensor", name: "传感器", desc: "姿态、环境等传感器模块" },
+  { id: "cat-mcu", nameKey: "catMcu", descKey: "catMcuDesc" },
+  { id: "cat-iot", nameKey: "catIot", descKey: "catIotDesc" },
+  { id: "cat-sbc", nameKey: "catSbc", descKey: "catSbcDesc" },
+  { id: "cat-display", nameKey: "catDisplay", descKey: "catDisplayDesc" },
+  { id: "cat-sensor", nameKey: "catSensor", descKey: "catSensorDesc" },
 ];
 
 const CART_KEY = "shr_cart";
 const ORDERS_KEY = "shr_orders";
 const CHAT_STORAGE_KEY = "shr_chat_messages";
-const WELCOME_MSG =
-  "您好！我是开发板商城在线客服。可咨询商品、发货、订单查询（订单号+手机号）或售后问题。";
 
 let cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
 let currentCategory = "all";
 let searchKeyword = "";
+
+function t(key, vars) {
+  return window.I18N ? window.I18N.t(key, vars) : key;
+}
+
+function locProduct(p) {
+  return window.getLocalizedProduct ? window.getLocalizedProduct(p) : p;
+}
 
 function showToast(msg) {
   const toast = document.getElementById("toast");
@@ -46,20 +52,23 @@ function updateCartBadge() {
 }
 
 function getFilteredProducts() {
-  return products.filter((p) => {
-    const catOk = currentCategory === "all" || p.category === currentCategory;
-    const q = searchKeyword.trim().toLowerCase();
-    const searchOk =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.desc.toLowerCase().includes(q) ||
-      p.tag.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q);
-    return catOk && searchOk;
-  });
+  return products
+    .map(locProduct)
+    .filter((p) => {
+      const catOk = currentCategory === "all" || p.categoryId === currentCategory;
+      const q = searchKeyword.trim().toLowerCase();
+      const searchOk =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.desc.toLowerCase().includes(q) ||
+        p.tag.toLowerCase().includes(q) ||
+        String(p.category || "").toLowerCase().includes(q);
+      return catOk && searchOk;
+    });
 }
 
-function productCardHtml(p) {
+function productCardHtml(raw) {
+  const p = locProduct(raw);
   return `
     <div class="card">
       <a class="card-link" href="/product.html?id=${p.id}">
@@ -74,7 +83,7 @@ function productCardHtml(p) {
       </a>
       <div class="card-bottom card-bottom-pad">
         <div class="card-price"><small>¥</small>${p.price}</div>
-        <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">加入购物车</button>
+        <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">${t("addToCart")}</button>
       </div>
     </div>
   `;
@@ -90,16 +99,16 @@ function renderProducts() {
     grid.innerHTML = "";
     sectionsEl.hidden = false;
     sectionsEl.innerHTML = CATEGORY_ORDER.map((cat) => {
-      const items = products.filter((p) => p.category === cat.name);
+      const items = products.filter((p) => p.categoryId === cat.id);
       if (items.length === 0) return "";
       return `
         <div class="category-block" id="${cat.id}">
           <div class="category-head">
             <div>
-              <h3>${escapeHtml(cat.name)}</h3>
-              <p>${escapeHtml(cat.desc)}</p>
+              <h3>${escapeHtml(t(cat.nameKey))}</h3>
+              <p>${escapeHtml(t(cat.descKey))}</p>
             </div>
-            <span class="category-count">${items.length} 款</span>
+            <span class="category-count">${t("itemsCount", { n: items.length })}</span>
           </div>
           <div class="products-grid">
             ${items.map(productCardHtml).join("")}
@@ -114,20 +123,20 @@ function renderProducts() {
   sectionsEl.innerHTML = "";
   grid.hidden = false;
   if (list.length === 0) {
-    grid.innerHTML = '<div class="empty-products">未找到相关商品，请换个关键词试试</div>';
+    grid.innerHTML = `<div class="empty-products">${t("noProducts")}</div>`;
     return;
   }
   grid.innerHTML = list.map(productCardHtml).join("");
 }
 
 function addToCart(id) {
-  const product = products.find((p) => p.id === id);
+  const product = locProduct(products.find((p) => p.id === id));
   if (!product) return;
   const existing = cart.find((item) => item.id === id);
   if (existing) existing.qty += 1;
   else cart.push({ id: product.id, name: product.name, price: product.price, img: product.img, qty: 1 });
   saveCart();
-  showToast(`已加入购物车：${product.name}`);
+  showToast(t("addedCart", { name: product.name }));
 }
 
 function changeQty(id, delta) {
@@ -153,7 +162,7 @@ function renderCart() {
   const body = document.getElementById("cartBody");
   const totalEl = document.getElementById("cartTotal");
   if (cart.length === 0) {
-    body.innerHTML = '<div class="cart-empty">购物车是空的，去挑几块开发板吧</div>';
+    body.innerHTML = `<div class="cart-empty">${t("cartEmpty")}</div>`;
     totalEl.textContent = "0.00";
     return;
   }
@@ -171,7 +180,7 @@ function renderCart() {
           <button type="button" onclick="changeQty(${item.id}, 1)">+</button>
         </div>
       </div>
-      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">删除</button>
+      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">${t("remove")}</button>
     </div>
   `
     )
@@ -194,7 +203,7 @@ function openCart() {
 
 function openCheckout() {
   if (cart.length === 0) {
-    showToast("购物车是空的");
+    showToast(t("cartIsEmpty"));
     return;
   }
   closeModal("cartModal");
@@ -235,7 +244,7 @@ function normalizePhone(phone) {
 async function submitOrder(e) {
   e.preventDefault();
   if (cart.length === 0) {
-    showToast("购物车是空的");
+    showToast(t("cartIsEmpty"));
     return;
   }
 
@@ -251,14 +260,14 @@ async function submitOrder(e) {
   const payMethod = document.querySelector('input[name="payMethod"]:checked')?.value || "PayPal";
 
   if (!shipping.name || !shipping.phone || !shipping.region || !shipping.address) {
-    showToast("请完整填写收货信息");
+    showToast(t("fillShipping"));
     return;
   }
 
   const order = {
     id: generateOrderId(),
     createdAt: new Date().toISOString(),
-    status: "已支付，待发货",
+    status: window.I18N?.getLang() === "en" ? "Paid, awaiting shipment" : "已支付，待发货",
     payMethod,
     items: cart.map((i) => ({ ...i })),
     total: cartTotal(),
@@ -276,7 +285,7 @@ async function submitOrder(e) {
       body: JSON.stringify(order),
     });
   } catch (_) {
-    /* 静态演示环境可忽略；本地仍有订单记录 */
+    /* ignore */
   }
 
   cart = [];
@@ -286,15 +295,17 @@ async function submitOrder(e) {
 
   document.getElementById("successBody").innerHTML = `
     <div class="success-box">
-      <p>支付成功（${escapeHtml(payMethod)}）</p>
-      <p class="order-id-label">请保存您的订单号</p>
+      <p>${escapeHtml(t("payOk", { method: payMethod }))}</p>
+      <p class="order-id-label">${escapeHtml(t("saveOrderId"))}</p>
       <p class="order-id">${escapeHtml(order.id)}</p>
-      <p class="success-tip">售后查询请使用：订单号 + 手机号（${escapeHtml(shipping.phone)}）</p>
-      <p class="success-addr">收货：${escapeHtml(shipping.name)} · ${escapeHtml(shipping.region)} ${escapeHtml(shipping.address)}</p>
+      <p class="success-tip">${escapeHtml(t("afterTip", { phone: shipping.phone }))}</p>
+      <p class="success-addr">${escapeHtml(
+        t("shipTo", { name: shipping.name, region: shipping.region, address: shipping.address })
+      )}</p>
     </div>
   `;
   openModal("successModal");
-  showToast("下单成功，请保存订单号");
+  showToast(t("orderOk"));
 }
 
 function openLookup() {
@@ -327,8 +338,7 @@ async function handleLookup(e) {
 
   if (!order) {
     result.hidden = false;
-    result.innerHTML =
-      '<p class="lookup-empty">未找到订单。请核对订单号与下单手机号；订单保存在下单设备，换设备时请保留订单凭证。</p>';
+    result.innerHTML = `<p class="lookup-empty">${t("lookupEmpty")}</p>`;
     return;
   }
 
@@ -336,6 +346,7 @@ async function handleLookup(e) {
     .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　¥${(i.price * i.qty).toFixed(2)}</li>`)
     .join("");
 
+  const locale = window.I18N?.getLang() === "en" ? "en-US" : "zh-CN";
   result.hidden = false;
   result.innerHTML = `
     <div class="order-card">
@@ -343,14 +354,14 @@ async function handleLookup(e) {
         <strong>${escapeHtml(order.id)}</strong>
         <span>${escapeHtml(order.status)}</span>
       </div>
-      <p>下单时间：${new Date(order.createdAt).toLocaleString("zh-CN")}</p>
-      <p>支付方式：${escapeHtml(order.payMethod)}</p>
-      <p>收货人：${escapeHtml(order.shipping.name)} / ${escapeHtml(order.shipping.phone)}</p>
-      <p>地址：${escapeHtml(order.shipping.region)} ${escapeHtml(order.shipping.address)}</p>
-      ${order.shipping.email ? `<p>邮箱：${escapeHtml(order.shipping.email)}</p>` : ""}
-      ${order.shipping.note ? `<p>备注：${escapeHtml(order.shipping.note)}</p>` : ""}
+      <p>${t("orderTime")}${new Date(order.createdAt).toLocaleString(locale)}</p>
+      <p>${t("payMethod")}${escapeHtml(order.payMethod)}</p>
+      <p>${t("receiver")}${escapeHtml(order.shipping.name)} / ${escapeHtml(order.shipping.phone)}</p>
+      <p>${t("address")}${escapeHtml(order.shipping.region)} ${escapeHtml(order.shipping.address)}</p>
+      ${order.shipping.email ? `<p>${t("email")}${escapeHtml(order.shipping.email)}</p>` : ""}
+      ${order.shipping.note ? `<p>${t("remark")}${escapeHtml(order.shipping.note)}</p>` : ""}
       <ul>${itemsHtml}</ul>
-      <p class="order-total">合计：¥${Number(order.total).toFixed(2)}</p>
+      <p class="order-total">${t("orderTotal")}${Number(order.total).toFixed(2)}</p>
     </div>
   `;
 }
@@ -399,6 +410,8 @@ function bindModalDismiss(overlayId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initLangSwitch();
+  window.I18N.applyI18n();
   renderProducts();
   updateCartBadge();
   initNav();
@@ -421,9 +434,35 @@ document.addEventListener("DOMContentLoaded", () => {
   ["cartModal", "checkoutModal", "successModal", "lookupModal"].forEach(bindModalDismiss);
 });
 
+function initLangSwitch() {
+  const wrap = document.getElementById("langSwitch");
+  if (!wrap) return;
+  const lang = window.I18N.getLang();
+  wrap.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === lang);
+    btn.addEventListener("click", () => {
+      window.I18N.setLang(btn.dataset.lang);
+      wrap.querySelectorAll(".lang-btn").forEach((b) => b.classList.toggle("active", b.dataset.lang === btn.dataset.lang));
+      window.I18N.applyI18n();
+      renderProducts();
+      if (document.getElementById("cartModal").classList.contains("show")) renderCart();
+      refreshChatWelcome();
+    });
+  });
+}
+
+function refreshChatWelcome() {
+  const messages = loadChatHistory();
+  if (messages.length <= 1) {
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    renderChatHistory();
+  }
+}
+
 /* ---------- 在线客服 ---------- */
 function formatChatTime(date = new Date()) {
-  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const locale = window.I18N?.getLang() === "en" ? "en-US" : "zh-CN";
+  return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 function loadChatHistory() {
@@ -448,29 +487,15 @@ function appendChatBubble(role, text, time) {
 }
 
 function getBotReply(text) {
-  const t = text.toLowerCase();
-  if (/订单|查询|售后|质量/.test(t)) {
-    return "免注册下单。查询请点顶部「订单查询」，输入订单号与下单手机号即可查看购买与收货记录。";
-  }
-  if (/价格|多少钱|报价|优惠|price/.test(t)) {
-    return "价格以商品页标价为准，批量可议价。直接加购结算即可，无需注册。";
-  }
-  if (/发货|物流|快递|地址|shipping/.test(t)) {
-    return "结算时请填写完整收货地址与手机号，现货一般 24 小时内发货。";
-  }
-  if (/支付|paypal|visa|付款/.test(t)) {
-    return "支持 PayPal、Visa/Mastercard、Apple Pay、Google Pay。";
-  }
-  if (/注册|账号|登录/.test(t)) {
-    return "本商城无需注册，游客填写收货信息即可购买；订单号+手机号可查询记录。";
-  }
-  if (/人工|微信|电话|客服/.test(t)) {
-    return "可通过顶部在线客服咨询，或添加微信 shr_tech / 邮件 sales@shrtech.com。";
-  }
-  if (/你好|您好|hi|hello/.test(t)) {
-    return "您好！想选哪款开发板？也可以直接告诉我项目需求。";
-  }
-  return "已收到。如需查单请用订单号+手机号；其他问题可继续描述。";
+  const raw = text.toLowerCase();
+  if (raw === "order" || /订单|查询|售后|质量|lookup|order/.test(raw)) return t("botOrder");
+  if (raw === "price" || /价格|多少钱|报价|优惠|price/.test(raw)) return t("botPrice");
+  if (raw === "ship" || /发货|物流|快递|地址|shipping/.test(raw)) return t("botShip");
+  if (/支付|paypal|visa|付款|pay/.test(raw)) return t("botPay");
+  if (/注册|账号|登录|register|account|login/.test(raw)) return t("botReg");
+  if (raw === "human" || /人工|微信|电话|客服|agent|support/.test(raw)) return t("botHuman");
+  if (/你好|您好|hi|hello/.test(raw)) return t("botHi");
+  return t("botDefault");
 }
 
 function pushMessage(role, text) {
@@ -486,7 +511,7 @@ function renderChatHistory() {
   box.innerHTML = "";
   const messages = loadChatHistory();
   if (messages.length === 0) {
-    pushMessage("bot", WELCOME_MSG);
+    pushMessage("bot", t("welcome"));
     return;
   }
   messages.forEach((m) => appendChatBubble(m.role, m.text, m.time));
@@ -534,7 +559,7 @@ function initChat() {
   document.getElementById("chatQuick").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-q]");
     if (!btn) return;
-    if (btn.dataset.q === "订单查询") {
+    if (btn.dataset.q === "order") {
       openLookup();
       return;
     }

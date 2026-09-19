@@ -234,6 +234,3 @@ window.PRODUCTS = [
   },
 ];
 
-window.getProductById = function getProductById(id) {
-  return window.PRODUCTS.find((p) => String(p.id) === String(id));
-};

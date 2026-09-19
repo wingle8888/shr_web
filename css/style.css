@@ -141,6 +141,45 @@ a {
   justify-content: space-between;
   align-items: center;
   min-height: 32px;
+  gap: 12px;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.lang-btn.active {
+  background: rgba(46, 230, 255, 0.15);
+  color: var(--primary);
+}
+
+.lang-btn:hover {
+  color: var(--primary);
+}
+
+.help-step em {
+  font-style: normal;
 }
 
 /* Header */
