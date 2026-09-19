@@ -26,12 +26,20 @@
     </header>
 
     <section class="admin-card" id="loginCard">
-      <h1>打开后台客户端</h1>
+      <h1>后台管理</h1>
       <p class="admin-tip">登录后可上传产品与资料，查看订单、客户、注册用户与月销售。</p>
+      <div class="admin-client-box">
+        <strong>需要双击打开的客户端？</strong>
+        <p>请下载 Windows 桌面客户端，解压后双击「安装到桌面」，之后在桌面双击即可打开。</p>
+        <div class="admin-client-actions">
+          <a class="btn" href="/client/">下载桌面客户端</a>
+          <a class="link-btn" href="/client/开发板商城后台客户端.vbs" download>直接下载启动器</a>
+        </div>
+      </div>
       <form id="loginForm">
         <label>后台密码</label>
         <input type="password" id="adminPassword" required placeholder="请输入后台密码" autocomplete="current-password">
-        <button class="btn" type="submit" style="width:100%;margin-top:12px">进入后台</button>
+        <button class="btn" type="submit" style="width:100%;margin-top:12px">进入网页后台</button>
       </form>
       <p class="admin-hint">默认密码：shr-admin-2026（可在 Vercel 环境变量 ADMIN_PASSWORD 修改）</p>
     </section>

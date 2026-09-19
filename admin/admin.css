@@ -49,10 +49,40 @@
   margin-bottom: 18px;
 }
 
-.admin-hint {
-  margin-top: 14px;
-  font-size: 12px;
+.admin-client-box {
+  border: 1px solid rgba(46, 230, 255, 0.35);
+  background: rgba(46, 230, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.admin-client-box strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-family: var(--font-ui);
+}
+
+.admin-client-box p {
+  margin: 0 0 12px;
   color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.admin-client-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-client-actions .btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-panel-head {
