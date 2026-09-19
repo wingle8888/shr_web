@@ -13,114 +13,95 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <div class="top-bar">
+    <div class="container top-bar-inner">
+      <span>免注册购买 · 支持国际支付 · 现货 24h 发货</span>
+      <button type="button" id="orderLookupBtn" class="link-btn">订单查询</button>
+    </div>
+  </div>
+
   <header>
     <div class="header-inner">
-      <a href="#" class="logo">
+      <a href="#home" class="logo">
         <div class="logo-icon">SHR</div>
         开发板商城
       </a>
-      <nav id="mainNav">
-        <a href="#home" class="active">首页</a>
-        <a href="#products">产品中心</a>
-        <a href="#features">服务优势</a>
-        <a href="#about">关于我们</a>
-        <a href="#contact">联系我们</a>
-      </nav>
-      <button class="header-cart" id="cartBtn" type="button" aria-label="购物车">
-        购物车
-        <span class="cart-badge" id="cartBadge" style="display:none">0</span>
-      </button>
-      <button class="header-chat" id="chatLauncher" type="button" aria-label="打开客服聊天">
-        💬 在线客服
-        <span class="chat-unread" id="chatUnread" style="display:none">1</span>
-      </button>
-      <button class="header-cta" id="headerCta">立即咨询</button>
-      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="search-box">
+        <input type="search" id="searchInput" placeholder="搜索开发板、模块、传感器…" autocomplete="off">
+        <button type="button" id="searchBtn">搜索</button>
+      </div>
+      <div class="header-actions">
+        <button class="header-cart" id="cartBtn" type="button" aria-label="购物车">
+          购物车
+          <span class="cart-badge" id="cartBadge" style="display:none">0</span>
+        </button>
+        <button class="header-chat" id="chatLauncher" type="button" aria-label="打开客服聊天">
+          客服
+          <span class="chat-unread" id="chatUnread" style="display:none">1</span>
+        </button>
+        <button class="menu-toggle" id="menuToggle" type="button">☰</button>
+      </div>
     </div>
+    <nav id="mainNav">
+      <a href="#home" class="active">首页</a>
+      <a href="#products">全部商品</a>
+      <a href="#services">服务保障</a>
+      <a href="#orders-help">售后说明</a>
+      <a href="#contact">联系我们</a>
+    </nav>
   </header>
 
-  <section class="hero" id="home">
-    <div>
-      <h1>高性能嵌入式硬件</h1>
-      <p>STM32 · ESP32 · Raspberry Pi · LVGL 开发套件，一站式采购解决方案</p>
-      <div class="hero-tags">
-        <span class="hero-tag">原厂品质</span>
-        <span class="hero-tag">技术支持</span>
-        <span class="hero-tag">批量优惠</span>
-        <span class="hero-tag">快速发货</span>
+  <section class="mall-banner" id="home">
+    <div class="container banner-grid">
+      <div class="banner-main">
+        <p class="banner-eyebrow">嵌入式硬件商城</p>
+        <h1>开发板 · 模块 · 一站采购</h1>
+        <p>STM32 / ESP32 / Raspberry Pi / LVGL，游客下单即可发货，保留订单凭证便于售后查询</p>
+        <button class="btn" id="heroBtn" type="button">去选购</button>
       </div>
-      <button class="btn" id="heroBtn">浏览产品</button>
-      <button class="btn btn-outline" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">联系我们</button>
-    </div>
-  </section>
-
-  <section id="features" class="features">
-    <div class="container">
-      <h2 class="section-title">为什么选择开发板商城</h2>
-      <p class="section-subtitle">专注嵌入式硬件领域，为工程师和开发者提供专业服务</p>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">🔧</div>
-          <h3>专业技术支持</h3>
-          <p>资深嵌入式工程师团队，提供选型指导、调试协助和方案定制</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📦</div>
-          <h3>正品保障</h3>
-          <p>所有产品均来自正规渠道，提供完整技术文档和开发资料</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🚀</div>
-          <h3>快速交付</h3>
-          <p>现货库存充足，支持小批量试样和大批量采购，全国包邮</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💡</div>
-          <h3>方案定制</h3>
-          <p>提供 PCB 设计、固件开发、LVGL UI 定制等一站式解决方案</p>
-        </div>
+      <div class="banner-side">
+        <div class="side-card">正品保障</div>
+        <div class="side-card">国际支付</div>
+        <div class="side-card">快速发货</div>
+        <div class="side-card">技术支持</div>
       </div>
     </div>
   </section>
 
-  <section id="products">
+  <section id="products" class="products-section">
     <div class="container">
-      <h2 class="section-title">热门产品</h2>
-      <p class="section-subtitle">精选嵌入式开发板与模块，满足各类项目需求</p>
+      <div class="section-bar">
+        <h2>全部商品</h2>
+        <div class="category-tabs" id="categoryTabs">
+          <button type="button" class="active" data-cat="all">全部</button>
+          <button type="button" data-cat="开发板">开发板</button>
+          <button type="button" data-cat="套件">套件</button>
+          <button type="button" data-cat="传感器">传感器</button>
+          <button type="button" data-cat="单板机">单板机</button>
+        </div>
+      </div>
       <div class="products-grid" id="productsGrid"></div>
     </div>
   </section>
 
-  <section id="about" class="about">
+  <section id="services" class="services">
+    <div class="container services-grid">
+      <div class="service-item"><strong>免注册购买</strong><span>填写收货信息即可下单发货</span></div>
+      <div class="service-item"><strong>订单可查</strong><span>订单号 + 手机号查询购买记录</span></div>
+      <div class="service-item"><strong>国际支付</strong><span>PayPal / 银行卡 / Apple Pay</span></div>
+      <div class="service-item"><strong>售后保障</strong><span>质量问题凭订单凭证处理</span></div>
+    </div>
+  </section>
+
+  <section id="orders-help" class="orders-help">
     <div class="container">
-      <div class="about-content">
-        <div class="about-text">
-          <h2>关于开发板商城</h2>
-          <p>开发板商城是一家专注于嵌入式硬件研发与分销的科技公司。我们为电子工程师、创客和教育机构提供高品质的开发板、传感器模块及配套技术服务。</p>
-          <p>从 STM32 高性能 MCU 到 ESP32 物联网方案，从 Raspberry Pi 单板计算机到 LVGL 图形界面开发套件，我们致力于让每一位开发者都能快速实现创意。</p>
-          <p>无论您是个人开发者还是企业客户，开发板商城都能为您提供专业、高效、可靠的硬件采购体验。</p>
-        </div>
-        <div class="about-visual">
-          <img src="/images/about.jpg" alt="开发板商城实验室" class="about-img">
-          <div class="about-stats">
-          <div class="stat-item">
-            <div class="stat-num">500+</div>
-            <div class="stat-label">产品 SKU</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-num">10K+</div>
-            <div class="stat-label">服务客户</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-num">99%</div>
-            <div class="stat-label">好评率</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-num">24h</div>
-            <div class="stat-label">快速响应</div>
-          </div>
-          </div>
-        </div>
+      <h2 class="section-title">购买与售后</h2>
+      <p class="section-subtitle">无需注册账号。下单时填写收货人、手机与地址，系统生成订单号并本地保存，便于收货后质量问题追查。</p>
+      <div class="help-steps">
+        <div class="help-step"><span>1</span>选购加入购物车</div>
+        <div class="help-step"><span>2</span>填写收货地址并支付</div>
+        <div class="help-step"><span>3</span>保存订单号凭证</div>
+        <div class="help-step"><span>4</span>售后用订单号+手机查询</div>
       </div>
     </div>
   </section>
@@ -128,42 +109,35 @@
   <section id="contact">
     <div class="container">
       <h2 class="section-title">联系我们</h2>
-      <p class="section-subtitle">欢迎咨询产品报价、技术方案或批量采购</p>
+      <p class="section-subtitle">批量采购、技术方案或订单售后咨询</p>
       <div class="contact-grid">
         <div class="contact-info">
           <div class="contact-item">
             <span class="icon">💬</span>
             <div>
               <h4>微信咨询</h4>
-              <p>添加微信：shr_tech（请替换为您的微信号）</p>
+              <p>shr_tech（请替换为您的微信号）</p>
             </div>
           </div>
           <div class="contact-item">
             <span class="icon">📧</span>
             <div>
               <h4>电子邮箱</h4>
-              <p>sales@shrtech.com（请替换为您的邮箱）</p>
+              <p>sales@shrtech.com</p>
             </div>
           </div>
           <div class="contact-item">
             <span class="icon">📞</span>
             <div>
               <h4>电话咨询</h4>
-              <p>400-XXX-XXXX（请替换为您的电话）</p>
+              <p>400-XXX-XXXX</p>
             </div>
           </div>
           <div class="contact-item">
             <span class="icon">📍</span>
             <div>
               <h4>公司地址</h4>
-              <p>深圳市南山区科技园（请替换为您的地址）</p>
-            </div>
-          </div>
-          <div class="contact-item">
-            <span class="icon">💳</span>
-            <div>
-              <h4>国际支付</h4>
-              <p>支持 PayPal、Visa / Mastercard、Apple Pay、Google Pay</p>
+              <p>深圳市南山区科技园</p>
             </div>
           </div>
         </div>
@@ -173,16 +147,12 @@
             <input type="text" id="formName" placeholder="请输入姓名" required>
           </div>
           <div class="form-group">
-            <label for="formEmail">电子邮箱</label>
-            <input type="email" id="formEmail" placeholder="请输入邮箱">
-          </div>
-          <div class="form-group">
             <label for="formPhone">联系电话</label>
             <input type="tel" id="formPhone" placeholder="请输入电话">
           </div>
           <div class="form-group">
             <label for="formMessage">留言内容</label>
-            <textarea id="formMessage" placeholder="请描述您的需求，如产品型号、数量等" required></textarea>
+            <textarea id="formMessage" placeholder="产品型号、数量或售后订单号" required></textarea>
           </div>
           <button type="submit" class="btn" style="width:100%">提交咨询</button>
         </form>
@@ -192,47 +162,125 @@
 
   <footer>
     <div class="footer-links">
-      <a href="#home">首页</a>
-      <a href="#products">产品中心</a>
-      <a href="#about">关于我们</a>
+      <a href="#products">全部商品</a>
+      <a href="#orders-help">购买说明</a>
       <a href="#contact">联系我们</a>
+      <button type="button" class="link-btn" id="footerOrderBtn">订单查询</button>
     </div>
     <p class="footer-payments">国际支付：PayPal · Visa / Mastercard · Apple Pay · Google Pay</p>
-    <p>© 2026 开发板商城 - 嵌入式硬件解决方案提供商</p>
-    <p style="font-size:12px;opacity:0.6">产品图片来源于 Wikimedia Commons（CC 协议）</p>
+    <p>© 2026 开发板商城 · 免注册购买，订单凭证可查</p>
   </footer>
 
+  <!-- 购物车 -->
   <div class="modal-overlay" id="cartModal">
-    <div class="modal">
+    <div class="modal modal-wide">
       <div class="modal-header">
         <h3>购物车</h3>
         <button class="modal-close" id="modalClose" type="button">&times;</button>
       </div>
       <div class="modal-body" id="cartBody"></div>
-      <div class="payment-methods">
-        <div class="payment-label">选择国际支付方式</div>
-        <div class="payment-options">
-          <label class="payment-option">
-            <input type="radio" name="payMethod" value="PayPal" checked>
-            <span>PayPal</span>
-          </label>
-          <label class="payment-option">
-            <input type="radio" name="payMethod" value="Visa / Mastercard">
-            <span>Visa / Mastercard</span>
-          </label>
-          <label class="payment-option">
-            <input type="radio" name="payMethod" value="Apple Pay">
-            <span>Apple Pay</span>
-          </label>
-          <label class="payment-option">
-            <input type="radio" name="payMethod" value="Google Pay">
-            <span>Google Pay</span>
-          </label>
-        </div>
-      </div>
       <div class="modal-footer">
         <div class="cart-total">合计：¥<span id="cartTotal">0.00</span></div>
-        <button class="btn checkout-btn" id="checkoutBtn" type="button">立即支付</button>
+        <button class="btn checkout-btn" id="goCheckoutBtn" type="button">去结算</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算：收货地址 + 支付 -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>确认订单（免注册）</h3>
+        <button class="modal-close" id="checkoutClose" type="button">&times;</button>
+      </div>
+      <form class="modal-body checkout-form" id="checkoutForm">
+        <p class="checkout-hint">无需注册。请填写收货信息，下单后请保存订单号，便于售后查询。</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shipName">收货人 *</label>
+            <input type="text" id="shipName" required placeholder="姓名">
+          </div>
+          <div class="form-group">
+            <label for="shipPhone">手机号 *</label>
+            <input type="tel" id="shipPhone" required placeholder="用于发货与订单查询" pattern="[\d\-\+\s]{6,20}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="shipEmail">邮箱（选填）</label>
+          <input type="email" id="shipEmail" placeholder="用于接收订单通知">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shipRegion">省 / 市 / 区 *</label>
+            <input type="text" id="shipRegion" required placeholder="如：广东省 深圳市 南山区">
+          </div>
+          <div class="form-group">
+            <label for="shipZip">邮编（选填）</label>
+            <input type="text" id="shipZip" placeholder="邮编">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="shipAddress">详细地址 *</label>
+          <textarea id="shipAddress" required placeholder="街道、门牌号、公司名等" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="shipNote">备注（选填）</label>
+          <input type="text" id="shipNote" placeholder="如：工作日送货">
+        </div>
+        <div class="payment-methods">
+          <div class="payment-label">国际支付方式 *</div>
+          <div class="payment-options">
+            <label class="payment-option"><input type="radio" name="payMethod" value="PayPal" checked><span>PayPal</span></label>
+            <label class="payment-option"><input type="radio" name="payMethod" value="Visa / Mastercard"><span>Visa / Mastercard</span></label>
+            <label class="payment-option"><input type="radio" name="payMethod" value="Apple Pay"><span>Apple Pay</span></label>
+            <label class="payment-option"><input type="radio" name="payMethod" value="Google Pay"><span>Google Pay</span></label>
+          </div>
+        </div>
+        <div class="checkout-summary">
+          应付合计：¥<strong id="checkoutTotal">0.00</strong>
+        </div>
+        <button type="submit" class="btn" style="width:100%">提交订单并支付</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 下单成功 -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>下单成功</h3>
+        <button class="modal-close" id="successClose" type="button">&times;</button>
+      </div>
+      <div class="modal-body" id="successBody"></div>
+      <div class="modal-footer">
+        <button class="btn" id="successOk" type="button">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 订单查询 -->
+  <div class="modal-overlay" id="lookupModal">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>订单查询</h3>
+        <button class="modal-close" id="lookupClose" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="checkout-hint">请输入下单时的订单号与手机号（免登录）。</p>
+        <form id="lookupForm" class="lookup-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="lookupOrderId">订单号 *</label>
+              <input type="text" id="lookupOrderId" required placeholder="如 SHR2026…">
+            </div>
+            <div class="form-group">
+              <label for="lookupPhone">手机号 *</label>
+              <input type="tel" id="lookupPhone" required placeholder="下单时填写的手机号">
+            </div>
+          </div>
+          <button type="submit" class="btn" style="width:100%">查询</button>
+        </form>
+        <div id="lookupResult" class="lookup-result" hidden></div>
       </div>
     </div>
   </div>
@@ -253,7 +301,7 @@
       <div class="chat-quick" id="chatQuick">
         <button type="button" data-q="产品价格">产品价格</button>
         <button type="button" data-q="发货物流">发货物流</button>
-        <button type="button" data-q="技术支持">技术支持</button>
+        <button type="button" data-q="订单查询">订单查询</button>
         <button type="button" data-q="人工客服">人工客服</button>
       </div>
       <form class="chat-input-row" id="chatForm">
