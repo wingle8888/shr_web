@@ -52,6 +52,37 @@ function categoryDesc(cat) {
   return cat.desc || "";
 }
 
+const CATEGORY_ICON_PATHS = {
+  all: '<rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect><rect x="13" y="13" width="7" height="7" rx="1"></rect>',
+  "cat-mcu":
+    '<rect x="7" y="7" width="10" height="10" rx="1.5"></rect><path d="M9 3v4M12 3v4M15 3v4M9 17v4M12 17v4M15 17v4M3 9h4M3 12h4M3 15h4M17 9h4M17 12h4M17 15h4"></path>',
+  "cat-iot":
+    '<path d="M5 10a8.5 8.5 0 0 1 14 0"></path><path d="M8 13.5a5 5 0 0 1 8 0"></path><path d="M11 17a1.5 1.5 0 0 1 2 0"></path><circle cx="12" cy="20" r="1" fill="currentColor"></circle>',
+  "cat-sbc":
+    '<rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path>',
+  "cat-display":
+    '<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>',
+  "cat-sensor":
+    '<path d="M3 12h3l2.5-7 4 14 2.5-7H21"></path>',
+  default:
+    '<path d="M20.6 13.1 12.7 21a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1 0-2.8l7.9-7.9A2 2 0 0 1 12.2 3H19a2 2 0 0 1 2 2v6.8a2 2 0 0 1-.4 1.3z"></path><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>',
+};
+
+function categoryIconKey(cat) {
+  const id = typeof cat === "string" ? cat : (cat && cat.id) || "";
+  if (CATEGORY_ICON_PATHS[id]) return id;
+  const name = typeof cat === "object" && cat ? String(cat.name || "") : "";
+  if (/电源|稳压|power/i.test(name)) return "cat-iot";
+  if (/显示|屏幕|屏/i.test(name)) return "cat-display";
+  if (/传感|模块/i.test(name)) return "cat-sensor";
+  return "default";
+}
+
+function categoryIcon(cat) {
+  const key = categoryIconKey(cat);
+  return `<svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CATEGORY_ICON_PATHS[key] || CATEGORY_ICON_PATHS.default}</svg>`;
+}
+
 function renderCategoryTabs() {
   const wrap = document.getElementById("categoryTabs");
   if (!wrap) return;
@@ -59,10 +90,10 @@ function renderCategoryTabs() {
   const valid = new Set(["all", ...cats.map((c) => c.id)]);
   if (!valid.has(currentCategory)) currentCategory = "all";
   wrap.innerHTML = [
-    `<button type="button" class="${currentCategory === "all" ? "active" : ""}" data-cat="all">${escapeHtml(t("catAll"))}</button>`,
+    `<button type="button" class="${currentCategory === "all" ? "active" : ""}" data-cat="all">${categoryIcon("all")}<span>${escapeHtml(t("catAll"))}</span></button>`,
     ...cats.map(
       (cat) =>
-        `<button type="button" class="${currentCategory === cat.id ? "active" : ""}" data-cat="${escapeHtml(cat.id)}">${escapeHtml(categoryTitle(cat))}</button>`
+        `<button type="button" class="${currentCategory === cat.id ? "active" : ""}" data-cat="${escapeHtml(cat.id)}">${categoryIcon(cat)}<span>${escapeHtml(categoryTitle(cat))}</span></button>`
     ),
   ].join("");
 }
@@ -149,7 +180,7 @@ function renderProducts() {
         <div class="category-block" id="${escapeHtml(cat.id)}">
           <div class="category-head">
             <div>
-              <h3>${escapeHtml(categoryTitle(cat))}</h3>
+              <h3>${categoryIcon(cat)}<span>${escapeHtml(categoryTitle(cat))}</span></h3>
               ${desc ? `<p>${escapeHtml(desc)}</p>` : ""}
             </div>
             <span class="category-count">${t("itemsCount", { n: items.length })}</span>

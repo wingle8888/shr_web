@@ -594,6 +594,9 @@ nav a.active::after {
 }
 
 .category-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--border);
   background: rgba(13, 20, 36, 0.8);
   color: var(--text-muted);
@@ -604,6 +607,13 @@ nav a.active::after {
   font-family: var(--font-ui);
   font-weight: 600;
   transition: all 0.2s;
+}
+
+.cat-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .category-tabs button.active,
@@ -635,10 +645,19 @@ nav a.active::after {
 }
 
 .category-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
   font-size: 1.15rem;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
+}
+
+.category-head .cat-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
 }
 
 .category-head p {
