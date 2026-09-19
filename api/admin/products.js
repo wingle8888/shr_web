@@ -63,10 +63,11 @@ module.exports = async function handler(req, res) {
         const catalog = await setProductsHidden(ids, action === "hide");
         sendJson(res, 200, { ok: true, hiddenIds: catalog.hiddenIds });
       } catch (err) {
-        const missing = err && err.code === "BLOB_MISSING";
-        sendJson(res, missing ? 503 : 500, {
+        const raw = String((err && err.message) || err || "");
+        const rpc = /RPC receiver|does not implement the method/i.test(raw);
+        sendJson(res, 503, {
           ok: false,
-          error: missing ? "云存储未配置，下架无法同步到商城。请在 Cloudflare 绑定 R2 存储桶 develop-boards。" : String(err.message || err),
+          error: rpc || (err && err.code === "BLOB_MISSING") ? "下架名单未能写入云端，请稍后重试" : raw,
         });
       }
       return;

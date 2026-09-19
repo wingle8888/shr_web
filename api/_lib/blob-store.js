@@ -1,9 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const { getR2, disableR2, getKV, disableKV, isCloudflare } = require("./runtime-env");
+const { getR2, disableR2, isCloudflare } = require("./runtime-env");
 
 const mem = new Map();
-const CACHE_ORIGIN = "https://shr-store.internal/";
+const STORE_HOST = "https://develop-boards.com";
 
 function blobToken() {
   return String(process.env.BLOB_READ_WRITE_TOKEN || "").trim();
@@ -21,18 +21,23 @@ function isHosted() {
   return isVercel() || isCloudflare();
 }
 
-function canUseCache() {
+function getCachesObj() {
   try {
-    return typeof caches !== "undefined" && caches.default && typeof caches.default.match === "function";
-  } catch (_) {
-    return false;
-  }
+    if (typeof caches !== "undefined" && caches) return caches;
+  } catch (_) {}
+  try {
+    if (globalThis.caches) return globalThis.caches;
+  } catch (_) {}
+  return null;
+}
+
+function canUseCache() {
+  return Boolean(getCachesObj());
 }
 
 function storageKind() {
-  if (getR2()) return "r2";
-  if (getKV()) return "kv";
   if (canUseCache()) return "cache";
+  if (getR2()) return "r2";
   return "";
 }
 
@@ -60,14 +65,27 @@ function writeLocalJson(filePath, data) {
   } catch (_) {}
 }
 
-function isRpcMissing(err) {
-  return /does not implement the method/i.test(String((err && err.message) || err || ""));
+function storeRequest(pathname) {
+  return new Request(`${STORE_HOST}/__shr-store/${encodeURIComponent(pathname)}`, { method: "GET" });
+}
+
+async function openStoreCache() {
+  const c = getCachesObj();
+  if (!c) return null;
+  try {
+    if (c.default && typeof c.default.match === "function") return c.default;
+  } catch (_) {}
+  try {
+    if (typeof c.open === "function") return await c.open("shr-admin");
+  } catch (_) {}
+  return null;
 }
 
 async function cacheGetJson(pathname) {
-  if (!canUseCache()) return null;
   try {
-    const res = await caches.default.match(new Request(CACHE_ORIGIN + pathname));
+    const cache = await openStoreCache();
+    if (!cache) return null;
+    const res = await cache.match(storeRequest(pathname));
     if (!res) return null;
     const text = await res.text();
     return text ? JSON.parse(text) : null;
@@ -76,13 +94,14 @@ async function cacheGetJson(pathname) {
   }
 }
 
-async function cachePutJson(pathname, body) {
-  if (!canUseCache()) return false;
+async function cachePutJson(pathname, payload) {
   try {
-    const payload = typeof body === "string" ? body : JSON.stringify(body);
-    await caches.default.put(
-      new Request(CACHE_ORIGIN + pathname),
+    const cache = await openStoreCache();
+    if (!cache || typeof cache.put !== "function") return false;
+    await cache.put(
+      storeRequest(pathname),
       new Response(payload, {
+        status: 200,
         headers: {
           "content-type": "application/json",
           "cache-control": "public, max-age=31536000",
@@ -108,68 +127,25 @@ async function parseStoredJson(obj) {
 }
 
 async function blobGetJson(pathname) {
+  const cached = await cacheGetJson(pathname);
+  if (cached != null) return cached;
   const r2 = getR2();
-  if (r2) {
-    try {
-      const parsed = await parseStoredJson(await r2.get(pathname));
-      if (parsed != null) return parsed;
-    } catch (err) {
-      if (isRpcMissing(err)) disableR2();
-    }
+  if (!r2) return null;
+  try {
+    return await parseStoredJson(await r2.get(pathname));
+  } catch (_) {
+    disableR2();
+    return null;
   }
-  const kv = getKV();
-  if (kv) {
-    try {
-      const parsed = await parseStoredJson(await kv.get(pathname, { type: "json" }));
-      if (parsed != null) return parsed;
-    } catch (err) {
-      if (isRpcMissing(err)) disableKV();
-      try {
-        const parsed = await parseStoredJson(await kv.get(pathname));
-        if (parsed != null) return parsed;
-      } catch (_) {}
-    }
-  }
-  return cacheGetJson(pathname);
 }
 
 async function blobPutJson(pathname, body) {
   const payload = typeof body === "string" ? body : JSON.stringify(body);
-  let ok = false;
-  const r2 = getR2();
-  if (r2) {
-    try {
-      await r2.put(pathname, payload, { httpMetadata: { contentType: "application/json" } });
-      ok = true;
-    } catch (err) {
-      if (isRpcMissing(err)) disableR2();
-    }
-  }
-  const kv = getKV();
-  if (kv) {
-    try {
-      await kv.put(pathname, payload);
-      ok = true;
-    } catch (err) {
-      if (isRpcMissing(err)) disableKV();
-    }
-  }
-  if (await cachePutJson(pathname, payload)) ok = true;
-  return ok;
+  return cachePutJson(pathname, payload);
 }
 
-async function blobPutFile(pathname, buffer, contentType) {
-  const r2 = getR2();
-  if (!r2) return null;
-  const type = contentType || "application/octet-stream";
-  const body = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-  try {
-    await r2.put(pathname, body, { httpMetadata: { contentType: type } });
-    return { url: `/api/downloads?file=${encodeURIComponent(pathname)}` };
-  } catch (err) {
-    if (isRpcMissing(err)) disableR2();
-    return null;
-  }
+async function blobPutFile() {
+  return null;
 }
 
 async function blobGetFile(pathname) {
@@ -182,8 +158,8 @@ async function blobGetFile(pathname) {
       buffer: Buffer.from(await obj.arrayBuffer()),
       contentType: (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
     };
-  } catch (err) {
-    if (isRpcMissing(err)) disableR2();
+  } catch (_) {
+    disableR2();
     return null;
   }
 }
@@ -206,15 +182,9 @@ async function readJsonStore({ blobPath, localPaths = [], empty, merge }) {
 async function writeJsonStore({ blobPath, localPaths = [], data }) {
   mem.set(blobPath, data);
   (localPaths || []).forEach((p) => writeLocalJson(p, data));
-  if (hasBlob()) {
-    const saved = await blobPutJson(blobPath, data);
-    if (!saved && isHosted()) {
-      const err = new Error("云存储写入失败，下架无法同步到商城");
-      err.code = "BLOB_MISSING";
-      throw err;
-    }
-  } else if (isHosted()) {
-    const err = new Error("云存储未配置，下架无法同步到商城");
+  const saved = await blobPutJson(blobPath, data);
+  if (!saved && isHosted()) {
+    const err = new Error("下架名单未能写入云端，请稍后重试");
     err.code = "BLOB_MISSING";
     throw err;
   }

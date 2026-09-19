@@ -74,7 +74,8 @@ async function api(url, options = {}) {
   const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
-    throw new Error(data.error || `HTTP ${res.status}`);
+    const msg = String(data.error || `HTTP ${res.status}`);
+    throw new Error(/RPC receiver|does not implement the method/i.test(msg) ? "下架名单未能写入云端，请稍后重试" : msg);
   }
   return data;
 }
