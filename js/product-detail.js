@@ -289,6 +289,7 @@ function initLangSwitch() {
         b.classList.toggle("active", b.dataset.lang === btn.dataset.lang)
       );
       window.I18N.applyI18n();
+      if (window.Auth) window.Auth.refreshAuthUI();
       await loadCurrentProduct();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
     });
@@ -299,6 +300,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   initLangSwitch();
   window.I18N.applyI18n();
   updateCartBadge();
+  if (window.Auth) {
+    window.Auth.initAuthUI({
+      t,
+      toast: showToast,
+      onChange() {
+        window.I18N.applyI18n();
+        window.Auth.refreshAuthUI();
+      },
+    });
+  }
   await loadCurrentProduct();
 
   document.getElementById("cartBtn").addEventListener("click", () => {

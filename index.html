@@ -20,11 +20,17 @@
   <div class="bg-glow" aria-hidden="true"></div>
   <div class="top-bar">
     <div class="container top-bar-inner">
-      <span data-i18n="topBar">免注册购买 · 支持国际支付 · 现货 24h 发货</span>
+      <span data-i18n="topBar">可注册也可游客购买 · 支持国际支付 · 现货 24h 发货</span>
       <div class="top-bar-actions">
         <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
           <button type="button" class="lang-btn active" data-lang="zh">中文</button>
           <button type="button" class="lang-btn" data-lang="en">EN</button>
+        </div>
+        <div class="auth-area" id="authArea">
+          <button type="button" class="link-btn" id="loginBtn" data-i18n="login">登录</button>
+          <button type="button" class="link-btn" id="registerBtn" data-i18n="register">注册</button>
+          <span class="auth-user" id="authUser" hidden></span>
+          <button type="button" class="link-btn" id="logoutBtn" data-i18n="logout" hidden>退出</button>
         </div>
         <button type="button" id="orderLookupBtn" class="link-btn" data-i18n="orderLookup">订单查询</button>
       </div>
@@ -86,7 +92,7 @@
 
   <section id="services" class="services">
     <div class="container services-grid">
-      <div class="service-item"><strong data-i18n="svc1Title">免注册购买</strong><span data-i18n="svc1Desc">填写收货信息即可下单发货</span></div>
+      <div class="service-item"><strong data-i18n="svc1Title">可选登录</strong><span data-i18n="svc1Desc">注册保存资料，或不登录直接购买</span></div>
       <div class="service-item"><strong data-i18n="svc2Title">订单可查</strong><span data-i18n="svc2Desc">订单号 + 手机号查询购买记录</span></div>
       <div class="service-item"><strong data-i18n="svc3Title">国际支付</strong><span data-i18n="svc3Desc">PayPal / 银行卡 / Apple Pay</span></div>
       <div class="service-item"><strong data-i18n="svc4Title">售后保障</strong><span data-i18n="svc4Desc">质量问题凭订单凭证处理</span></div>
@@ -96,7 +102,7 @@
   <section id="orders-help" class="orders-help">
     <div class="container">
       <h2 class="section-title" data-i18n="afterTitle">购买与售后</h2>
-      <p class="section-subtitle" data-i18n="afterSub">无需注册账号。下单时填写收货人、手机与地址，系统生成订单号并本地保存，便于收货后质量问题追查。</p>
+      <p class="section-subtitle" data-i18n="afterSub">可注册登录方便保存信息，也可不登录直接购买。下单需填写收货人、手机与地址，系统生成订单号便于售后查询。</p>
       <div class="help-steps">
         <div class="help-step"><span>1</span><em data-i18n="step1">选购加入购物车</em></div>
         <div class="help-step"><span>2</span><em data-i18n="step2">填写收货地址并支付</em></div>
@@ -115,7 +121,7 @@
       <button type="button" class="link-btn" id="footerOrderBtn" data-i18n="orderLookup">订单查询</button>
     </div>
     <p class="footer-payments" data-i18n="footerPay">国际支付：PayPal · Visa / Mastercard · Apple Pay · Google Pay</p>
-    <p data-i18n="footerCopy">© 2026 开发板商城 · 免注册购买，订单凭证可查</p>
+    <p data-i18n="footerCopy">© 2026 开发板商城 · 可登录也可游客购买，订单凭证可查</p>
     <p style="font-size:12px;opacity:0.5;margin-top:8px"><a href="/admin/" style="color:inherit">Admin</a></p>
   </footer>
 
@@ -136,11 +142,11 @@
   <div class="modal-overlay" id="checkoutModal">
     <div class="modal modal-wide">
       <div class="modal-header">
-        <h3 data-i18n="checkoutTitle">确认订单（免注册）</h3>
+        <h3 data-i18n="checkoutTitle">确认订单</h3>
         <button class="modal-close" id="checkoutClose" type="button">&times;</button>
       </div>
       <form class="modal-body checkout-form" id="checkoutForm">
-        <p class="checkout-hint" data-i18n="checkoutHint">无需注册。请填写收货信息，下单后请保存订单号，便于售后查询。</p>
+        <p class="checkout-hint" data-i18n="checkoutHint">可登录后自动填充资料，也可游客购买。请填写收货信息，下单后请保存订单号。</p>
         <div class="form-row">
           <div class="form-group">
             <label for="shipName" data-i18n="shipName">收货人 *</label>
@@ -229,6 +235,66 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 data-i18n="loginTitle">登录</h3>
+        <button class="modal-close" id="loginClose" type="button">&times;</button>
+      </div>
+      <form class="modal-body checkout-form" id="loginForm">
+        <p class="checkout-hint" data-i18n="loginHint">登录后可自动填充收货信息；也可不登录直接购买。</p>
+        <div class="form-group">
+          <label for="loginEmail" data-i18n="authEmail">邮箱 *</label>
+          <input type="email" id="loginEmail" required autocomplete="email" data-i18n-placeholder="authEmailPh" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword" data-i18n="authPassword">密码 *</label>
+          <input type="password" id="loginPassword" required minlength="6" autocomplete="current-password" data-i18n-placeholder="authPasswordPh" placeholder="至少 6 位">
+        </div>
+        <p class="auth-error" id="loginError" hidden></p>
+        <button type="submit" class="btn" style="width:100%" data-i18n="loginSubmit">登录</button>
+        <p class="auth-switch">
+          <span data-i18n="noAccount">还没有账号？</span>
+          <button type="button" class="link-btn" id="switchToRegister" data-i18n="goRegister">去注册</button>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="registerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 data-i18n="registerTitle">注册</h3>
+        <button class="modal-close" id="registerClose" type="button">&times;</button>
+      </div>
+      <form class="modal-body checkout-form" id="registerForm">
+        <p class="checkout-hint" data-i18n="registerHint">注册可选。游客也可直接下单，仅需收货信息与订单号。</p>
+        <div class="form-group">
+          <label for="regName" data-i18n="authName">姓名 *</label>
+          <input type="text" id="regName" required autocomplete="name" data-i18n-placeholder="namePh" placeholder="姓名">
+        </div>
+        <div class="form-group">
+          <label for="regEmail" data-i18n="authEmail">邮箱 *</label>
+          <input type="email" id="regEmail" required autocomplete="email" data-i18n-placeholder="authEmailPh" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="regPhone" data-i18n="authPhone">手机号（选填）</label>
+          <input type="tel" id="regPhone" autocomplete="tel" data-i18n-placeholder="phonePh" placeholder="用于发货与订单查询">
+        </div>
+        <div class="form-group">
+          <label for="regPassword" data-i18n="authPassword">密码 *</label>
+          <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" data-i18n-placeholder="authPasswordPh" placeholder="至少 6 位">
+        </div>
+        <p class="auth-error" id="registerError" hidden></p>
+        <button type="submit" class="btn" style="width:100%" data-i18n="registerSubmit">创建账号</button>
+        <p class="auth-switch">
+          <span data-i18n="hasAccount">已有账号？</span>
+          <button type="button" class="link-btn" id="switchToLogin" data-i18n="goLogin">去登录</button>
+        </p>
+      </form>
+    </div>
+  </div>
+
   <div class="chat-widget" id="chatWidget">
     <div class="chat-panel" id="chatPanel" hidden>
       <div class="chat-header">
@@ -257,6 +323,7 @@
 
   <div class="toast" id="toast"></div>
   <script src="/js/i18n.js"></script>
+  <script src="/js/auth.js"></script>
   <script src="/js/products-data.js"></script>
   <script src="/js/products-en.js"></script>
   <script src="/js/app.js"></script>

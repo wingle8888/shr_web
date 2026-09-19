@@ -208,6 +208,7 @@ function openCheckout() {
   }
   closeModal("cartModal");
   document.getElementById("checkoutTotal").textContent = cartTotal().toFixed(2);
+  if (window.Auth) window.Auth.prefillCheckoutFromUser();
   openModal("checkoutModal");
 }
 
@@ -273,6 +274,12 @@ async function submitOrder(e) {
     total: cartTotal(),
     shipping,
   };
+
+  const user = window.Auth?.currentUser?.();
+  if (user) {
+    order.userId = user.id;
+    order.userEmail = user.email;
+  }
 
   const orders = loadOrders();
   orders.unshift(order);
@@ -418,6 +425,17 @@ document.addEventListener("DOMContentLoaded", () => {
   initSearchAndFilter();
   initChat();
 
+  if (window.Auth) {
+    window.Auth.initAuthUI({
+      t,
+      toast: showToast,
+      onChange() {
+        window.I18N.applyI18n();
+        window.Auth.refreshAuthUI();
+      },
+    });
+  }
+
   document.getElementById("cartBtn").addEventListener("click", openCart);
   document.getElementById("modalClose").addEventListener("click", () => closeModal("cartModal"));
   document.getElementById("goCheckoutBtn").addEventListener("click", openCheckout);
@@ -444,6 +462,7 @@ function initLangSwitch() {
       window.I18N.setLang(btn.dataset.lang);
       wrap.querySelectorAll(".lang-btn").forEach((b) => b.classList.toggle("active", b.dataset.lang === btn.dataset.lang));
       window.I18N.applyI18n();
+      if (window.Auth) window.Auth.refreshAuthUI();
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();
