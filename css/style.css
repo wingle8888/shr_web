@@ -1299,6 +1299,33 @@ footer {
   justify-content: center;
 }
 
+.chat-avatar-wrap {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+.presence-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  box-shadow: 0 0 0 2px rgba(7, 11, 20, 0.95);
+}
+
+.presence-dot.is-online {
+  background: #34d399;
+  box-shadow: 0 0 0 2px rgba(7, 11, 20, 0.95), 0 0 8px rgba(52, 211, 153, 0.75);
+}
+
+.chat-avatar-wrap .presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+}
+
 .chat-agent-name {
   font-size: 14px;
   font-weight: bold;
@@ -1306,6 +1333,10 @@ footer {
 
 .chat-agent-status {
   font-size: 11px;
+  color: #94a3b8;
+}
+
+.chat-agent-status.is-online {
   color: #6ee7b7;
 }
 
@@ -1355,6 +1386,12 @@ footer {
   background: rgba(46, 230, 255, 0.12);
   border: 1px solid rgba(46, 230, 255, 0.35);
   border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
 }
 
 .chat-time {

@@ -1,5 +1,5 @@
 const { cors, sendJson, parseBody } = require("./_lib/docs-store");
-const { getThread, appendMessage, markRead } = require("./_lib/chat-store");
+const { getThread, appendMessage, markRead, readPresence, touchPresence, presenceFlags } = require("./_lib/chat-store");
 
 function visitorFrom(req, body) {
   const url = new URL(req.url, "http://localhost");
@@ -21,6 +21,12 @@ module.exports = async function handler(req, res) {
       return;
     }
     try {
+      const url = new URL(req.url, "http://localhost");
+      const wantPresence = String(url.searchParams.get("presence") || "") === "1";
+      const presence = wantPresence
+        ? await touchPresence({ role: "user", visitorId })
+        : await readPresence();
+      const flags = presenceFlags(presence, visitorId);
       const thread = await getThread(visitorId);
       if (thread && Number(thread.unreadCustomer) > 0) {
         await markRead(visitorId, "customer");
@@ -28,6 +34,8 @@ module.exports = async function handler(req, res) {
       }
       sendJson(res, 200, {
         ok: true,
+        sellerOnline: flags.sellerOnline,
+        customerOnline: flags.customerOnline,
         conversation: thread
           ? {
               id: thread.id,
@@ -62,8 +70,12 @@ module.exports = async function handler(req, res) {
         userId: body.userId,
         mark: "admin",
       });
+      const presence = await touchPresence({ role: "user", visitorId });
+      const flags = presenceFlags(presence, visitorId);
       sendJson(res, 200, {
         ok: true,
+        sellerOnline: flags.sellerOnline,
+        customerOnline: flags.customerOnline,
         conversation: {
           id: user.id,
           visitorId: user.visitorId,

@@ -470,6 +470,8 @@ function initLangSwitch() {
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();
+      updateSellerPresence(lastSellerOnline);
+      if (loadChatHistory().length) renderChatMessages(loadChatHistory());
     });
   });
 }
@@ -517,7 +519,13 @@ function appendChatBubble(role, text, time) {
   const box = document.getElementById("chatMessages");
   const el = document.createElement("div");
   el.className = `chat-bubble ${role === "admin" ? "admin" : role}`;
-  el.innerHTML = `${escapeHtml(text)}<div class="chat-time">${time || formatChatTime()}</div>`;
+  const label =
+    role === "admin"
+      ? `<div class="chat-bubble-label">${escapeHtml(
+          lastSellerOnline ? chatText("chatSellerOnline", "卖家 · 在线") : chatText("chatSellerOffline", "卖家 · 离线")
+        )}</div>`
+      : "";
+  el.innerHTML = `${label}${escapeHtml(text)}<div class="chat-time">${time || formatChatTime()}</div>`;
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
 }
@@ -557,11 +565,40 @@ function chatIdentity() {
   };
 }
 
+let lastSellerOnline = false;
+
+function chatText(key, fallback) {
+  return (window.I18N && window.I18N.t ? window.I18N.t(key) : "") || fallback;
+}
+
+function updateSellerPresence(online) {
+  lastSellerOnline = Boolean(online);
+  const status = document.getElementById("chatAgentStatus");
+  const dot = document.getElementById("chatSellerDot");
+  if (status) {
+    status.textContent = lastSellerOnline ? chatText("chatOnline", "在线") : chatText("chatOffline", "离线");
+    status.classList.toggle("is-online", lastSellerOnline);
+  }
+  if (dot) {
+    dot.classList.toggle("is-online", lastSellerOnline);
+  }
+}
+
+function chatPanelOpen() {
+  const panel = document.getElementById("chatPanel");
+  return Boolean(panel && !panel.hidden && !document.hidden);
+}
+
 async function fetchChatThread() {
   const { visitorId } = chatIdentity();
-  const res = await fetch("/api/chat?visitorId=" + encodeURIComponent(visitorId), { cache: "no-store" });
+  const presence = chatPanelOpen() ? "1" : "0";
+  const res = await fetch(
+    "/api/chat?visitorId=" + encodeURIComponent(visitorId) + "&presence=" + presence,
+    { cache: "no-store" }
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) return null;
+  updateSellerPresence(data.sellerOnline);
   return data.conversation || null;
 }
 
@@ -613,6 +650,7 @@ async function sendChatToServer(text) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || "send failed");
+  updateSellerPresence(data.sellerOnline);
   applyServerMessages(data.conversation);
 }
 
@@ -644,7 +682,7 @@ function startCustomerChatPoll() {
   if (customerChatTimer) return;
   customerChatTimer = setInterval(() => {
     const panel = document.getElementById("chatPanel");
-    if (!panel || panel.hidden) return;
+    if (!panel || panel.hidden || document.hidden) return;
     syncChatFromServer().catch(() => {});
   }, 4000);
 }
@@ -662,12 +700,17 @@ function initChat() {
   const unread = document.getElementById("chatUnread");
 
   renderChatHistory();
+  updateSellerPresence(false);
   if (loadChatHistory().length <= 1) unread.style.display = "inline-flex";
   syncChatFromServer()
     .then((ok) => {
       if (ok) unread.style.display = "inline-flex";
     })
     .catch(() => {});
+
+  document.addEventListener("visibilitychange", () => {
+    if (chatPanelOpen()) syncChatFromServer().catch(() => {});
+  });
 
   launcher.addEventListener("click", () => {
     const panel = document.getElementById("chatPanel");

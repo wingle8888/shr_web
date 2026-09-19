@@ -1,5 +1,5 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
-const { listThreads, getThread, appendMessage, markRead, getAutoReply, setAutoReply, displayTitle } = require("../_lib/chat-store");
+const { listThreads, getThread, appendMessage, markRead, getAutoReply, setAutoReply, displayTitle, readPresence, touchPresence, presenceFlags, withCustomerOnline } = require("../_lib/chat-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -20,21 +20,30 @@ module.exports = async function handler(req, res) {
     try {
       const url = new URL(req.url, "http://localhost");
       const visitorId = String(url.searchParams.get("visitorId") || "").trim();
+      const wantPresence = String(url.searchParams.get("presence") || "") === "1";
+      const presence = wantPresence ? await touchPresence({ role: "admin" }) : await readPresence();
       if (visitorId) {
         const thread = await getThread(visitorId);
         if (thread) await markRead(visitorId, "admin");
+        const flags = presenceFlags(presence, visitorId);
         sendJson(res, 200, {
           ok: true,
+          sellerOnline: flags.sellerOnline,
           conversation: thread
-            ? { ...thread, unreadAdmin: 0, displayName: displayTitle(thread) }
+            ? {
+                ...thread,
+                unreadAdmin: 0,
+                displayName: displayTitle(thread),
+                online: flags.customerOnline,
+              }
             : null,
         });
         return;
       }
-      const threads = await listThreads();
+      const threads = withCustomerOnline(await listThreads(), presence);
       const unread = threads.reduce((s, t) => s + (Number(t.unreadAdmin) || 0), 0);
       const autoReply = await getAutoReply();
-      sendJson(res, 200, { ok: true, threads, unread, autoReply });
+      sendJson(res, 200, { ok: true, threads, unread, autoReply, sellerOnline: presenceFlags(presence).sellerOnline });
     } catch (err) {
       sendJson(res, 500, { ok: false, error: String(err.message || err) });
     }
@@ -72,9 +81,17 @@ module.exports = async function handler(req, res) {
         mark: "customer",
       });
       await markRead(visitorId, "admin");
+      const presence = await touchPresence({ role: "admin" });
+      const flags = presenceFlags(presence, visitorId);
       sendJson(res, 200, {
         ok: true,
-        conversation: { ...thread, unreadAdmin: 0, displayName: displayTitle(thread) },
+        sellerOnline: flags.sellerOnline,
+        conversation: {
+          ...thread,
+          unreadAdmin: 0,
+          displayName: displayTitle(thread),
+          online: flags.customerOnline,
+        },
       });
     } catch (err) {
       sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {

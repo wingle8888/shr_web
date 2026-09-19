@@ -5,8 +5,12 @@ const { readUsers } = require("./auth-store");
 const DATA_FILE = path.join(process.cwd(), "data", "chats.json");
 const TMP_FILE = path.join("/tmp", "shr-chats.json");
 const BLOB_PATH = "shr-admin/chats-db.json";
+const PRESENCE_FILE = path.join(process.cwd(), "data", "chat-presence.json");
+const PRESENCE_TMP = path.join("/tmp", "shr-chat-presence.json");
+const PRESENCE_BLOB = "shr-admin/chat-presence.json";
 const MAX_THREADS = 80;
 const MAX_MESSAGES = 80;
+const ONLINE_MS = 40000;
 
 const DEFAULT_AUTO_REPLY =
   "您好，已收到您的留言，卖家看到后会尽快回复。";
@@ -77,6 +81,103 @@ async function writeChats(data) {
     data: next,
   });
   return next;
+}
+
+function unwrapPresence(raw) {
+  const sellerAt = raw && raw.sellerAt ? String(raw.sellerAt) : "";
+  const src = raw && raw.customers && typeof raw.customers === "object" ? raw.customers : {};
+  const customers = {};
+  Object.keys(src).forEach((key) => {
+    const id = String(key || "").trim().slice(0, 64);
+    if (!id) return;
+    customers[id] = String(src[key] || "");
+  });
+  return { sellerAt, customers };
+}
+
+function mergePresence(a, b) {
+  const left = unwrapPresence(a);
+  const right = unwrapPresence(b);
+  const customers = { ...left.customers };
+  Object.entries(right.customers).forEach(([id, at]) => {
+    if (!customers[id] || String(at) > String(customers[id])) customers[id] = at;
+  });
+  const sellerAt =
+    String(right.sellerAt || "") >= String(left.sellerAt || "") ? right.sellerAt : left.sellerAt;
+  return { sellerAt: sellerAt || "", customers };
+}
+
+function isOnline(at, now = Date.now()) {
+  if (!at) return false;
+  const t = Date.parse(at);
+  return Number.isFinite(t) && now - t <= ONLINE_MS;
+}
+
+function prunePresence(db, now = Date.now()) {
+  const next = unwrapPresence(db);
+  const cutoff = now - ONLINE_MS * 15;
+  Object.keys(next.customers).forEach((id) => {
+    const t = Date.parse(next.customers[id]);
+    if (!Number.isFinite(t) || t < cutoff) delete next.customers[id];
+  });
+  const ids = Object.keys(next.customers);
+  if (ids.length > 200) {
+    ids
+      .sort((a, b) => String(next.customers[b]).localeCompare(String(next.customers[a])))
+      .slice(200)
+      .forEach((id) => delete next.customers[id]);
+  }
+  return next;
+}
+
+async function readPresence() {
+  const raw = await readJsonStore({
+    blobPath: PRESENCE_BLOB,
+    localPaths: [PRESENCE_TMP, PRESENCE_FILE],
+    empty: { sellerAt: "", customers: {} },
+    merge: mergePresence,
+  });
+  return unwrapPresence(raw);
+}
+
+async function writePresence(data) {
+  const next = prunePresence(mergePresence({ sellerAt: "", customers: {} }, data));
+  try {
+    await writeJsonStore({
+      blobPath: PRESENCE_BLOB,
+      localPaths: [PRESENCE_TMP, PRESENCE_FILE],
+      data: next,
+    });
+  } catch (err) {
+    if (!(err && err.code === "BLOB_MISSING")) throw err;
+  }
+  return next;
+}
+
+async function touchPresence({ role, visitorId } = {}) {
+  const db = await readPresence();
+  const now = new Date().toISOString();
+  if (role === "admin") db.sellerAt = now;
+  const vid = String(visitorId || "").trim().slice(0, 64);
+  if ((role === "user" || role === "customer") && vid) db.customers[vid] = now;
+  return writePresence(db);
+}
+
+function presenceFlags(db, visitorId, now = Date.now()) {
+  const data = unwrapPresence(db);
+  const vid = String(visitorId || "").trim();
+  return {
+    sellerOnline: isOnline(data.sellerAt, now),
+    customerOnline: vid ? isOnline(data.customers[vid], now) : false,
+  };
+}
+
+function withCustomerOnline(items, db, now = Date.now()) {
+  const data = unwrapPresence(db);
+  return (items || []).map((item) => ({
+    ...item,
+    online: isOnline(data.customers[item && item.visitorId], now),
+  }));
 }
 
 function makeMessage(role, text) {
@@ -270,4 +371,8 @@ module.exports = {
   displayTitle,
   getAutoReply,
   setAutoReply,
+  readPresence,
+  touchPresence,
+  presenceFlags,
+  withCustomerOnline,
 };

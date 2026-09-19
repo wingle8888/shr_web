@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260919k">
+  <link rel="stylesheet" href="/css/style.css?v=20260919l">
 </head>
 <body data-i18n-title="siteTitle">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -343,10 +343,13 @@
     <div class="chat-panel" id="chatPanel" hidden>
       <div class="chat-header">
         <div class="chat-agent">
-          <div class="chat-avatar">客</div>
+          <div class="chat-avatar-wrap">
+            <div class="chat-avatar">客</div>
+            <span class="presence-dot" id="chatSellerDot" aria-hidden="true"></span>
+          </div>
           <div>
             <div class="chat-agent-name" data-i18n="chatName">开发板商城客服</div>
-            <div class="chat-agent-status" data-i18n="chatStatus">在线 · 通常几分钟内回复</div>
+            <div class="chat-agent-status" id="chatAgentStatus">离线</div>
           </div>
         </div>
         <button class="chat-close" id="chatClose" type="button" aria-label="Close">&times;</button>
@@ -366,12 +369,12 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/js/i18n.js?v=20260919k"></script>
+  <script src="/js/i18n.js?v=20260919l"></script>
   <script src="/js/auth.js?v=20260919k"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
   <script src="/js/products-en.js"></script>
   <script src="/js/products-loader.js?v=20260919j"></script>
-  <script src="/js/app.js?v=20260919m"></script>
+  <script src="/js/app.js?v=20260919n"></script>
   <script src="/js/analytics.js?v=20260919e"></script>
 </body>
 </html>

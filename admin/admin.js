@@ -628,7 +628,7 @@ function renderChatList() {
       const active = String(t.visitorId) === String(state.activeChatVisitorId) ? " is-active" : "";
       return `<button type="button" class="admin-chat-item${active}${unread ? " has-unread" : ""}" data-chat-visitor="${escapeHtml(t.visitorId)}">
         <div class="admin-chat-item-top">
-          <strong>${escapeHtml(title)}</strong>
+          <strong><span class="presence-dot${t.online ? " is-online" : ""}"></span>${escapeHtml(title)}</strong>
           ${unread ? `<span class="admin-tab-badge">${unread}</span>` : ""}
         </div>
         <div class="admin-chat-item-preview">${escapeHtml(t.lastMessage || "")}</div>
@@ -652,7 +652,10 @@ function renderChatThread() {
     return;
   }
   const title = chatDisplayName(thread);
-  if (head) head.textContent = title;
+  if (head) {
+    const online = Boolean(thread.online);
+    head.innerHTML = `<span class="presence-dot${online ? " is-online" : ""}"></span><span>${escapeHtml(title)}</span><span class="admin-online-label${online ? " is-online" : ""}">${online ? "在线" : "离线"}</span>`;
+  }
   if (input) input.disabled = false;
   if (send) send.disabled = false;
   const msgs = thread.messages || [];
@@ -660,9 +663,14 @@ function renderChatThread() {
     box.innerHTML = msgs
       .map((m) => {
         const role = m.role === "admin" ? "admin" : m.role === "bot" ? "bot" : "user";
-        const label = role === "admin" ? "卖家" : role === "bot" ? "自动回复" : chatDisplayName(thread);
+        const label =
+          role === "admin"
+            ? "卖家"
+            : role === "bot"
+              ? "自动回复"
+              : chatDisplayName(thread) + (thread.online ? " · 在线" : " · 离线");
         return `<div class="admin-chat-bubble ${role}">
-          <div class="admin-chat-bubble-label">${label}</div>
+          <div class="admin-chat-bubble-label">${escapeHtml(label)}</div>
           <div>${escapeHtml(m.text || "")}</div>
           <div class="chat-time">${formatTime(m.createdAt)}</div>
         </div>`;
@@ -673,11 +681,17 @@ function renderChatThread() {
 }
 
 async function loadChatList() {
-  const data = await api("/api/admin/chat");
+  const live = state.currentTab === "chat" && !document.hidden;
+  const data = await api("/api/admin/chat" + (live ? "?presence=1" : ""));
   state.chatThreads = data.threads || [];
   state.chatUnread = data.unread || 0;
   state.autoReply = data.autoReply || state.autoReply;
+  if (state.chatThread && state.chatThread.visitorId) {
+    const listed = state.chatThreads.find((t) => String(t.visitorId) === String(state.chatThread.visitorId));
+    if (listed) state.chatThread.online = Boolean(listed.online);
+  }
   renderChatList();
+  if (state.chatThread) renderChatThread();
   fillAutoReplyForm(state.autoReply);
 }
 
@@ -693,7 +707,7 @@ function fillAutoReplyForm(settings) {
 async function openChatThread(visitorId) {
   state.activeChatVisitorId = visitorId;
   renderChatList();
-  const data = await api("/api/admin/chat?visitorId=" + encodeURIComponent(visitorId));
+  const data = await api("/api/admin/chat?visitorId=" + encodeURIComponent(visitorId) + "&presence=1");
   state.chatThread = data.conversation || null;
   renderChatThread();
   await loadChatList();
@@ -705,12 +719,11 @@ function startChatLive() {
   if (chatTimer) return;
   chatTimer = setInterval(() => {
     if (!getPass() || document.hidden || state.currentTab !== "chat") return;
-    loadChatList()
-      .then(() => {
-        if (state.activeChatVisitorId) return openChatThread(state.activeChatVisitorId);
-      })
-      .catch(() => {});
-  }, 8000);
+    const refresh = state.activeChatVisitorId
+      ? openChatThread(state.activeChatVisitorId)
+      : loadChatList();
+    refresh.catch(() => {});
+  }, 5000);
 }
 
 function stopChatLive() {
@@ -843,9 +856,9 @@ $("refreshDashboard").addEventListener("click", () =>
 );
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && getPass() && state.currentTab === "dashboard") {
-    loadVisits().catch(() => {});
-  }
+  if (document.hidden || !getPass()) return;
+  if (state.currentTab === "dashboard") loadVisits().catch(() => {});
+  if (state.currentTab === "chat") loadChatList().catch(() => {});
 });
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
