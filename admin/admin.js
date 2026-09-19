@@ -6,6 +6,7 @@ const state = {
   customProducts: [],
   orders: [],
   customers: [],
+  addressStats: [],
   users: [],
   stats: null,
   currentTab: "dashboard",
@@ -179,18 +180,43 @@ function renderOrders() {
     ? list
         .map((o) => {
           const s = o.shipping || {};
+          const addr = [s.region, s.address].filter(Boolean).join(" ") || "-";
           return `<tr data-order-id="${escapeHtml(o.id)}" class="admin-click-row">
         <td>${escapeHtml(o.id)}</td>
         <td>${escapeHtml(formatTime(o.createdAt))}</td>
         <td>${escapeHtml(s.name || "-")}</td>
         <td>${escapeHtml(s.phone || "-")}</td>
+        <td class="admin-addr-cell" title="${escapeHtml(addr)}">${escapeHtml(addr)}</td>
         <td>¥${formatMoney(o.total)}</td>
         <td>${escapeHtml(o.status || "-")}</td>
         <td>${escapeHtml(o.payMethod || "-")}</td>
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="7" class="admin-empty">暂无订单</td></tr>`;
+    : `<tr><td colspan="8" class="admin-empty">暂无订单</td></tr>`;
+}
+
+function renderAddressStats() {
+  const table = $("addressStatsTable");
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  const list = state.addressStats || [];
+  tbody.innerHTML = list.length
+    ? list
+        .map(
+          (row) => `<tr>
+        <td>${escapeHtml(row.region || "-")}</td>
+        <td class="admin-addr-cell" title="${escapeHtml(row.address || row.fullAddress || "")}">${escapeHtml(
+            row.address || "-"
+          )}</td>
+        <td>${row.orderCount || 0}</td>
+        <td>${row.customerCount || 0}</td>
+        <td>¥${formatMoney(row.amount)}</td>
+        <td>${escapeHtml(row.sampleNames || "-")}</td>
+      </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="6" class="admin-empty">暂无地址统计（有订单后按收货地址汇总）</td></tr>`;
 }
 
 function showOrderDetail(order) {
@@ -227,6 +253,7 @@ function renderCustomers() {
         <td>${escapeHtml(c.phone || "-")}</td>
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.region || "-")}</td>
+        <td class="admin-addr-cell" title="${escapeHtml(c.address || "")}">${escapeHtml(c.address || "-")}</td>
         <td>${c.orderCount || 0}</td>
         <td>¥${formatMoney(c.totalSpent)}</td>
         <td>${escapeHtml(c.lastOrderId || "-")}<br><span class="admin-muted">${escapeHtml(
@@ -235,7 +262,7 @@ function renderCustomers() {
       </tr>`
         )
         .join("")
-    : `<tr><td colspan="7" class="admin-empty">暂无客户资料</td></tr>`;
+    : `<tr><td colspan="8" class="admin-empty">暂无客户资料</td></tr>`;
 }
 
 function renderUsers() {
@@ -308,8 +335,10 @@ async function loadOrdersBundle() {
   state.orders = data.orders || [];
   state.stats = data.stats || null;
   state.customers = data.customers || [];
+  state.addressStats = data.addressStats || [];
   renderStats();
   renderOrders();
+  renderAddressStats();
   renderCustomers();
 }
 

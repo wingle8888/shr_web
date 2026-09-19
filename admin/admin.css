@@ -353,9 +353,11 @@
   text-align: center !important;
 }
 
-.admin-muted {
-  color: var(--text-muted);
-  font-size: 12px;
+.admin-addr-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-detail {

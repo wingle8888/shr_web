@@ -111,11 +111,49 @@ function extractCustomers(orders) {
     .sort((a, b) => String(b.lastOrderAt || "").localeCompare(String(a.lastOrderAt || "")));
 }
 
+function extractAddressStats(orders) {
+  const map = new Map();
+  (orders || readOrders()).forEach((o) => {
+    const s = o.shipping || {};
+    const region = String(s.region || "").trim() || "未填写地区";
+    const address = String(s.address || "").trim();
+    const full = address ? `${region} ${address}` : region;
+    const phone = normalizePhone(s.phone);
+    const prev = map.get(full) || {
+      region,
+      address,
+      fullAddress: full,
+      orderCount: 0,
+      amount: 0,
+      phones: new Set(),
+      names: new Set(),
+    };
+    prev.orderCount += 1;
+    prev.amount += Number(o.total) || 0;
+    if (phone) prev.phones.add(phone);
+    if (s.name) prev.names.add(String(s.name).trim());
+    map.set(full, prev);
+  });
+
+  return Array.from(map.values())
+    .map((row) => ({
+      region: row.region,
+      address: row.address,
+      fullAddress: row.fullAddress,
+      orderCount: row.orderCount,
+      customerCount: row.phones.size,
+      amount: Math.round(row.amount * 100) / 100,
+      sampleNames: Array.from(row.names).slice(0, 3).join("、"),
+    }))
+    .sort((a, b) => b.orderCount - a.orderCount || b.amount - a.amount);
+}
+
 module.exports = {
   readOrders,
   writeOrders,
   findOrder,
   buildStats,
   extractCustomers,
+  extractAddressStats,
   normalizePhone,
 };

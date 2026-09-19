@@ -189,6 +189,23 @@
             </div>
           </div>
           <p class="admin-tip">包含服务器订单；可把当前浏览器本地订单同步到后台。</p>
+          <h2 class="admin-sub">购买客户地址统计</h2>
+          <div class="admin-table-wrap" style="margin-bottom:20px">
+            <table class="admin-table" id="addressStatsTable">
+              <thead>
+                <tr>
+                  <th>收货地区</th>
+                  <th>详细地址</th>
+                  <th>订单数</th>
+                  <th>客户数</th>
+                  <th>销售额 (¥)</th>
+                  <th>客户示例</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <h2 class="admin-sub">订单明细</h2>
           <div class="admin-table-wrap">
             <table class="admin-table" id="ordersTable">
               <thead>
@@ -197,6 +214,7 @@
                   <th>时间</th>
                   <th>客户</th>
                   <th>手机</th>
+                  <th>收货地址</th>
                   <th>金额</th>
                   <th>状态</th>
                   <th>支付</th>
@@ -224,6 +242,7 @@
                   <th>手机</th>
                   <th>邮箱</th>
                   <th>地区</th>
+                  <th>详细地址</th>
                   <th>订单数</th>
                   <th>累计消费</th>
                   <th>最近订单</th>
