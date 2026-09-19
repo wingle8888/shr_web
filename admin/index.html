@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260919m">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260919n">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -387,10 +387,22 @@
     </section>
   </div>
 
+  <div class="admin-dialog" id="adminDialog" hidden>
+    <div class="admin-dialog-backdrop" data-dialog-cancel></div>
+    <div class="admin-dialog-card" role="dialog" aria-modal="true" aria-labelledby="adminDialogTitle">
+      <h2 id="adminDialogTitle">请确认</h2>
+      <p id="adminDialogMessage"></p>
+      <div class="admin-dialog-actions">
+        <button type="button" class="link-btn" id="adminDialogCancel" data-dialog-cancel>取消</button>
+        <button type="button" class="btn" id="adminDialogOk">确定</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/auth.js?v=20260919e"></script>
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919l"></script>
-  <script src="/admin/admin.js?v=20260919q"></script>
+  <script src="/admin/admin.js?v=20260919r"></script>
 </body>
 </html>

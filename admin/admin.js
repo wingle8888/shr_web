@@ -33,6 +33,60 @@ function $(id) {
   return document.getElementById(id);
 }
 
+let dialogResolve = null;
+
+function closeAdminDialog(ok) {
+  const overlay = $("adminDialog");
+  if (overlay) overlay.hidden = true;
+  const done = dialogResolve;
+  dialogResolve = null;
+  if (done) done(Boolean(ok));
+}
+
+function openAdminDialog({ title, message, okText, cancelText, showCancel }) {
+  return new Promise((resolve) => {
+    const overlay = $("adminDialog");
+    if (!overlay) {
+      resolve(window.confirm(message));
+      return;
+    }
+    if (dialogResolve) dialogResolve(false);
+    dialogResolve = resolve;
+    const titleEl = $("adminDialogTitle");
+    const msgEl = $("adminDialogMessage");
+    const okBtn = $("adminDialogOk");
+    const cancelBtn = $("adminDialogCancel");
+    if (titleEl) titleEl.textContent = title || "请确认";
+    if (msgEl) msgEl.textContent = message || "";
+    if (okBtn) okBtn.textContent = okText || "确定";
+    if (cancelBtn) {
+      cancelBtn.textContent = cancelText || "取消";
+      cancelBtn.hidden = showCancel === false;
+    }
+    overlay.hidden = false;
+    if (okBtn) okBtn.focus();
+  });
+}
+
+function adminConfirm(message, title) {
+  return openAdminDialog({
+    title: title || "请确认",
+    message,
+    okText: "确定",
+    cancelText: "取消",
+    showCancel: true,
+  });
+}
+
+function adminAlert(message, title) {
+  return openAdminDialog({
+    title: title || "提示",
+    message,
+    okText: "确定",
+    showCancel: false,
+  });
+}
+
 function getPass() {
   return sessionStorage.getItem(PASS_KEY) || "";
 }
@@ -739,7 +793,7 @@ async function applyChatConversation(conversation) {
 
 async function deleteChatMessage(messageId) {
   if (!state.activeChatVisitorId || !messageId) return;
-  if (!confirm("确定删除这条消息？删除后客户窗口也会同步。")) return;
+  if (!(await adminConfirm("确定删除这条消息？删除后客户窗口也会同步。", "删除消息"))) return;
   const data = await api("/api/admin/chat", {
     method: "POST",
     body: JSON.stringify({
@@ -754,7 +808,7 @@ async function deleteChatMessage(messageId) {
 async function clearChatThread() {
   if (!state.activeChatVisitorId) return;
   const name = chatDisplayName(state.chatThread || { visitorId: state.activeChatVisitorId });
-  if (!confirm("确定清空「" + name + "」的全部消息？会话会保留，消息会从服务器删除。")) return;
+  if (!(await adminConfirm("确定清空「" + name + "」的全部消息？会话会保留，消息会从服务器删除。", "清空会话"))) return;
   const data = await api("/api/admin/chat", {
     method: "POST",
     body: JSON.stringify({
@@ -770,7 +824,7 @@ async function removeChatThread(visitorId) {
   if (!vid) return;
   const listed = (state.chatThreads || []).find((t) => String(t.visitorId) === vid);
   const name = chatDisplayName(listed || state.chatThread || { visitorId: vid });
-  if (!confirm("确定删除「" + name + "」的整个会话？会话和消息都会从服务器删除。")) return;
+  if (!(await adminConfirm("确定删除「" + name + "」的整个会话？会话和消息都会从服务器删除。", "删除会话"))) return;
   await api("/api/admin/chat", {
     method: "POST",
     body: JSON.stringify({
@@ -918,6 +972,17 @@ $("logoutBtn").addEventListener("click", () => {
   showPanel(false);
 });
 
+$("adminDialogOk").addEventListener("click", () => closeAdminDialog(true));
+$("adminDialog").addEventListener("click", (e) => {
+  if (e.target.closest("[data-dialog-cancel]")) closeAdminDialog(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const overlay = $("adminDialog");
+  if (!overlay || overlay.hidden) return;
+  closeAdminDialog(false);
+});
+
 $("adminTabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".admin-tab");
   if (!btn) return;
@@ -970,26 +1035,26 @@ $("adminChatList").addEventListener("click", (e) => {
   if (del) {
     e.preventDefault();
     e.stopPropagation();
-    removeChatThread(del.dataset.delThread).catch((err) => alert(err.message));
+    removeChatThread(del.dataset.delThread).catch((err) => adminAlert(err.message));
     return;
   }
   const btn = e.target.closest("[data-chat-visitor]");
   if (!btn) return;
-  openChatThread(btn.dataset.chatVisitor).catch((err) => alert(err.message));
+  openChatThread(btn.dataset.chatVisitor).catch((err) => adminAlert(err.message));
 });
 
 $("adminChatMsgs").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-del-msg]");
   if (!btn) return;
-  deleteChatMessage(btn.dataset.delMsg).catch((err) => alert(err.message));
+  deleteChatMessage(btn.dataset.delMsg).catch((err) => adminAlert(err.message));
 });
 
 $("clearChatThread").addEventListener("click", () => {
-  clearChatThread().catch((err) => alert(err.message));
+  clearChatThread().catch((err) => adminAlert(err.message));
 });
 
 $("deleteChatThread").addEventListener("click", () => {
-  removeChatThread(state.activeChatVisitorId).catch((err) => alert(err.message));
+  removeChatThread(state.activeChatVisitorId).catch((err) => adminAlert(err.message));
 });
 
 $("adminChatForm").addEventListener("submit", async (e) => {
@@ -1184,7 +1249,7 @@ async function deleteSelectedProducts(ids) {
     if (hint) hint.textContent = "请先勾选要删除的产品";
     return;
   }
-  if (!confirm(`确定删除选中的 ${list.length} 件产品？删除后商城不再显示。`)) return;
+  if (!(await adminConfirm(`确定删除选中的 ${list.length} 件产品？删除后商城不再显示。`, "删除产品"))) return;
   try {
     if (hint) hint.textContent = "删除中…";
     await api("/api/admin/products", {
@@ -1389,7 +1454,7 @@ $("uploadForm").addEventListener("submit", async (e) => {
 $("fileList").addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-del-id]");
   if (!btn) return;
-  if (!confirm("确定删除该资料登记？")) return;
+  if (!(await adminConfirm("确定删除该资料登记？", "删除资料"))) return;
   try {
     await api("/api/admin/files", {
       method: "POST",
