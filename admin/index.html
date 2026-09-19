@@ -272,18 +272,8 @@
           <div class="admin-panel-head">
             <h1>注册资料</h1>
           </div>
-          <p class="admin-tip" id="usersStorageTip">手机注册的账号不会自动出现在电脑后台。请用手机打开本页点「同步本机注册」，或把手机上的同步码粘贴到下方导入。</p>
-          <div class="admin-upload" style="margin-bottom:16px">
-            <div class="form-group">
-              <label for="userSyncCode">粘贴手机同步码</label>
-              <textarea id="userSyncCode" rows="3" placeholder="在手机注册成功后会生成同步码，粘贴到这里"></textarea>
-            </div>
-            <div class="admin-form-actions">
-              <button type="button" class="btn" id="importSyncCodeBtn">导入同步码</button>
-              <button type="button" class="link-btn" id="importLocalUsers">同步本机注册</button>
-              <button type="button" class="link-btn" id="refreshUsers">刷新</button>
-            </div>
-          </div>
+          <p class="admin-tip" id="usersStorageTip">注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。</p>
+          <p class="admin-status" id="usersStorageStatus"></p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="usersTable">
               <thead>
@@ -292,14 +282,29 @@
               <tbody></tbody>
             </table>
           </div>
+          <details class="admin-advanced" style="margin-top:16px">
+            <summary>高级：手动导入（仅服务器未配置时备用）</summary>
+            <div class="admin-upload" style="margin-top:12px">
+              <div class="form-group">
+                <label for="userSyncCode">粘贴同步码</label>
+                <textarea id="userSyncCode" rows="3" placeholder="备用导入"></textarea>
+              </div>
+              <div class="admin-form-actions">
+                <button type="button" class="btn" id="importSyncCodeBtn">导入同步码</button>
+                <button type="button" class="link-btn" id="importLocalUsers">同步本机注册</button>
+                <button type="button" class="link-btn" id="refreshUsers">刷新</button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </section>
   </div>
 
-  <script src="/js/auth.js?v=20260919c"></script>
+  <script src="/js/auth.js?v=20260919d"></script>
+  <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/products-data.js?v=20260919"></script>
-  <script src="/admin/admin.js?v=20260919c"></script>
+  <script src="/admin/admin.js?v=20260919d"></script>
 </body>
 </html>

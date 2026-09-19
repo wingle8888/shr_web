@@ -9,6 +9,8 @@ const state = {
   addressStats: [],
   users: [],
   usersStorage: "ephemeral",
+  usersStorageOk: false,
+  usersStorageMessage: "",
   stats: null,
   visits: null,
   currentTab: "dashboard",
@@ -381,16 +383,21 @@ function renderUsers() {
   const tbody = $("usersTable").querySelector("tbody");
   const list = state.users || [];
   const tip = $("usersStorageTip");
+  const statusEl = $("usersStorageStatus");
   if (tip) {
-    tip.textContent =
-      state.usersStorage === "blob"
-        ? "网站注册账号列表（不含密码）。数据已持久化到云存储。"
-        : "网站注册账号列表（不含密码）。当前为临时存储：若注册后看不到，请点「同步本机注册」。建议在 Vercel 配置 BLOB_READ_WRITE_TOKEN。";
+    tip.textContent = state.usersStorageOk
+      ? "注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。"
+      : "服务器云存储未配置：注册无法写入服务器。请到 Vercel → Storage → 创建 Blob，并确保环境变量 BLOB_READ_WRITE_TOKEN 已关联本项目。";
+  }
+  if (statusEl) {
+    statusEl.textContent = state.usersStorageMessage || "";
+    statusEl.className = state.usersStorageOk ? "admin-status" : "admin-status error";
   }
   tbody.innerHTML = list.length
     ? list
         .map((u) => {
-          const source = u.source === "local-sync" ? "本机同步" : "服务器";
+          const source =
+            u.source === "local-sync" || u.source === "sync-code" || u.source === "import" ? "导入" : "服务器";
           return `<tr>
         <td>${escapeHtml(u.id)}</td>
         <td>${escapeHtml(u.name || "-")}</td>
@@ -401,7 +408,7 @@ function renderUsers() {
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="6" class="admin-empty">暂无注册用户。可先在商城注册，再点「同步本机注册」。</td></tr>`;
+    : `<tr><td colspan="6" class="admin-empty">服务器暂无注册用户</td></tr>`;
 }
 
 async function refreshList() {
@@ -480,6 +487,8 @@ async function loadUsers() {
   const data = await api("/api/admin/users");
   state.users = data.users || [];
   state.usersStorage = data.storage || "ephemeral";
+  state.usersStorageOk = data.storage === "blob" || data.storage === "local";
+  state.usersStorageMessage = data.storageMessage || "";
   renderUsers();
   renderStats();
 }

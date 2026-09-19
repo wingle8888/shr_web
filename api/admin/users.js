@@ -1,5 +1,11 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
-const { readUsers, writeUsers, mergeUsers, publicUser, hasBlob } = require("../_lib/auth-store");
+const {
+  readUsers,
+  writeUsers,
+  mergeUsers,
+  publicUser,
+  storageStatus,
+} = require("../_lib/auth-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -19,50 +25,70 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const status = storageStatus();
+
   if (req.method === "GET") {
-    const users = (await readUsers()).map(publicUser);
-    sendJson(res, 200, {
-      ok: true,
-      users,
-      count: users.length,
-      storage: hasBlob() ? "blob" : "ephemeral",
-    });
+    try {
+      const users = (await readUsers()).map(publicUser);
+      sendJson(res, 200, {
+        ok: true,
+        users,
+        count: users.length,
+        storage: status.storage,
+        storageOk: status.ok,
+        storageMessage: status.message,
+      });
+    } catch (err) {
+      sendJson(res, 500, { ok: false, error: String(err.message || err), storage: status.storage });
+    }
     return;
   }
 
   if (req.method === "POST") {
     const action = String(body.action || "").trim();
     if (action === "import") {
-      const incoming = Array.isArray(body.users) ? body.users : [];
-      const normalized = incoming
-        .map((u) => {
-          const email = String(u.email || "")
-            .trim()
-            .toLowerCase();
-          if (!email) return null;
-          return {
-            id: u.id || `lu${Date.now()}${Math.floor(Math.random() * 1000)}`,
-            email,
-            name: String(u.name || "").trim() || email.split("@")[0],
-            phone: String(u.phone || "").trim(),
-            createdAt: u.createdAt || new Date().toISOString(),
-            source: "local-sync",
-            salt: u.salt || "",
-            hash: u.hash || "",
-            localHash: Boolean(u.localHash || u.hash),
-          };
-        })
-        .filter(Boolean);
+      if (!status.ok) {
+        sendJson(res, 503, {
+          ok: false,
+          error: "server storage not configured",
+          detail: status.message,
+        });
+        return;
+      }
+      try {
+        const incoming = Array.isArray(body.users) ? body.users : [];
+        const normalized = incoming
+          .map((u) => {
+            const email = String(u.email || "")
+              .trim()
+              .toLowerCase();
+            if (!email) return null;
+            return {
+              id: u.id || `lu${Date.now()}${Math.floor(Math.random() * 1000)}`,
+              email,
+              name: String(u.name || "").trim() || email.split("@")[0],
+              phone: String(u.phone || "").trim(),
+              createdAt: u.createdAt || new Date().toISOString(),
+              source: u.source || "import",
+              salt: u.salt || "",
+              hash: u.hash || "",
+              localHash: Boolean(u.localHash || u.hash),
+            };
+          })
+          .filter(Boolean);
 
-      const current = await readUsers();
-      const merged = mergeUsers(current, normalized);
-      const saved = await writeUsers(merged);
-      sendJson(res, 200, {
-        ok: true,
-        count: (saved.users || merged).length,
-        imported: normalized.length,
-        storage: hasBlob() && saved.persisted ? "blob" : "ephemeral",
-      });
+        const current = await readUsers();
+        const merged = mergeUsers(current, normalized);
+        const saved = await writeUsers(merged);
+        sendJson(res, 200, {
+          ok: true,
+          count: (saved.users || merged).length,
+          imported: normalized.length,
+          storage: saved.storage,
+        });
+      } catch (err) {
+        sendJson(res, 500, { ok: false, error: String(err.message || err) });
+      }
       return;
     }
     sendJson(res, 400, { ok: false, error: "unknown action" });

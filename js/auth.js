@@ -141,19 +141,35 @@
         rememberLocalProfile(data.user);
         return {
           ...data,
-          needSync: Boolean(data.needSync || data.storage !== "blob"),
-          syncCode: buildSyncCode([data.user]),
+          needSync: false,
+          savedToServer: true,
         };
+      }
+      if (res.status === 503) {
+        throw new Error(data.detail || data.error || "server storage unavailable");
       }
       if (res.status >= 400 && data.error) throw new Error(data.error);
       throw new Error("api unavailable");
     } catch (err) {
       const msg = String(err.message || "");
-      if (msg.includes("already") || msg.includes("short") || msg.includes("invalid email") || msg.includes("required")) {
+      if (
+        msg.includes("already") ||
+        msg.includes("short") ||
+        msg.includes("invalid email") ||
+        msg.includes("required") ||
+        msg.includes("storage") ||
+        msg.includes("Blob") ||
+        msg.includes("服务器")
+      ) {
         throw err;
       }
+      // 仅本地开发允许降级；线上必须走服务器
+      const host = String(location.hostname || "");
+      if (host.includes("vercel.app") || host.includes("shr-web")) {
+        throw new Error("无法保存到服务器，请稍后重试或检查云存储配置");
+      }
       const local = await registerLocal(payload);
-      return { ...local, syncCode: buildSyncCode([local.user]) };
+      return { ...local, syncCode: buildSyncCode([local.user]), savedToServer: false };
     }
   }
 
@@ -363,35 +379,27 @@
           closeAuthModal("registerModal");
           registerForm.reset();
           afterAuth();
-          if (result && result.syncCode && result.needSync) {
+          if (result && result.savedToServer) {
+            if (toast) toast(t("authRegisteredServer") !== "authRegisteredServer" ? t("authRegisteredServer") : "注册成功，资料已保存到服务器，后台可直接查看");
+            else notify("authRegistered");
+          } else if (result && result.syncCode) {
             try {
               await navigator.clipboard.writeText(result.syncCode);
-              if (toast) {
-                toast(
-                  (window.I18N && window.I18N.getLang() === "en")
-                    ? "Registered. Sync code copied — paste it in Admin → Users."
-                    : "注册成功。同步码已复制，请在电脑后台「注册资料」粘贴导入。"
-                );
-              } else {
-                alert(
-                  "注册成功！\n\n同步码已复制到剪贴板。\n请在电脑打开后台 → 注册资料 → 粘贴同步码导入。\n\n也可在手机打开后台点「同步本机注册」。"
-                );
-              }
+              if (toast) toast("本地注册成功，同步码已复制（仅开发环境）");
             } catch (_) {
-              prompt(
-                "注册成功。请复制下面的同步码，到电脑后台「注册资料」粘贴导入：",
-                result.syncCode
-              );
+              prompt("请复制同步码：", result.syncCode);
             }
           } else {
             notify("authRegistered");
           }
         } catch (err) {
-          const key = mapAuthError(err);
+          const msg = String(err.message || "");
           if (errEl) {
-            errEl.textContent = t(key);
+            errEl.textContent = msg.includes("storage") || msg.includes("服务器") || msg.includes("Blob") || msg.includes("云存储")
+              ? "服务器未配置云存储，无法保存注册资料。请管理员在 Vercel 开启 Blob 存储。"
+              : t(mapAuthError(err));
             errEl.hidden = false;
-          } else if (toast) toast(t(key));
+          } else if (toast) toast(t(mapAuthError(err)));
         }
       });
     }

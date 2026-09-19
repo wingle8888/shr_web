@@ -4,6 +4,7 @@ const crypto = require("crypto");
 
 const USERS_FILE = path.join(process.cwd(), "data", "users.json");
 const TMP_USERS = path.join("/tmp", "shr-users.json");
+const BLOB_LIST = "shr-auth/users-db.json";
 const BLOB_DIR = "shr-auth/u";
 
 function cors(res) {
@@ -30,6 +31,22 @@ function parseBody(req) {
   return {};
 }
 
+function hasBlob() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+function isVercel() {
+  return Boolean(process.env.VERCEL);
+}
+
+function emailKey(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9@._+-]/g, "_")
+    .slice(0, 120);
+}
+
 function readUsersLocal() {
   try {
     if (fs.existsSync(TMP_USERS)) return JSON.parse(fs.readFileSync(TMP_USERS, "utf8"));
@@ -51,44 +68,59 @@ function writeUsersLocal(users) {
   } catch (_) {}
 }
 
-function hasBlob() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function emailKey(email) {
-  return String(email || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9@._+-]/g, "_")
-    .slice(0, 120);
+async function blobPut(pathname, body) {
+  const { put } = require("@vercel/blob");
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const payload = typeof body === "string" ? body : JSON.stringify(body);
+  try {
+    return await put(pathname, payload, {
+      access: "public",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: "application/json",
+      token,
+    });
+  } catch (_) {
+    return await put(pathname, payload, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+      token,
+    });
+  }
 }
 
 async function readUsersFromBlob() {
   if (!hasBlob()) return null;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
   try {
     const { list } = require("@vercel/blob");
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const { blobs } = await list({ prefix: `${BLOB_DIR}/`, token });
-    if (!blobs || blobs.length === 0) {
-      // 兼容旧的单文件
-      const legacy = await list({ prefix: "shr-auth/users", token });
-      const file = (legacy.blobs || []).find((b) => String(b.pathname).includes("users"));
-      if (!file) return [];
-      const res = await fetch(file.url);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
+
+    // 1) 优先读总库文件
+    const listed = await list({ prefix: "shr-auth/users-db", token });
+    const dbFile = (listed.blobs || []).find((b) => String(b.pathname).includes("users-db"));
+    if (dbFile && dbFile.url) {
+      const res = await fetch(dbFile.url + (dbFile.url.includes("?") ? "&" : "?") + "t=" + Date.now());
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.users)) return data.users;
+      }
     }
+
+    // 2) 兼容逐个用户文件
+    const perUser = await list({ prefix: `${BLOB_DIR}/`, token });
     const users = [];
-    for (const blob of blobs) {
+    for (const blob of perUser.blobs || []) {
       try {
         const res = await fetch(blob.url);
         if (!res.ok) continue;
-        const data = await res.json();
-        if (data && data.email) users.push(data);
+        const row = await res.json();
+        if (row && row.email) users.push(row);
       } catch (_) {}
     }
-    return users;
+    if (users.length) return users;
+    return [];
   } catch (_) {
     return null;
   }
@@ -96,30 +128,12 @@ async function readUsersFromBlob() {
 
 async function writeUsersToBlob(users) {
   if (!hasBlob()) return false;
+  const list = Array.isArray(users) ? users : [];
   try {
-    const { put } = require("@vercel/blob");
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const list = Array.isArray(users) ? users : [];
+    await blobPut(BLOB_LIST, list);
     for (const user of list) {
       if (!user || !user.email) continue;
-      const pathname = `${BLOB_DIR}/${emailKey(user.email)}.json`;
-      const opts = {
-        access: "public",
-        addRandomSuffix: false,
-        contentType: "application/json",
-        token,
-        allowOverwrite: true,
-      };
-      try {
-        await put(pathname, JSON.stringify(user), opts);
-      } catch (_) {
-        await put(pathname, JSON.stringify(user), {
-          access: "public",
-          addRandomSuffix: false,
-          contentType: "application/json",
-          token,
-        });
-      }
+      await blobPut(`${BLOB_DIR}/${emailKey(user.email)}.json`, user);
     }
     return true;
   } catch (_) {
@@ -128,21 +142,38 @@ async function writeUsersToBlob(users) {
 }
 
 async function readUsers() {
-  const fromBlob = await readUsersFromBlob();
-  if (Array.isArray(fromBlob)) {
-    if (fromBlob.length > 0) return fromBlob;
-    const local = readUsersLocal();
-    if (local.length) return local;
-    return fromBlob;
+  if (hasBlob()) {
+    const fromBlob = await readUsersFromBlob();
+    if (Array.isArray(fromBlob)) return fromBlob;
   }
   return readUsersLocal();
 }
 
+/**
+ * 写入用户库。线上(Vercel)必须写入 Blob 才算成功。
+ */
 async function writeUsers(users) {
   const list = Array.isArray(users) ? users : [];
   writeUsersLocal(list);
-  const ok = await writeUsersToBlob(list);
-  return { users: list, persisted: ok || !process.env.VERCEL };
+
+  if (hasBlob()) {
+    const ok = await writeUsersToBlob(list);
+    if (!ok) {
+      const err = new Error("cloud storage write failed");
+      err.code = "BLOB_WRITE_FAILED";
+      throw err;
+    }
+    return { users: list, persisted: true, storage: "blob" };
+  }
+
+  if (isVercel()) {
+    const err = new Error("BLOB_READ_WRITE_TOKEN not configured");
+    err.code = "BLOB_MISSING";
+    throw err;
+  }
+
+  // 本地开发：允许写文件
+  return { users: list, persisted: true, storage: "local" };
 }
 
 function mergeUsers(base, incoming) {
@@ -228,6 +259,18 @@ function publicUser(u) {
   };
 }
 
+function storageStatus() {
+  if (hasBlob()) return { ok: true, storage: "blob", message: "服务器云存储已启用，注册资料可跨设备查看" };
+  if (isVercel()) {
+    return {
+      ok: false,
+      storage: "none",
+      message: "未配置 BLOB_READ_WRITE_TOKEN：注册无法保存到服务器。请在 Vercel → Storage → Blob 创建并关联到本项目。",
+    };
+  }
+  return { ok: true, storage: "local", message: "本地开发模式" };
+}
+
 module.exports = {
   cors,
   sendJson,
@@ -236,6 +279,8 @@ module.exports = {
   writeUsers,
   mergeUsers,
   hasBlob,
+  isVercel,
+  storageStatus,
   hashPassword,
   verifyPassword,
   signToken,

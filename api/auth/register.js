@@ -7,7 +7,7 @@ const {
   hashPassword,
   signToken,
   publicUser,
-  hasBlob,
+  storageStatus,
 } = require("../_lib/auth-store");
 
 module.exports = async function handler(req, res) {
@@ -19,6 +19,17 @@ module.exports = async function handler(req, res) {
   }
   if (req.method !== "POST") {
     sendJson(res, 405, { ok: false, error: "method not allowed" });
+    return;
+  }
+
+  const status = storageStatus();
+  if (!status.ok) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "server storage not configured",
+      detail: status.message,
+      storage: status.storage,
+    });
     return;
   }
 
@@ -43,33 +54,44 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const users = await readUsers();
-  if (users.some((u) => u.email === email)) {
-    sendJson(res, 409, { ok: false, error: "email already registered" });
-    return;
+  try {
+    const users = await readUsers();
+    if (users.some((u) => u.email === email)) {
+      sendJson(res, 409, { ok: false, error: "email already registered" });
+      return;
+    }
+
+    const { salt, hash } = hashPassword(password);
+    const user = {
+      id: `u${Date.now()}`,
+      email,
+      name,
+      phone,
+      salt,
+      hash,
+      createdAt: new Date().toISOString(),
+      source: "server",
+    };
+    users.push(user);
+    const saved = await writeUsers(users);
+
+    sendJson(res, 200, {
+      ok: true,
+      token: signToken(user),
+      user: publicUser(user),
+      storage: saved.storage || "blob",
+      needSync: false,
+    });
+  } catch (err) {
+    const code = err && err.code ? err.code : "";
+    if (code === "BLOB_MISSING" || code === "BLOB_WRITE_FAILED") {
+      sendJson(res, 503, {
+        ok: false,
+        error: "server storage unavailable",
+        detail: "注册资料无法写入服务器，请在 Vercel 配置 Blob 存储后重试",
+      });
+      return;
+    }
+    sendJson(res, 500, { ok: false, error: String(err.message || err) });
   }
-
-  const { salt, hash } = hashPassword(password);
-  const user = {
-    id: `u${Date.now()}`,
-    email,
-    name,
-    phone,
-    salt,
-    hash,
-    createdAt: new Date().toISOString(),
-    source: "server",
-  };
-  users.push(user);
-  const saved = await writeUsers(users);
-  const persisted = Boolean(saved && saved.persisted);
-
-  const token = signToken(user);
-  sendJson(res, 200, {
-    ok: true,
-    token,
-    user: publicUser(user),
-    storage: hasBlob() && persisted ? "blob" : "ephemeral",
-    needSync: !(hasBlob() && persisted),
-  });
 };
