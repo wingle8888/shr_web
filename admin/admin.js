@@ -22,6 +22,7 @@ const state = {
   chatUnread: 0,
   activeChatVisitorId: "",
   chatThread: null,
+  autoReply: { enabled: false, message: "" },
 };
 
 let dailyVisitChart = null;
@@ -666,7 +667,18 @@ async function loadChatList() {
   const data = await api("/api/admin/chat");
   state.chatThreads = data.threads || [];
   state.chatUnread = data.unread || 0;
+  state.autoReply = data.autoReply || state.autoReply;
   renderChatList();
+  fillAutoReplyForm(state.autoReply);
+}
+
+function fillAutoReplyForm(settings) {
+  const enabled = $("autoReplyEnabled");
+  const message = $("autoReplyMessage");
+  if (!enabled || !message) return;
+  if (document.activeElement === enabled || document.activeElement === message) return;
+  enabled.checked = Boolean(settings && settings.enabled);
+  if (settings && settings.message) message.value = settings.message;
 }
 
 async function openChatThread(visitorId) {
@@ -831,6 +843,32 @@ $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
 $("refreshChat").addEventListener("click", () => loadChatList().catch((e) => alert(e.message)));
+
+$("autoReplyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const status = $("autoReplyStatus");
+  try {
+    const data = await api("/api/admin/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "settings",
+        enabled: $("autoReplyEnabled").checked,
+        message: $("autoReplyMessage").value,
+      }),
+    });
+    state.autoReply = data.autoReply || state.autoReply;
+    fillAutoReplyForm(state.autoReply);
+    if (status) {
+      status.className = "admin-status";
+      status.textContent = data.autoReply && data.autoReply.enabled ? "已开启自动回复并保存到服务器" : "已关闭自动回复并保存到服务器";
+    }
+  } catch (err) {
+    if (status) {
+      status.className = "admin-status error";
+      status.textContent = err.message;
+    } else alert(err.message);
+  }
+});
 
 $("adminChatList").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-chat-visitor]");

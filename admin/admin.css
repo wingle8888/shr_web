@@ -562,6 +562,27 @@
   align-items: center;
 }
 
+.admin-autoreply {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(7, 11, 20, 0.35);
+}
+
+.admin-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.admin-check-row input {
+  width: auto;
+}
+
 .admin-chat-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) 1fr;

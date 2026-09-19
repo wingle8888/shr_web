@@ -60,22 +60,13 @@ module.exports = async function handler(req, res) {
         email: body.email,
         mark: "admin",
       });
-      const botText = String(body.botText || "").trim();
-      let thread = user;
-      if (botText) {
-        thread = await appendMessage({
-          visitorId,
-          role: "bot",
-          text: botText,
-        });
-      }
       sendJson(res, 200, {
         ok: true,
         conversation: {
-          id: thread.id,
-          visitorId: thread.visitorId,
-          messages: thread.messages || [],
-          updatedAt: thread.updatedAt,
+          id: user.id,
+          visitorId: user.visitorId,
+          messages: user.messages || [],
+          updatedAt: user.updatedAt,
         },
       });
     } catch (err) {

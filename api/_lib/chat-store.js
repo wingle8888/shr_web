@@ -7,15 +7,34 @@ const BLOB_PATH = "shr-admin/chats-db.json";
 const MAX_THREADS = 80;
 const MAX_MESSAGES = 80;
 
+const DEFAULT_AUTO_REPLY =
+  "您好，已收到您的留言，卖家看到后会尽快回复。";
+
+function normalizeAutoReply(raw) {
+  const message = String((raw && raw.message) || "").trim().slice(0, 500);
+  return {
+    enabled: Boolean(raw && raw.enabled),
+    message: message || DEFAULT_AUTO_REPLY,
+  };
+}
+
 function unwrap(raw) {
-  if (Array.isArray(raw)) return { threads: raw };
-  if (raw && Array.isArray(raw.threads)) return { threads: raw.threads };
-  return { threads: [] };
+  const threads = Array.isArray(raw)
+    ? raw
+    : raw && Array.isArray(raw.threads)
+      ? raw.threads
+      : [];
+  return {
+    threads,
+    autoReply: normalizeAutoReply(raw && !Array.isArray(raw) ? raw.autoReply : null),
+  };
 }
 
 function mergeThreads(a, b) {
+  const left = unwrap(a);
+  const right = unwrap(b);
   const map = new Map();
-  [...unwrap(a).threads, ...unwrap(b).threads].forEach((t) => {
+  [...left.threads, ...right.threads].forEach((t) => {
     if (!t || !t.visitorId) return;
     const key = String(t.visitorId);
     const prev = map.get(key);
@@ -27,10 +46,15 @@ function mergeThreads(a, b) {
     const nextT = String(t.updatedAt || "");
     map.set(key, nextT >= prevT ? t : prev);
   });
+  const autoReply =
+    b && typeof b === "object" && !Array.isArray(b) && b.autoReply
+      ? right.autoReply
+      : left.autoReply;
   return {
     threads: Array.from(map.values())
       .sort((x, y) => String(y.updatedAt || "").localeCompare(String(x.updatedAt || "")))
       .slice(0, MAX_THREADS),
+    autoReply,
   };
 }
 
@@ -38,7 +62,7 @@ async function readChats() {
   const raw = await readJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    empty: { threads: [] },
+    empty: { threads: [], autoReply: normalizeAutoReply({ enabled: false, message: DEFAULT_AUTO_REPLY }) },
     merge: mergeThreads,
   });
   return unwrap(raw);
@@ -121,6 +145,16 @@ async function appendMessage({ visitorId, role, text, name, email, mark }) {
   thread.lastMessage = preview(msg.text);
   if (mark === "admin") thread.unreadAdmin = (Number(thread.unreadAdmin) || 0) + 1;
   if (mark === "customer") thread.unreadCustomer = (Number(thread.unreadCustomer) || 0) + 1;
+  if (role === "user") {
+    const auto = db.autoReply || normalizeAutoReply(null);
+    if (auto.enabled && auto.message) {
+      const bot = makeMessage("bot", auto.message);
+      thread.messages.push(bot);
+      if (thread.messages.length > MAX_MESSAGES) thread.messages = thread.messages.slice(-MAX_MESSAGES);
+      thread.updatedAt = bot.createdAt;
+      thread.lastMessage = preview(bot.text);
+    }
+  }
   await writeChats(db);
   return thread;
 }
@@ -141,6 +175,21 @@ async function markRead(visitorId, who) {
   return thread;
 }
 
+async function getAutoReply() {
+  const db = await readChats();
+  return db.autoReply || normalizeAutoReply(null);
+}
+
+async function setAutoReply(input) {
+  const db = await readChats();
+  db.autoReply = normalizeAutoReply({
+    enabled: Boolean(input && input.enabled),
+    message: input && input.message,
+  });
+  await writeChats(db);
+  return db.autoReply;
+}
+
 module.exports = {
   readChats,
   writeChats,
@@ -149,4 +198,6 @@ module.exports = {
   listThreads,
   markRead,
   summarize,
+  getAutoReply,
+  setAutoReply,
 };

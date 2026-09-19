@@ -522,18 +522,6 @@ function appendChatBubble(role, text, time) {
   box.scrollTop = box.scrollHeight;
 }
 
-function getBotReply(text) {
-  const raw = text.toLowerCase();
-  if (raw === "order" || /订单|查询|售后|质量|lookup|order/.test(raw)) return t("botOrder");
-  if (raw === "price" || /价格|多少钱|报价|优惠|price/.test(raw)) return t("botPrice");
-  if (raw === "ship" || /发货|物流|快递|地址|shipping/.test(raw)) return t("botShip");
-  if (/支付|paypal|visa|付款|pay/.test(raw)) return t("botPay");
-  if (/注册|账号|登录|register|account|login/.test(raw)) return t("botReg");
-  if (raw === "human" || /人工|微信|电话|客服|agent|support/.test(raw)) return t("botHuman");
-  if (/你好|您好|hi|hello/.test(raw)) return t("botHi");
-  return t("botDefault");
-}
-
 function messageTime(item) {
   if (item.time) return item.time;
   if (item.createdAt) {
@@ -607,7 +595,7 @@ function renderChatHistory() {
   renderChatMessages(messages);
 }
 
-async function sendChatToServer(text, botText) {
+async function sendChatToServer(text) {
   const ident = chatIdentity();
   const res = await fetch("/api/chat", {
     method: "POST",
@@ -615,7 +603,6 @@ async function sendChatToServer(text, botText) {
     body: JSON.stringify({
       visitorId: ident.visitorId,
       text,
-      botText,
       name: ident.name,
       email: ident.email,
     }),
@@ -643,11 +630,8 @@ function closeChat() {
 function handleChatSend(text) {
   const msg = text.trim();
   if (!msg) return;
-  const botText = getBotReply(msg);
   pushMessage("user", msg);
-  sendChatToServer(msg, botText).catch(() => {
-    setTimeout(() => pushMessage("bot", botText), 450);
-  });
+  sendChatToServer(msg).catch(() => {});
 }
 
 let customerChatTimer = null;

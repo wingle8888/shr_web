@@ -1,5 +1,5 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
-const { listThreads, getThread, appendMessage, markRead } = require("../_lib/chat-store");
+const { listThreads, getThread, appendMessage, markRead, getAutoReply, setAutoReply } = require("../_lib/chat-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -33,7 +33,8 @@ module.exports = async function handler(req, res) {
       }
       const threads = await listThreads();
       const unread = threads.reduce((s, t) => s + (Number(t.unreadAdmin) || 0), 0);
-      sendJson(res, 200, { ok: true, threads, unread });
+      const autoReply = await getAutoReply();
+      sendJson(res, 200, { ok: true, threads, unread, autoReply });
     } catch (err) {
       sendJson(res, 500, { ok: false, error: String(err.message || err) });
     }
@@ -42,6 +43,21 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "POST") {
     const body = parseBody(req);
+    if (String(body.action || "").trim() === "settings") {
+      try {
+        const autoReply = await setAutoReply({
+          enabled: Boolean(body.enabled),
+          message: body.message,
+        });
+        sendJson(res, 200, { ok: true, autoReply });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
     const visitorId = String(body.visitorId || "").trim();
     const text = String(body.text || "").trim();
     if (!visitorId || !text) {
