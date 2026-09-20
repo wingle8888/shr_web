@@ -1,0 +1,14 @@
+开发板商城后台 - Android 客户端
+================================
+
+本目录是独立窗口打开线上后台的 Android WebView 工程：
+https://develop-boards.com/admin/
+
+【重新打包】
+1. 安装 JDK 17+、Android SDK（platforms android-35）
+2. 双击 build-apk.bat
+3. 生成的安装包会复制到：
+   client\开发板商城-后台客户端.apk
+
+签名文件：shr-admin.jks
+包名：com.developboards.admin

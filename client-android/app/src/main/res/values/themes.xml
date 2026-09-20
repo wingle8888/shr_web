@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.ShrAdmin" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:statusBarColor">@color/shr_bg</item>
+        <item name="android:navigationBarColor">@color/shr_bg</item>
+        <item name="android:windowBackground">@color/shr_bg</item>
+        <item name="android:colorPrimary">@color/shr_primary</item>
+    </style>
+</resources>

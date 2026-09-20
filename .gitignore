@@ -7,3 +7,9 @@ workspace.code-workspace
 generate-favicon.js
 download-images.js
 vercel-login-out.txt
+client-android/.gradle/
+client-android/build/
+client-android/app/build/
+client-android/local.properties
+client-android/.idea/
+*.iml

@@ -1,0 +1,45 @@
+plugins {
+    id "com.android.application"
+}
+
+def keystoreFile = file("../shr-admin.jks")
+
+android {
+    namespace "com.developboards.admin"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.developboards.admin"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile keystoreFile
+            storePassword findProperty("SHR_STORE_PASSWORD")
+            keyAlias findProperty("SHR_KEY_ALIAS")
+            keyPassword findProperty("SHR_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+}
