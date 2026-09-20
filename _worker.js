@@ -15,6 +15,7 @@ import visitsStore from "./api/_lib/visits-store.js";
 import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
+import authWarehouse from "./api/auth/warehouse.js";
 
 const { setRuntimeEnv, getR2, getKV, getCatalogStub, isCloudflare } = runtimeEnv;
 
@@ -33,6 +34,7 @@ const HANDLERS = {
   "/api/auth/me": authMe,
   "/api/auth/register": authRegister,
   "/api/auth/login": authLogin,
+  "/api/auth/warehouse": authWarehouse,
 };
 
 function normalizePath(pathname) {

@@ -20,9 +20,10 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-function saveCart() {
+function saveCart(meta) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
   updateCartBadge();
+  if (!(meta && meta.fromWarehouse) && window.Warehouse) window.Warehouse.syncCart(cart);
 }
 
 function updateCartBadge() {
@@ -361,9 +362,24 @@ function initLangSwitch() {
       if (window.Auth) window.Auth.refreshAuthUI();
       await loadCurrentProduct();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
+      if (window.Warehouse && document.getElementById("warehouseModal") && document.getElementById("warehouseModal").classList.contains("show")) {
+        window.Warehouse.open();
+      }
     });
   });
 }
+
+window.SHRCart = {
+  get() {
+    return cart;
+  },
+  set(next, meta) {
+    cart = Array.isArray(next) ? next : [];
+    saveCart(meta);
+    const modal = document.getElementById("cartModal");
+    if (modal && modal.classList.contains("show")) renderCart();
+  },
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   initLangSwitch();

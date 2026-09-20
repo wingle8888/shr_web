@@ -8,6 +8,7 @@ const {
   deleteUsers,
   clearUsers,
 } = require("../_lib/auth-store");
+const { deleteWarehouses, clearWarehouses } = require("../_lib/warehouse-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -98,7 +99,11 @@ module.exports = async function handler(req, res) {
     }
     if (action === "delete") {
       try {
-        const saved = await deleteUsers(body.ids || body.id || body.email);
+        const ids = body.ids || body.id || body.email;
+        const saved = await deleteUsers(ids);
+        try {
+          await deleteWarehouses(ids);
+        } catch (_) {}
         sendJson(res, 200, payload(saved.users));
       } catch (err) {
         sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
@@ -111,6 +116,9 @@ module.exports = async function handler(req, res) {
     if (action === "clear") {
       try {
         const saved = await clearUsers();
+        try {
+          await clearWarehouses();
+        } catch (_) {}
         sendJson(res, 200, payload(saved.users));
       } catch (err) {
         sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {

@@ -348,11 +348,13 @@
     const registerBtn = document.getElementById("registerBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const authUser = document.getElementById("authUser");
+    const warehouseBtn = document.getElementById("warehouseBtn");
     if (!loginBtn && !authUser) return;
     if (user) {
       if (loginBtn) loginBtn.hidden = true;
       if (registerBtn) registerBtn.hidden = true;
       if (logoutBtn) logoutBtn.hidden = false;
+      if (warehouseBtn) warehouseBtn.hidden = false;
       if (authUser) {
         authUser.hidden = false;
         authUser.textContent = user.name || user.email;
@@ -362,6 +364,7 @@
       if (loginBtn) loginBtn.hidden = false;
       if (registerBtn) registerBtn.hidden = false;
       if (logoutBtn) logoutBtn.hidden = true;
+      if (warehouseBtn) warehouseBtn.hidden = true;
       if (authUser) {
         authUser.hidden = true;
         authUser.textContent = "";
@@ -404,6 +407,9 @@
     function afterAuth() {
       refreshAuthUI();
       prefillCheckoutFromUser();
+      if (window.Warehouse && typeof window.Warehouse.onAuthChange === "function") {
+        window.Warehouse.onAuthChange();
+      }
       if (onChange) onChange(currentUser());
     }
 
@@ -531,18 +537,15 @@
           closeAuthModal("registerModal");
           registerForm.reset();
           afterAuth();
-          if (result && result.savedToServer) {
-            if (toast) toast(t("authRegisteredServer") !== "authRegisteredServer" ? t("authRegisteredServer") : "注册成功，资料已保存到服务器，后台可直接查看");
-            else notify("authRegistered");
-          } else if (result && result.syncCode) {
+          if (toast) toast(t("authRegistered"));
+          else notify("authRegistered");
+          if (result && result.syncCode) {
             try {
               await navigator.clipboard.writeText(result.syncCode);
-              if (toast) toast("本地注册成功，同步码已复制（仅开发环境）");
-            } catch (_) {
-              prompt("请复制同步码：", result.syncCode);
-            }
-          } else {
-            notify("authRegistered");
+            } catch (_) {}
+          }
+          if (window.Warehouse && typeof window.Warehouse.open === "function") {
+            window.setTimeout(() => window.Warehouse.open(), 400);
           }
         } catch (err) {
           const msg = String(err.message || "");

@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260920h">
+  <link rel="stylesheet" href="/css/style.css?v=20260920y">
 </head>
 <body data-i18n-title="siteTitle">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -30,6 +30,7 @@
           <button type="button" class="link-btn" id="loginBtn" data-i18n="login">登录</button>
           <button type="button" class="link-btn" id="registerBtn" data-i18n="register">注册</button>
           <span class="auth-user" id="authUser" hidden></span>
+          <button type="button" class="link-btn" id="warehouseBtn" data-i18n="warehouse" hidden>我的仓库</button>
           <button type="button" class="link-btn" id="logoutBtn" data-i18n="logout" hidden>退出</button>
         </div>
         <button type="button" id="orderLookupBtn" class="link-btn" data-i18n="orderLookup">订单查询</button>
@@ -265,7 +266,7 @@
         <button class="modal-close" id="loginClose" type="button">&times;</button>
       </div>
       <form class="modal-body checkout-form" id="loginForm">
-        <p class="checkout-hint" data-i18n="loginHint">登录后可自动填充收货信息；也可不登录直接购买。</p>
+        <p class="checkout-hint" data-i18n="loginHint">登录后可查看我的仓库，并自动填充收货信息；也可不登录直接购买。</p>
         <div class="form-group">
           <label for="loginEmail" data-i18n="authEmail">邮箱 *</label>
           <input type="email" id="loginEmail" required autocomplete="email" data-i18n-placeholder="authEmailPh" placeholder="you@example.com">
@@ -294,7 +295,7 @@
         <button class="modal-close" id="registerClose" type="button">&times;</button>
       </div>
       <form class="modal-body checkout-form" id="registerForm">
-        <p class="checkout-hint" data-i18n="registerHint">注册可选。游客也可直接下单，仅需收货信息与订单号。</p>
+        <p class="checkout-hint" data-i18n="registerHint">注册后即开通「我的仓库」，保存已购商品、收货地址和购物车。游客也可直接下单。</p>
         <div class="form-group">
           <label for="regName" data-i18n="authName">姓名 *</label>
           <input type="text" id="regName" required autocomplete="name" data-i18n-placeholder="namePh" placeholder="姓名">
@@ -405,12 +406,13 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/js/i18n.js?v=20260920i"></script>
-  <script src="/js/auth.js?v=20260920w"></script>
+  <script src="/js/i18n.js?v=20260920y"></script>
+  <script src="/js/auth.js?v=20260920y"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
   <script src="/js/products-en.js"></script>
   <script src="/js/products-loader.js?v=20260920c"></script>
-  <script src="/js/app.js?v=20260920k"></script>
+  <script src="/js/app.js?v=20260920y"></script>
+  <script src="/js/warehouse.js?v=20260920y"></script>
   <script src="/js/chat.js?v=20260920w"></script>
   <script src="/js/analytics.js?v=20260920k"></script>
 </body>

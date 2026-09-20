@@ -202,6 +202,10 @@ a {
   font-weight: 600;
 }
 
+#warehouseBtn {
+  font-weight: 700;
+}
+
 .auth-error {
   margin: 0 0 10px;
   color: #ff7b7b;
@@ -1219,6 +1223,55 @@ footer {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 13px;
+}
+
+.warehouse-modal .warehouse-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 4px;
+}
+
+.warehouse-tabs button {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: rgba(46, 230, 255, 0.05);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.warehouse-tabs button.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(46, 230, 255, 0.14);
+}
+
+.warehouse-modal .warehouse-hint {
+  margin: 0;
+  padding: 8px 18px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.warehouse-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 28px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.warehouse-card {
+  margin-bottom: 12px;
+}
+
+.warehouse-card .btn {
+  margin-top: 8px;
 }
 
 .cart-empty {

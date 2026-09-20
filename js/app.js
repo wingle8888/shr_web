@@ -113,9 +113,10 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-function saveCart() {
+function saveCart(meta) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
   updateCartBadge();
+  if (!(meta && meta.fromWarehouse) && window.Warehouse) window.Warehouse.syncCart(cart);
 }
 
 function updateCartBadge() {
@@ -373,6 +374,7 @@ async function submitOrder(e) {
 
   cart = [];
   saveCart();
+  if (window.Warehouse) window.Warehouse.recordOrder(order);
   closeModal("checkoutModal");
   e.target.reset();
 
@@ -554,6 +556,9 @@ function initLangSwitch() {
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();
+      if (window.Warehouse && document.getElementById("warehouseModal") && document.getElementById("warehouseModal").classList.contains("show")) {
+        window.Warehouse.open();
+      }
     });
   });
 }
@@ -561,3 +566,16 @@ function initLangSwitch() {
 function refreshChatWelcome() {
   if (window.SHRChat && window.SHRChat.onLangChange) window.SHRChat.onLangChange();
 }
+
+window.SHRCart = {
+  get() {
+    return cart;
+  },
+  set(next, meta) {
+    cart = Array.isArray(next) ? next : [];
+    saveCart(meta);
+    if (document.getElementById("cartModal") && document.getElementById("cartModal").classList.contains("show")) {
+      renderCart();
+    }
+  },
+};

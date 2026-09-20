@@ -10,6 +10,7 @@ const {
   storageStatus,
 } = require("../_lib/auth-store");
 const { readRegisterPlace } = require("../_lib/geo");
+const { ensureWarehouse } = require("../_lib/warehouse-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -95,11 +96,15 @@ module.exports = async function handler(req, res) {
     };
     users.push(user);
     const saved = await writeUsers(users);
+    try {
+      await ensureWarehouse(user);
+    } catch (_) {}
 
     sendJson(res, 200, {
       ok: true,
       token: signToken(user),
       user: publicUser(user),
+      warehouse: true,
       storage: saved.storage || "blob",
       needSync: false,
     });
