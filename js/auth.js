@@ -544,9 +544,6 @@
               await navigator.clipboard.writeText(result.syncCode);
             } catch (_) {}
           }
-          if (window.Warehouse && typeof window.Warehouse.open === "function") {
-            window.setTimeout(() => window.Warehouse.open(), 400);
-          }
         } catch (err) {
           const msg = String(err.message || "");
           if (errEl) {
