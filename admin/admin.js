@@ -254,12 +254,12 @@ function renderStats() {
     <div class="admin-stat-card">
       <div class="admin-stat-label">今日访问</div>
       <div class="admin-stat-value">${today.pv || 0}</div>
-      <div class="admin-stat-sub">UV ${today.uv || 0} · ${escapeHtml(today.day || "今日")}</div>
+      <div class="admin-stat-sub">独立访客 ${today.uv || 0} · ${escapeHtml(today.day || "今日")}</div>
     </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">本月访问</div>
       <div class="admin-stat-value">${monthV.pv || 0}</div>
-      <div class="admin-stat-sub">UV ${monthV.uv || 0} · ${escapeHtml(monthV.month || "本月")}</div>
+      <div class="admin-stat-sub">独立访客 ${monthV.uv || 0} · ${escapeHtml(monthV.month || "本月")}</div>
     </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">本月销售额</div>
@@ -331,7 +331,7 @@ function renderVisitCharts() {
         labels: dailyLabels.length ? dailyLabels : ["暂无数据"],
         datasets: [
           {
-            label: "日 PV",
+            label: "日浏览",
             data: daily.length ? daily.map((d) => d.pv) : [0],
             borderColor: "#2ee6ff",
             backgroundColor: "rgba(46, 230, 255, 0.18)",
@@ -340,7 +340,7 @@ function renderVisitCharts() {
             pointRadius: 2,
           },
           {
-            label: "日 UV",
+            label: "日访客",
             data: daily.length ? daily.map((d) => d.uv) : [0],
             borderColor: "#ff7a18",
             backgroundColor: "rgba(255, 122, 24, 0.12)",
@@ -359,13 +359,13 @@ function renderVisitCharts() {
         labels: monthlyLabels.length ? monthlyLabels : ["暂无数据"],
         datasets: [
           {
-            label: "月 PV",
+            label: "月浏览",
             data: monthly.length ? monthly.map((m) => m.pv) : [0],
             backgroundColor: "rgba(46, 230, 255, 0.55)",
             borderRadius: 6,
           },
           {
-            label: "月 UV",
+            label: "月访客",
             data: monthly.length ? monthly.map((m) => m.uv) : [0],
             backgroundColor: "rgba(255, 122, 24, 0.55)",
             borderRadius: 6,

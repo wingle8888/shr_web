@@ -42,10 +42,5 @@
     }).catch(() => {});
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", track);
-  } else {
-    track();
-  }
   window.addEventListener("pageshow", track);
 })();

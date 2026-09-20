@@ -88,6 +88,45 @@ export class CatalogDO {
   async fetch(request) {
     const url = new URL(request.url);
     const key = String(url.searchParams.get("path") || "catalog");
+    const op = String(url.searchParams.get("op") || "");
+
+    if (op === "visit" && (request.method === "POST" || request.method === "PUT")) {
+      const body = await request.json().catch(() => ({}));
+      let data = await this.state.storage.get(key);
+      if (!data || typeof data !== "object") data = { days: {} };
+      if (!data.days || typeof data.days !== "object") data.days = {};
+      const day = String(body.day || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return new Response(JSON.stringify({ ok: false, error: "invalid day" }), {
+          status: 400,
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      }
+      const row = data.days[day] && typeof data.days[day] === "object"
+        ? data.days[day]
+        : { pv: 0, uvIds: [], paths: {} };
+      row.pv = (Number(row.pv) || 0) + 1;
+      const vid = String(body.visitorId || "").slice(0, 64);
+      if (!Array.isArray(row.uvIds)) row.uvIds = [];
+      if (vid && !row.uvIds.includes(vid)) {
+        row.uvIds.push(vid);
+        if (row.uvIds.length > 3000) row.uvIds = row.uvIds.slice(-3000);
+      }
+      const p = String(body.pathName || "/").slice(0, 120) || "/";
+      if (!row.paths || typeof row.paths !== "object") row.paths = {};
+      row.paths[p] = (Number(row.paths[p]) || 0) + 1;
+      if (body.referrer) row.lastReferrer = String(body.referrer).slice(0, 200);
+      data.days[day] = row;
+      const keys = Object.keys(data.days).sort();
+      if (keys.length > 400) {
+        keys.slice(0, keys.length - 400).forEach((k) => delete data.days[k]);
+      }
+      await this.state.storage.put(key, data);
+      return new Response(JSON.stringify({ ok: true, day, pv: row.pv, uv: row.uvIds.length }), {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+
     if (request.method === "PUT" || request.method === "POST") {
       const text = await request.text();
       const data = text ? JSON.parse(text) : null;

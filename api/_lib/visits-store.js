@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { readJsonStore, writeJsonStore, hasBlob } = require("./blob-store");
+const { getCatalogStub } = require("./runtime-env");
 
 const DATA_FILE = path.join(process.cwd(), "data", "visits.json");
 const TMP_FILE = path.join("/tmp", "shr-visits.json");
@@ -119,11 +120,31 @@ async function writeVisits(data) {
   return payload;
 }
 
-async function recordVisit({ visitorId, pathName, referrer } = {}) {
-  const data = await readVisits();
-  if (!data.days) data.days = {};
-  const key = dayKey();
-  const row = data.days[key] || { pv: 0, uvIds: [], paths: {} };
+function lastNDayKeys(n) {
+  const today = dayKey();
+  const [y, m, d] = today.split("-").map(Number);
+  const keys = [];
+  for (let i = n - 1; i >= 0; i--) {
+    keys.push(dayKey(new Date(Date.UTC(y, m - 1, d - i, 12))));
+  }
+  return keys;
+}
+
+function lastNMonthKeys(n) {
+  const today = dayKey();
+  const [y, m] = today.split("-").map(Number);
+  const keys = [];
+  for (let i = n - 1; i >= 0; i--) {
+    keys.push(dayKey(new Date(Date.UTC(y, m - 1 - i, 15, 12))).slice(0, 7));
+  }
+  return keys;
+}
+
+function applyVisitRecord(data, { visitorId, pathName, referrer, day } = {}) {
+  const payload = normalizeStore(data);
+  if (!payload.days) payload.days = {};
+  const key = /^\d{4}-\d{2}-\d{2}$/.test(String(day || "")) ? String(day) : dayKey();
+  const row = payload.days[key] || { pv: 0, uvIds: [], paths: {} };
   row.pv = (Number(row.pv) || 0) + 1;
 
   const vid = String(visitorId || "").slice(0, 64);
@@ -138,24 +159,51 @@ async function recordVisit({ visitorId, pathName, referrer } = {}) {
   row.paths[p] = (Number(row.paths[p]) || 0) + 1;
   if (referrer) row.lastReferrer = String(referrer).slice(0, 200);
 
-  data.days[key] = row;
-  await writeVisits(data);
-  return {
-    day: key,
-    pv: row.pv,
-    uv: row.uvIds.length,
-    storage: hasBlob() ? "blob" : "local",
-  };
+  payload.days[key] = row;
+  return { data: payload, day: key, pv: row.pv, uv: row.uvIds.length };
 }
 
-function lastNDayKeys(n) {
-  const today = dayKey();
-  const [y, m, d] = today.split("-").map(Number);
-  const keys = [];
-  for (let i = n - 1; i >= 0; i--) {
-    keys.push(dayKey(new Date(Date.UTC(y, m - 1, d - i, 12))));
+async function recordVisitAtomic(payload) {
+  const stub = getCatalogStub();
+  if (!stub) return null;
+  try {
+    const res = await stub.fetch(
+      new Request("https://catalog/do?path=" + encodeURIComponent(BLOB_PATH) + "&op=visit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+    );
+    if (!res || !res.ok) return null;
+    const result = await res.json().catch(() => ({}));
+    if (!result || result.ok === false) return null;
+    memCache = null;
+    return result;
+  } catch (_) {
+    return null;
   }
-  return keys;
+}
+
+async function recordVisit({ visitorId, pathName, referrer } = {}) {
+  const day = dayKey();
+  const atomic = await recordVisitAtomic({ visitorId, pathName, referrer, day });
+  if (atomic && atomic.day) {
+    return {
+      day: atomic.day,
+      pv: Number(atomic.pv) || 0,
+      uv: Number(atomic.uv) || 0,
+      storage: hasBlob() ? "blob" : "local",
+    };
+  }
+
+  const applied = applyVisitRecord(await readVisits(), { visitorId, pathName, referrer, day });
+  await writeVisits(applied.data);
+  return {
+    day: applied.day,
+    pv: applied.pv,
+    uv: applied.uv,
+    storage: hasBlob() ? "blob" : "local",
+  };
 }
 
 function buildVisitStats(raw) {
@@ -168,36 +216,47 @@ function buildVisitStats(raw) {
     .sort()
     .map((day) => {
       const row = daysMap[day] || {};
+      const uvIds = Array.isArray(row.uvIds) ? row.uvIds.map(String).filter(Boolean) : [];
       return {
         day,
         pv: Number(row.pv) || 0,
-        uv: Array.isArray(row.uvIds) ? row.uvIds.length : Number(row.uv) || 0,
+        uv: uvIds.length,
+        uvIds,
       };
     });
 
   const byKey = new Map(dailyAll.map((d) => [d.day, d]));
-  const daily = lastNDayKeys(30).map((day) => byKey.get(day) || { day, pv: 0, uv: 0 });
+  const daily = lastNDayKeys(30).map((day) => {
+    const row = byKey.get(day);
+    return row ? { day: row.day, pv: row.pv, uv: row.uv } : { day, pv: 0, uv: 0 };
+  });
 
   const byMonth = {};
   dailyAll.forEach((d) => {
     const m = monthKeyFromDay(d.day);
-    if (!byMonth[m]) byMonth[m] = { month: m, pv: 0, uv: 0, days: 0 };
+    if (!byMonth[m]) byMonth[m] = { month: m, pv: 0, uvSet: new Set(), days: 0 };
     byMonth[m].pv += d.pv;
-    byMonth[m].uv += d.uv;
+    (d.uvIds || []).forEach((id) => byMonth[m].uvSet.add(id));
     byMonth[m].days += 1;
   });
-  const monthly = Object.values(byMonth).sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  const monthlyAll = Object.values(byMonth)
+    .map((m) => ({ month: m.month, pv: m.pv, uv: m.uvSet.size, days: m.days }))
+    .sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  const monthMap = new Map(monthlyAll.map((m) => [m.month, m]));
+  const monthly = lastNMonthKeys(12).map((month) => monthMap.get(month) || { month, pv: 0, uv: 0, days: 0 });
 
   const todayRow = byKey.get(today) || { day: today, pv: 0, uv: 0 };
-  const monthRow = byMonth[thisMonth] || { month: thisMonth, pv: 0, uv: 0, days: 0 };
+  const monthRow = monthMap.get(thisMonth) || { month: thisMonth, pv: 0, uv: 0, days: 0 };
+  const allUv = new Set();
+  dailyAll.forEach((d) => (d.uvIds || []).forEach((id) => allUv.add(id)));
 
   return {
-    today: todayRow,
+    today: { day: todayRow.day, pv: todayRow.pv, uv: todayRow.uv },
     thisMonth: monthRow,
     daily,
-    monthly: monthly.slice(-12),
+    monthly,
     totalPv: dailyAll.reduce((s, d) => s + d.pv, 0),
-    totalUv: dailyAll.reduce((s, d) => s + d.uv, 0),
+    totalUv: allUv.size,
     timezone: TZ,
     updatedAt: new Date().toISOString(),
     storage: hasBlob() ? "blob" : "local",
