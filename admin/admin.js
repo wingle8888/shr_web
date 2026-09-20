@@ -787,16 +787,16 @@ function groupGeoByCountry(list) {
   });
   const sorted = Array.from(groups.values()).sort(
     (a, b) =>
-      b.visitors - a.visitors ||
       b.visits - a.visits ||
+      b.visitors - a.visitors ||
       b.total - a.total ||
       String(a.name).localeCompare(String(b.name), "zh")
   );
   sorted.forEach((group) => {
     group.rows.sort(
       (a, b) =>
-        (Number(b.visitors) || 0) - (Number(a.visitors) || 0) ||
         (Number(b.visits) || 0) - (Number(a.visits) || 0) ||
+        (Number(b.visitors) || 0) - (Number(a.visitors) || 0) ||
         (Number(b.orders) || 0) - (Number(a.orders) || 0) ||
         String(a.label || "").localeCompare(String(b.label || ""), "zh")
     );

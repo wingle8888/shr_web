@@ -476,19 +476,19 @@ function buildGeoStats(visitInput, orders) {
   const rows = Array.from(map.values())
     .filter((row) => !deleted.has(normalizeGeoKey(row.key)) && (row.visits || row.visitors || row.orders))
     .map((row) => ({ ...row, total: row.visits + row.orders }));
-  const countryVisitors = new Map();
+  const countryVisits = new Map();
   rows.forEach((row) => {
     const code = String(row.code || "UN").toUpperCase() === "UK" ? "GB" : String(row.code || "UN").toUpperCase() || "UN";
-    countryVisitors.set(code, (countryVisitors.get(code) || 0) + (Number(row.visitors) || 0));
+    countryVisits.set(code, (countryVisits.get(code) || 0) + (Number(row.visits) || 0));
   });
   return rows.sort((a, b) => {
     const codeA = String(a.code || "UN").toUpperCase() === "UK" ? "GB" : String(a.code || "UN").toUpperCase() || "UN";
     const codeB = String(b.code || "UN").toUpperCase() === "UK" ? "GB" : String(b.code || "UN").toUpperCase() || "UN";
     return (
-      (countryVisitors.get(codeB) || 0) - (countryVisitors.get(codeA) || 0) ||
+      (countryVisits.get(codeB) || 0) - (countryVisits.get(codeA) || 0) ||
       String(codeA).localeCompare(String(codeB)) ||
+      (Number(b.visits) || 0) - (Number(a.visits) || 0) ||
       (Number(b.visitors) || 0) - (Number(a.visitors) || 0) ||
-      b.visits - a.visits ||
       b.orders - a.orders ||
       String(a.label).localeCompare(String(b.label), "zh")
     );
