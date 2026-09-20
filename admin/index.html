@@ -391,13 +391,17 @@
         <div class="admin-card">
           <div class="admin-panel-head">
             <h1>注册资料</h1>
+            <div class="admin-inline-actions">
+              <button type="button" class="link-btn" id="refreshUsersTop">刷新</button>
+              <button type="button" class="link-btn danger" id="clearUsers">清空</button>
+            </div>
           </div>
-          <p class="admin-tip" id="usersStorageTip">注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。</p>
+          <p class="admin-tip" id="usersStorageTip">注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。可删除指定账号，或清空全部注册资料。</p>
           <p class="admin-status" id="usersStorageStatus"></p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="usersTable">
               <thead>
-                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>手机</th><th>注册地</th><th>注册时间</th><th>来源</th></tr>
+                <tr><th>ID</th><th>姓名</th><th>邮箱</th><th>手机</th><th>注册地</th><th>注册时间</th><th>来源</th><th>操作</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -534,6 +538,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920t"></script>
+  <script src="/admin/admin.js?v=20260920u"></script>
 </body>
 </html>

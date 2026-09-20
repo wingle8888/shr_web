@@ -5,6 +5,8 @@ const {
   mergeUsers,
   publicUser,
   storageStatus,
+  deleteUsers,
+  clearUsers,
 } = require("../_lib/auth-store");
 
 module.exports = async function handler(req, res) {
@@ -27,17 +29,24 @@ module.exports = async function handler(req, res) {
 
   const status = storageStatus();
 
-  if (req.method === "GET") {
-    try {
-      const users = (await readUsers()).map(publicUser);
-      sendJson(res, 200, {
+  function payload(users, extra) {
+    const list = Array.isArray(users) ? users : [];
+    return Object.assign(
+      {
         ok: true,
-        users,
-        count: users.length,
+        users: list.map(publicUser),
+        count: list.length,
         storage: status.storage,
         storageOk: status.ok,
         storageMessage: status.message,
-      });
+      },
+      extra || {}
+    );
+  }
+
+  if (req.method === "GET") {
+    try {
+      sendJson(res, 200, payload(await readUsers()));
     } catch (err) {
       sendJson(res, 500, { ok: false, error: String(err.message || err), storage: status.storage });
     }
@@ -81,14 +90,33 @@ module.exports = async function handler(req, res) {
         const current = await readUsers();
         const merged = mergeUsers(current, normalized);
         const saved = await writeUsers(merged);
-        sendJson(res, 200, {
-          ok: true,
-          count: (saved.users || merged).length,
-          imported: normalized.length,
-          storage: saved.storage,
-        });
+        sendJson(res, 200, payload(saved.users || merged, { imported: normalized.length }));
       } catch (err) {
         sendJson(res, 500, { ok: false, error: String(err.message || err) });
+      }
+      return;
+    }
+    if (action === "delete") {
+      try {
+        const saved = await deleteUsers(body.ids || body.id || body.email);
+        sendJson(res, 200, payload(saved.users));
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
+    if (action === "clear") {
+      try {
+        const saved = await clearUsers();
+        sendJson(res, 200, payload(saved.users));
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
       }
       return;
     }

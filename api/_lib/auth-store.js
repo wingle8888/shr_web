@@ -199,6 +199,38 @@ function verifyToken(token) {
   }
 }
 
+function normalizeUserIds(ids) {
+  const list = Array.isArray(ids) ? ids : ids != null ? [ids] : [];
+  const out = [];
+  list.forEach((id) => {
+    const s = String(id || "").trim();
+    if (!s) return;
+    out.push(s);
+    const lower = s.toLowerCase();
+    if (lower !== s) out.push(lower);
+  });
+  return [...new Set(out)];
+}
+
+function userMatchesId(user, ids) {
+  const set = ids instanceof Set ? ids : new Set(normalizeUserIds(ids));
+  if (!user) return false;
+  const id = String(user.id || "").trim();
+  const email = String(user.email || "").trim().toLowerCase();
+  return (id && set.has(id)) || (email && set.has(email));
+}
+
+async function deleteUsers(ids) {
+  const remove = new Set(normalizeUserIds(ids));
+  const current = await readUsers();
+  if (!remove.size) return { users: current, persisted: true, storage: storageStatus().storage };
+  return writeUsers(current.filter((user) => !userMatchesId(user, remove)));
+}
+
+async function clearUsers() {
+  return writeUsers([]);
+}
+
 function publicUser(u) {
   const place = u && u.registerPlace && typeof u.registerPlace === "object" ? u.registerPlace : null;
   return {
@@ -251,4 +283,8 @@ module.exports = {
   signToken,
   verifyToken,
   publicUser,
+  deleteUsers,
+  clearUsers,
+  userMatchesId,
+  normalizeUserIds,
 };

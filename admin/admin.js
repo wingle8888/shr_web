@@ -1156,9 +1156,11 @@ function renderUsers() {
   const list = state.users || [];
   const tip = $("usersStorageTip");
   const statusEl = $("usersStorageStatus");
+  const clearBtn = $("clearUsers");
+  if (clearBtn) clearBtn.disabled = !list.length;
   if (tip) {
     tip.textContent = state.usersStorageOk
-      ? "注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。"
+      ? "注册成功后资料保存在服务器；打开后台会自动从服务器下载显示。可删除指定账号，或清空全部注册资料。"
       : "服务器云存储未就绪：请在 Cloudflare Pages 绑定 R2 桶 SHR_BUCKET（develop-boards）并重新部署后再试。";
   }
   if (statusEl) {
@@ -1171,6 +1173,7 @@ function renderUsers() {
           const source =
             u.source === "local-sync" || u.source === "sync-code" || u.source === "import" ? "导入" : "服务器";
           const place = u.registerPlaceLabel || (u.registerPlace && u.registerPlace.label) || "-";
+          const key = String(u.id || u.email || "").trim();
           return `<tr>
         <td>${escapeHtml(u.id)}</td>
         <td>${escapeHtml(u.name || "-")}</td>
@@ -1179,10 +1182,50 @@ function renderUsers() {
         <td>${escapeHtml(place)}</td>
         <td>${escapeHtml(formatTime(u.createdAt))}</td>
         <td>${escapeHtml(source)}</td>
+        <td class="admin-row-actions">${
+          key
+            ? `<button type="button" class="danger" data-del-user="${escapeHtml(key)}">删除</button>`
+            : "-"
+        }</td>
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="7" class="admin-empty">服务器暂无注册用户</td></tr>`;
+    : `<tr><td colspan="8" class="admin-empty">服务器暂无注册用户</td></tr>`;
+}
+
+function applyUsersResult(data) {
+  if (!data) return;
+  if (Array.isArray(data.users)) state.users = data.users;
+  if (data.storage) state.usersStorage = data.storage;
+  if (data.storageOk != null) state.usersStorageOk = Boolean(data.storageOk);
+  else state.usersStorageOk = data.storage === "blob" || data.storage === "local";
+  if (data.storageMessage != null) state.usersStorageMessage = data.storageMessage;
+  renderUsers();
+  renderStats();
+}
+
+async function deleteUserRow(id) {
+  const userId = String(id || "").trim();
+  if (!userId) return;
+  if (!(await adminConfirm("确定删除这条注册资料？删除后该账号无法登录，同一邮箱和名称可以重新注册。", "删除注册资料"))) return;
+  const data = await api("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify({ action: "delete", id: userId }),
+  });
+  applyUsersResult(data);
+}
+
+async function clearUsersHistory() {
+  if (!(state.users || []).length) {
+    await adminAlert("当前没有注册资料。", "清空注册资料");
+    return;
+  }
+  if (!(await adminConfirm("确定清空全部注册资料？所有注册账号会从服务器删除，无法恢复。", "清空注册资料"))) return;
+  const data = await api("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify({ action: "clear" }),
+  });
+  applyUsersResult(data);
 }
 
 async function refreshList() {
@@ -1299,12 +1342,7 @@ async function loadProductsBundle() {
 
 async function loadUsers() {
   const data = await api("/api/admin/users");
-  state.users = data.users || [];
-  state.usersStorage = data.storage || "ephemeral";
-  state.usersStorageOk = data.storage === "blob" || data.storage === "local";
-  state.usersStorageMessage = data.storageMessage || "";
-  renderUsers();
-  renderStats();
+  applyUsersResult(data);
 }
 
 function updateChatBadge() {
@@ -1756,6 +1794,15 @@ $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) 
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
+$("refreshUsersTop").addEventListener("click", () => loadUsers().catch((e) => adminAlert(e.message)));
+$("clearUsers").addEventListener("click", () => {
+  clearUsersHistory().catch((err) => adminAlert(err.message));
+});
+$("usersTable").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-del-user]");
+  if (!btn) return;
+  deleteUserRow(btn.dataset.delUser).catch((err) => adminAlert(err.message));
+});
 $("refreshLogins").addEventListener("click", () => loadLoginHistory().catch((e) => adminAlert(e.message)));
 $("clearLogins").addEventListener("click", () => {
   clearLoginHistory().catch((err) => adminAlert(err.message));
