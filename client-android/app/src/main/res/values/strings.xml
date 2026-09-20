@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">开发板商城后台</string>
+    <string name="app_name">商城控制台</string>
     <string name="admin_url">https://develop-boards.com/admin/</string>
 </resources>

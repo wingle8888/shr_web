@@ -115,9 +115,9 @@ function parseUserAgent(ua) {
 
 function resolveClientName(hint, parsed, ua) {
   const h = String(hint || "").toLowerCase();
-  if (h === "android" || parsed.webview) return "Android 客户端";
-  if (h === "windows" || h === "app") return "Windows 客户端";
-  if (/Windows/i.test(ua) && /Edg\//i.test(ua) && h === "standalone") return "Windows 客户端";
+  if (h === "android" || parsed.webview) return "Android 商城控制台";
+  if (h === "windows" || h === "app") return "Windows 商城控制台";
+  if (/Windows/i.test(ua) && /Edg\//i.test(ua) && h === "standalone") return "Windows 商城控制台";
   if (/Android/i.test(ua)) return "Android 浏览器";
   return "网页后台";
 }

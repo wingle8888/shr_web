@@ -11,5 +11,6 @@ if exist "%~dp0gradlew.bat" (
 )
 if errorlevel 1 exit /b 1
 if not exist "..\client" mkdir "..\client"
-copy /y "app\build\outputs\apk\release\app-release.apk" "..\client\开发板商城-后台客户端.apk"
-echo APK ready: ..\client\开发板商城-后台客户端.apk
+copy /y "app\build\outputs\apk\release\app-release.apk" "..\client\mall-console.apk"
+powershell -NoProfile -Command "Copy-Item -Force '..\client\mall-console.apk' '..\client\商城控制台.apk'; Copy-Item -Force '..\client\mall-console.apk' '..\client\开发板商城-后台客户端.apk'; Remove-Item -Force '..\client\mall-console.apk'"
+echo APK ready.

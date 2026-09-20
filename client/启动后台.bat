@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
-title 开发板商城后台客户端
-echo 正在启动后台客户端...
-cscript //nologo "%~dp0开发板商城后台客户端.vbs"
+title 商城控制台
+echo 正在启动商城控制台...
+cscript //nologo "%~dp0商城控制台.vbs"
 if errorlevel 1 (
   start "" "https://develop-boards.com/admin/?client=windows"
 )

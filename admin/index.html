@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>后台管理 - 开发板商城</title>
+  <title>商城控制台 - 开发板商城</title>
   <link rel="icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,7 @@
     <header class="admin-header">
       <a href="/" class="logo">
         <div class="logo-icon">SHR</div>
-        <span class="logo-text">后台管理</span>
+        <span class="logo-text">商城控制台</span>
       </a>
       <div class="admin-header-actions">
         <button type="button" class="link-btn" id="passwordBtn" hidden>修改密码</button>
@@ -28,21 +28,21 @@
     </header>
 
     <section class="admin-card" id="loginCard">
-      <h1>后台管理</h1>
+      <h1>商城控制台</h1>
       <p class="admin-tip">登录后可查看数据总览、全球地址统计（世界地图）、上传产品与资料，管理订单、客户与注册用户。</p>
       <div class="admin-client-box">
         <strong>需要独立打开的客户端？</strong>
-        <p>电脑下载 Windows 客户端，手机下载 Android 安装包，安装后点开即可进入后台。</p>
+        <p>电脑下载 Windows 商城控制台，手机下载 Android 安装包，安装后点开即可进入。</p>
         <div class="admin-client-actions">
-          <a class="btn" href="/client/">下载客户端</a>
-          <a class="link-btn" href="/client/开发板商城-后台客户端.apk" download>下载 Android 安装包</a>
-          <a class="link-btn" href="/client/开发板商城后台客户端.vbs" download>Windows 启动器</a>
+          <a class="btn" href="/client/">下载商城控制台</a>
+          <a class="link-btn" href="/client/商城控制台.apk" download>下载 Android 安装包</a>
+          <a class="link-btn" href="/client/商城控制台.vbs" download>Windows 启动器</a>
         </div>
       </div>
       <form id="loginForm">
         <label>后台密码</label>
         <input type="password" id="adminPassword" required placeholder="请输入后台密码" autocomplete="current-password">
-        <button class="btn" type="submit" style="width:100%;margin-top:12px">进入网页后台</button>
+        <button class="btn" type="submit" style="width:100%;margin-top:12px">进入商城控制台</button>
       </form>
       <p class="admin-hint">初始密码：shr-admin-2026。登录后可在右上角修改密码（网页后台、Windows 和 Android 客户端通用）。</p>
     </section>
@@ -428,7 +428,7 @@
               <button type="button" class="link-btn danger" id="clearLogins">清空</button>
             </div>
           </div>
-          <p class="admin-tip">记录网页后台、Windows 客户端和 Android 客户端的登录时间、系统、登录地址等信息。可删除指定记录，或清空全部历史。</p>
+          <p class="admin-tip">记录网页后台、Windows 商城控制台和 Android 商城控制台的登录时间、系统、登录地址等信息。可删除指定记录，或清空全部历史。</p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="loginsTable">
               <thead>
