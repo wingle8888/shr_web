@@ -1,10 +1,10 @@
-import { createRequire } from "node:module";
 import runtimeEnv from "../api/_lib/runtime-env.js";
-
-const require = createRequire(import.meta.url);
-const { applySecurityHeaders } = require("../api/_lib/security-headers.js");
+import securityHeaders from "../api/_lib/security-headers.js";
 
 const { setRuntimeEnv } = runtimeEnv;
+const applySecurityHeaders =
+  (securityHeaders && securityHeaders.applySecurityHeaders) ||
+  (securityHeaders && securityHeaders.default && securityHeaders.default.applySecurityHeaders);
 
 function headerMap(request) {
   const headers = {};

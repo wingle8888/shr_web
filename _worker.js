@@ -61,7 +61,7 @@ export default {
               r2: Boolean(getR2()),
               kv: Boolean(getKV()),
               durable: Boolean(getCatalogStub()),
-              storeRev: 9,
+              storeRev: 10,
             }),
             {
               status: 200,
