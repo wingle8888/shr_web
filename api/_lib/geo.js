@@ -102,7 +102,7 @@ const CN_CITY_ZH = {
   beijing: "北京",
   shanghai: "上海",
   tianjin: "天津",
-  chongqing: "重庆",
+  chongqing: "重庆", // 直辖市
   shenzhen: "深圳",
   guangzhou: "广州",
   dongguan: "东莞",
