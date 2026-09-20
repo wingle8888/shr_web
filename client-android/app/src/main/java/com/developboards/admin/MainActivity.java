@@ -22,7 +22,7 @@ import android.widget.FrameLayout;
 
 public class MainActivity extends Activity {
     static final String ADMIN_HOST = "develop-boards.com";
-    static final String ADMIN_URL = "https://develop-boards.com/admin/";
+    static final String ADMIN_URL = "https://develop-boards.com/admin/?client=android";
     static final int FILE_CHOOSE = 1001;
 
     private WebView web;

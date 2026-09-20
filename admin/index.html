@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920f">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920g">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -57,6 +57,7 @@
         <button type="button" class="admin-tab" data-tab="customers">客户资料</button>
         <button type="button" class="admin-tab" data-tab="chat">客服 <span class="admin-tab-badge" id="chatTabBadge" hidden>0</span></button>
         <button type="button" class="admin-tab" data-tab="users">注册资料</button>
+        <button type="button" class="admin-tab" data-tab="logins">登录历史</button>
       </nav>
 
       <div class="admin-tab-panel active" id="tab-dashboard">
@@ -416,6 +417,33 @@
         </div>
       </div>
 
+      <div class="admin-tab-panel" id="tab-logins">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>登录历史</h1>
+            <button type="button" class="link-btn" id="refreshLogins">刷新</button>
+          </div>
+          <p class="admin-tip">记录网页后台、Windows 客户端和 Android 客户端的登录时间、系统、登录地址等信息。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="loginsTable">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>客户端</th>
+                  <th>系统</th>
+                  <th>浏览器</th>
+                  <th>设备</th>
+                  <th>登录地址</th>
+                  <th>IP</th>
+                  <th>方式</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="admin-tab-panel" id="tab-chat">
         <div class="admin-card">
           <div class="admin-panel-head">
@@ -500,6 +528,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920n"></script>
+  <script src="/admin/admin.js?v=20260920p"></script>
 </body>
 </html>

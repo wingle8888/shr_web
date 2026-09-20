@@ -14,6 +14,7 @@ const state = {
   addressStats: [],
   geoStats: [],
   users: [],
+  logins: [],
   usersStorage: "ephemeral",
   usersStorageOk: false,
   usersStorageMessage: "",
@@ -186,6 +187,9 @@ function switchTab(tab) {
   }
   if (tab === "geo") {
     requestAnimationFrame(() => renderWorldMap());
+  }
+  if (tab === "logins" && getPass()) {
+    loadLoginHistory().catch(() => {});
   }
   if (tab === "chat" && getPass()) {
     loadChatList().catch(() => {});
@@ -856,6 +860,81 @@ function renderCustomers() {
     : `<tr><td colspan="8" class="admin-empty">暂无客户资料</td></tr>`;
 }
 
+function formatLoginTime(iso) {
+  if (!iso) return "-";
+  try {
+    return new Date(iso).toLocaleString("zh-CN", { hour12: false });
+  } catch {
+    return String(iso);
+  }
+}
+
+function adminClientInfo() {
+  const ua = navigator.userAgent || "";
+  const params = new URLSearchParams(location.search);
+  let client = String(params.get("client") || "").toLowerCase();
+  if (!client && /Android/i.test(ua) && /; wv\)/i.test(ua)) client = "android";
+  if (!client && window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+    client = /Windows/i.test(ua) ? "windows" : "app";
+  }
+  return {
+    client,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    language: navigator.language || "",
+    platform: navigator.platform || "",
+    screen: (window.screen ? window.screen.width : 0) + "x" + (window.screen ? window.screen.height : 0),
+  };
+}
+
+async function recordAdminLogin(reason) {
+  const now = Date.now();
+  if (reason !== "password") {
+    let prev = 0;
+    try {
+      prev = Number(sessionStorage.getItem("shr_admin_login_rec") || 0);
+    } catch (_) {}
+    if (now - prev < 60 * 60 * 1000) return;
+  }
+  try {
+    sessionStorage.setItem("shr_admin_login_rec", String(now));
+  } catch (_) {}
+  try {
+    await api("/api/admin/auth", {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ action: "login", reason: reason || "auto" }, adminClientInfo())),
+    });
+  } catch (_) {}
+}
+
+function renderLogins() {
+  const table = $("loginsTable");
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  const list = state.logins || [];
+  tbody.innerHTML = list.length
+    ? list
+        .map(
+          (row) => `<tr>
+        <td>${escapeHtml(formatLoginTime(row.at))}</td>
+        <td>${escapeHtml(row.client || "网页后台")}</td>
+        <td>${escapeHtml(row.os || row.system || "-")}</td>
+        <td>${escapeHtml(row.browser || "-")}</td>
+        <td>${escapeHtml(row.device || "-")}</td>
+        <td class="admin-addr-cell" title="${escapeHtml(row.address || "")}">${escapeHtml(row.address || "-")}</td>
+        <td>${escapeHtml(row.ip || "-")}</td>
+        <td>${escapeHtml(row.reason === "password" ? "密码登录" : "自动进入")}</td>
+      </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="8" class="admin-empty">暂无登录记录。使用密码登录后台后会出现在这里。</td></tr>`;
+}
+
+async function loadLoginHistory() {
+  const data = await api("/api/admin/auth");
+  state.logins = data.logins || [];
+  renderLogins();
+}
+
 function renderUsers() {
   const tbody = $("usersTable").querySelector("tbody");
   const list = state.users || [];
@@ -1230,6 +1309,7 @@ async function loadAll() {
     loadVisits(),
     refreshList(),
     loadChatList(),
+    loadLoginHistory(),
   ];
   const results = await Promise.allSettled(tasks);
   const failed = results.slice(0, 5).find((r) => r.status === "rejected");
@@ -1340,6 +1420,7 @@ $("loginForm").addEventListener("submit", async (e) => {
   setPass(password);
   try {
     await api("/api/admin/files");
+    await recordAdminLogin("password");
     showPanel(true);
     switchTab("dashboard");
     await loadAll();
@@ -1451,6 +1532,7 @@ $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) 
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
+$("refreshLogins").addEventListener("click", () => loadLoginHistory().catch((e) => alert(e.message)));
 $("refreshChat").addEventListener("click", () => loadChatList().catch((e) => alert(e.message)));
 
 $("autoReplyForm").addEventListener("submit", async (e) => {
@@ -2062,6 +2144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   try {
     await api("/api/admin/files");
+    await recordAdminLogin("auto");
     showPanel(true);
     switchTab("dashboard");
     await loadAll();

@@ -4,7 +4,7 @@ Option Explicit
 
 Dim sh, fso, url, edge, chrome, scriptDir, cfg, line, cfgPath
 
-url = "https://develop-boards.com/admin/"
+url = "https://develop-boards.com/admin/?client=windows"
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
@@ -18,6 +18,12 @@ If fso.FileExists(cfgPath) Then
     If Left(LCase(line), 4) = "http" Then url = line
   End If
   cfg.Close
+End If
+
+If InStr(url, "?") > 0 Then
+  If InStr(LCase(url), "client=") = 0 Then url = url & "&client=windows"
+Else
+  url = url & "?client=windows"
 End If
 
 edge = FindBrowser("Microsoft\Edge\Application\msedge.exe")
