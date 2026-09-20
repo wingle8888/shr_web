@@ -692,6 +692,45 @@
   word-break: break-word;
 }
 
+.admin-geo-country td {
+  background: rgba(46, 230, 255, 0.08);
+  border-top: 1px solid rgba(46, 230, 255, 0.22);
+  padding: 10px 12px;
+}
+
+.admin-geo-country-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.admin-geo-country-row strong {
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.admin-geo-country-code {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  border: 1px solid rgba(46, 230, 255, 0.35);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.admin-geo-country-stat {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-geo-place td:first-child {
+  padding-left: 22px;
+}
+
 .admin-geo-time {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

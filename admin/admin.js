@@ -733,6 +733,77 @@ function geoRowKey(row) {
   return [row.code || "", row.region || "", row.city || ""].join("|");
 }
 
+function geoCountryCode(row) {
+  const up = String((row && row.code) || "").toUpperCase();
+  if (!up || up === "UN" || up === "XX") return "UN";
+  if (up === "UK") return "GB";
+  return up;
+}
+
+function geoCountryName(row) {
+  const name = String((row && (row.country || row.name)) || "").trim();
+  if (name) return name;
+  const code = geoCountryCode(row);
+  return code === "UN" ? "未知地区" : code;
+}
+
+function geoPlaceLabel(row, countryName) {
+  const full =
+    (row && row.label) ||
+    [row && row.region, row && row.city].filter(Boolean).join(" · ") ||
+    (row && (row.country || row.name || row.code)) ||
+    "-";
+  const name = String(countryName || "").trim();
+  if (!name) return full;
+  if (full === name) return "未细分到城市";
+  const prefix = name + " · ";
+  if (full.startsWith(prefix)) return full.slice(prefix.length) || "未细分到城市";
+  return full;
+}
+
+function groupGeoByCountry(list) {
+  const groups = new Map();
+  (list || []).forEach((row) => {
+    const code = geoCountryCode(row);
+    if (!groups.has(code)) {
+      groups.set(code, {
+        code,
+        name: geoCountryName(row),
+        visits: 0,
+        visitors: 0,
+        orders: 0,
+        total: 0,
+        rows: [],
+      });
+    }
+    const group = groups.get(code);
+    const countryName = geoCountryName(row);
+    if (countryName && countryName !== group.code) group.name = countryName;
+    group.visits += Number(row.visits) || 0;
+    group.visitors += Number(row.visitors) || 0;
+    group.orders += Number(row.orders) || 0;
+    group.total += Number(row.total) || (Number(row.visits) || 0) + (Number(row.orders) || 0);
+    group.rows.push(row);
+  });
+  const sorted = Array.from(groups.values()).sort(
+    (a, b) =>
+      b.visitors - a.visitors ||
+      b.visits - a.visits ||
+      b.total - a.total ||
+      String(a.name).localeCompare(String(b.name), "zh")
+  );
+  sorted.forEach((group) => {
+    group.rows.sort(
+      (a, b) =>
+        (Number(b.visitors) || 0) - (Number(a.visitors) || 0) ||
+        (Number(b.visits) || 0) - (Number(a.visits) || 0) ||
+        (Number(b.orders) || 0) - (Number(a.orders) || 0) ||
+        String(a.label || "").localeCompare(String(b.label || ""), "zh")
+    );
+  });
+  return sorted;
+}
+
 function formatVisitorLocalTime(iso, timezone) {
   const raw = String(iso || "").trim();
   if (!raw) return "";
@@ -855,32 +926,49 @@ function applyVisitCountriesToGeo() {
   const deleted = new Set(
     Array.isArray(visits.geoDeletedKeys) ? visits.geoDeletedKeys.map((id) => normalizeGeoKey(id)) : []
   );
-  state.geoStats = Array.from(nextMap.values())
-    .filter((row) => !deleted.has(geoRowKey(row)))
-    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
+  state.geoStats = groupGeoByCountry(
+    Array.from(nextMap.values()).filter((row) => !deleted.has(geoRowKey(row)))
+  ).flatMap((group) => group.rows);
 }
 
 function renderGeoStats() {
   const table = $("geoStatsTable");
   const summary = $("geoSummary");
   const list = state.geoStats || [];
+  const groups = groupGeoByCountry(list);
   const visitSum = list.reduce((s, row) => s + (Number(row.visits) || 0), 0);
+  const visitorSum = list.reduce((s, row) => s + (Number(row.visitors) || 0), 0);
   const orderSum = list.reduce((s, row) => s + (Number(row.orders) || 0), 0);
   const clearBtn = $("clearGeo");
   if (clearBtn) clearBtn.disabled = !list.length;
   if (summary) {
     summary.textContent = list.length
-      ? `${list.length} 条地址 · 访问 ${visitSum} · 下单 ${orderSum}`
+      ? `${groups.length} 个国家 · ${list.length} 条地址 · 访客 ${visitorSum} · 访问 ${visitSum} · 下单 ${orderSum}`
       : "";
   }
   if (table) {
     const tbody = table.querySelector("tbody");
     tbody.innerHTML = list.length
-      ? list
-          .map((row) => {
-            const key = geoRowKey(row);
-            const label = row.label || [row.country || row.name, row.region, row.city].filter(Boolean).join(" · ") || row.code || "-";
-            return `<tr>
+      ? groups
+          .map((group) => {
+            const codeLabel = group.code === "UN" ? "" : escapeHtml(group.code);
+            const head = `<tr class="admin-geo-country">
+        <td colspan="7">
+          <div class="admin-geo-country-row">
+            <strong>${escapeHtml(group.name)}</strong>
+            ${codeLabel ? `<span class="admin-geo-country-code">${codeLabel}</span>` : ""}
+            <span class="admin-geo-country-stat">${group.rows.length} 个地址</span>
+            <span class="admin-geo-country-stat">访客 ${group.visitors}</span>
+            <span class="admin-geo-country-stat">访问 ${group.visits}</span>
+            <span class="admin-geo-country-stat">下单 ${group.orders}</span>
+          </div>
+        </td>
+      </tr>`;
+            const rows = group.rows
+              .map((row) => {
+                const key = geoRowKey(row);
+                const label = geoPlaceLabel(row, group.name);
+                return `<tr class="admin-geo-place">
         <td class="admin-addr-detail" title="${escapeHtml(label)}">${escapeHtml(label)}</td>
         <td class="admin-geo-time">${renderGeoVisitTime(row)}</td>
         <td>${row.visits || 0}</td>
@@ -893,6 +981,9 @@ function renderGeoStats() {
             : "-"
         }</td>
       </tr>`;
+              })
+              .join("");
+            return head + rows;
           })
           .join("")
       : `<tr><td colspan="7" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按详细地址累计，并记录访问者当地时间。</td></tr>`;

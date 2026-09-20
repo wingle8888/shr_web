@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920ab">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260921a">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -104,7 +104,7 @@
               <button type="button" class="link-btn danger" id="clearGeo">清空</button>
             </div>
           </div>
-          <p class="admin-tip">世界地图按国家着色；下方明细显示详细地址、访问者当地时间、访问与下单次数。可删除指定地址，或清空全部地址统计（不影响日访问量）。</p>
+          <p class="admin-tip">世界地图按国家着色；下方明细按国家分组，访客多的国家排在前面，便于对比各国访问量。可删除指定地址，或清空全部地址统计（不影响日访问量）。</p>
           <div class="admin-geo-legend">
             <span>少</span>
             <span class="admin-geo-legend-bar" aria-hidden="true"></span>
@@ -112,7 +112,7 @@
             <span class="admin-hint" id="geoSummary"></span>
           </div>
           <div class="admin-world-map" id="geoWorldMap"></div>
-          <h2 class="admin-sub">详细地址明细</h2>
+          <h2 class="admin-sub">按国家分组的地址明细</h2>
           <div class="admin-table-wrap">
             <table class="admin-table" id="geoStatsTable">
               <thead>
@@ -538,6 +538,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920ab"></script>
+  <script src="/admin/admin.js?v=20260921a"></script>
 </body>
 </html>
