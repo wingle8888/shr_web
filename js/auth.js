@@ -233,8 +233,57 @@
     }
   }
 
+  function forgetLocalProfile(user) {
+    const email = String((user && user.email) || "").trim().toLowerCase();
+    const id = String((user && user.id) || "").trim();
+    if (!email && !id) return;
+    saveLocalUsers(
+      localUsers().filter((u) => {
+        if (!u) return false;
+        if (id && String(u.id || "") === id) return false;
+        if (email && String(u.email || "").trim().toLowerCase() === email) return false;
+        return true;
+      })
+    );
+  }
+
   function logout() {
     setSession(null);
+  }
+
+  function invalidateSession() {
+    const prev = currentUser();
+    setSession(null);
+    forgetLocalProfile(prev);
+  }
+
+  let sessionSync = null;
+
+  async function validateSession() {
+    const s = getSession();
+    if (!s || !s.token) return null;
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeader()),
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok && data.user) {
+        setSession({ token: s.token, user: Object.assign({}, s.user || {}, data.user) });
+        return currentUser();
+      }
+      if (res.status === 401) {
+        invalidateSession();
+        return null;
+      }
+    } catch (_) {}
+    return currentUser();
+  }
+
+  function syncSession(force) {
+    if (force) sessionSync = null;
+    if (!sessionSync) sessionSync = validateSession();
+    return sessionSync;
   }
 
   async function resetLocal({ email, phone, password }) {
@@ -359,6 +408,7 @@
     }
 
     refreshAuthUI();
+    syncSession().then(() => afterAuth());
 
     const loginBtn = document.getElementById("loginBtn");
     const registerBtn = document.getElementById("registerBtn");
@@ -611,9 +661,11 @@
     refreshAuthUI,
     prefillCheckoutFromUser,
     initAuthUI,
+    syncSession,
     buildSyncCode,
     parseSyncCode,
     localUsers,
   };
   bindModalKeyboardAvoid();
+  syncSession().then(() => refreshAuthUI());
 })();

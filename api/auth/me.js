@@ -1,4 +1,4 @@
-const { cors, sendJson, verifyToken } = require("../_lib/auth-store");
+const { cors, sendJson, resolveUserFromToken, publicUser } = require("../_lib/auth-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -14,13 +14,17 @@ module.exports = async function handler(req, res) {
 
   const auth = req.headers.authorization || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const data = verifyToken(token);
-  if (!data) {
-    sendJson(res, 401, { ok: false, error: "unauthorized" });
-    return;
+  try {
+    const user = await resolveUserFromToken(token);
+    if (!user) {
+      sendJson(res, 401, { ok: false, error: "unauthorized" });
+      return;
+    }
+    sendJson(res, 200, {
+      ok: true,
+      user: publicUser(user),
+    });
+  } catch (err) {
+    sendJson(res, 500, { ok: false, error: String(err.message || err) });
   }
-  sendJson(res, 200, {
-    ok: true,
-    user: { id: data.id, email: data.email, name: data.name },
-  });
 };

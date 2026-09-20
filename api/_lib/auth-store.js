@@ -199,6 +199,27 @@ function verifyToken(token) {
   }
 }
 
+function findStoredUser(users, hint) {
+  const list = Array.isArray(users) ? users : [];
+  const id = String((hint && hint.id) || "").trim();
+  const email = String((hint && hint.email) || "").trim().toLowerCase();
+  return (
+    list.find((u) => {
+      if (!u) return false;
+      if (id && String(u.id || "") === id) return true;
+      if (email && String(u.email || "").trim().toLowerCase() === email) return true;
+      return false;
+    }) || null
+  );
+}
+
+async function resolveUserFromToken(token) {
+  const data = verifyToken(token);
+  if (!data) return null;
+  const user = findStoredUser(await readUsers(), data);
+  return user || null;
+}
+
 function normalizeUserIds(ids) {
   const list = Array.isArray(ids) ? ids : ids != null ? [ids] : [];
   const out = [];
@@ -282,6 +303,8 @@ module.exports = {
   verifyPassword,
   signToken,
   verifyToken,
+  resolveUserFromToken,
+  findStoredUser,
   publicUser,
   deleteUsers,
   clearUsers,

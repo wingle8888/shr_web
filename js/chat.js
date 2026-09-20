@@ -215,6 +215,11 @@
   }
 
   async function sendChatToServer(text) {
+    if (window.Auth && typeof window.Auth.syncSession === "function") {
+      try {
+        await window.Auth.syncSession();
+      } catch (_) {}
+    }
     const ident = chatIdentity();
     const res = await fetch("/api/chat", {
       method: "POST",
