@@ -263,12 +263,12 @@ function renderStats() {
     </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">本月销售额</div>
-      <div class="admin-stat-value">¥${formatMoney(tm.amount)}</div>
+      <div class="admin-stat-value">$${formatMoney(tm.amount)}</div>
       <div class="admin-stat-sub">${escapeHtml(tm.month || "-")} · 订单 ${tm.orders || 0}</div>
     </div>
     <div class="admin-stat-card">
       <div class="admin-stat-label">累计销售额</div>
-      <div class="admin-stat-value">¥${formatMoney(stats.totalAmount)}</div>
+      <div class="admin-stat-value">$${formatMoney(stats.totalAmount)}</div>
       <div class="admin-stat-sub">订单 ${stats.totalOrders || 0} · 客户 ${state.customers.length}</div>
     </div>
   `;
@@ -282,7 +282,7 @@ function renderStats() {
         <td>${escapeHtml(m.month)}</td>
         <td>${m.orders}</td>
         <td>${m.items}</td>
-        <td>¥${formatMoney(m.amount)}</td>
+        <td>$${formatMoney(m.amount)}</td>
       </tr>`
         )
         .join("")
@@ -439,7 +439,7 @@ function renderProductsTable() {
         <td>${p.id}</td>
         <td>${escapeHtml(p.name)}</td>
         <td>${escapeHtml(p.category || p.categoryId || "")}</td>
-        <td>¥${formatMoney(p.price)}</td>
+        <td>$${formatMoney(p.price)}</td>
         <td>${sold}</td>
         <td>${status}</td>
         <td>${custom ? "后台上传" : "商城预设"}</td>
@@ -504,7 +504,7 @@ function renderOrders() {
         <td>${escapeHtml(s.name || "-")}</td>
         <td>${escapeHtml(s.phone || "-")}</td>
         <td class="admin-addr-cell" title="${escapeHtml(addr)}">${escapeHtml(addr)}</td>
-        <td>¥${formatMoney(o.total)}</td>
+        <td>$${formatMoney(o.total)}</td>
         <td>${escapeHtml(o.status || "-")}</td>
         <td>${escapeHtml(o.payMethod || "-")}</td>
       </tr>`;
@@ -528,7 +528,7 @@ function renderAddressStats() {
           )}</td>
         <td>${row.orderCount || 0}</td>
         <td>${row.customerCount || 0}</td>
-        <td>¥${formatMoney(row.amount)}</td>
+        <td>$${formatMoney(row.amount)}</td>
         <td>${escapeHtml(row.sampleNames || "-")}</td>
       </tr>`
         )
@@ -545,7 +545,7 @@ function showOrderDetail(order) {
   }
   const s = order.shipping || {};
   const items = (order.items || [])
-    .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　¥${formatMoney((i.price || 0) * (i.qty || 0))}</li>`)
+    .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　$${formatMoney((i.price || 0) * (i.qty || 0))}</li>`)
     .join("");
   box.hidden = false;
   box.innerHTML = `
@@ -555,7 +555,7 @@ function showOrderDetail(order) {
     <p>支付：${escapeHtml(order.payMethod || "-")} · 状态：${escapeHtml(order.status || "-")}</p>
     ${order.userEmail ? `<p>关联账号：${escapeHtml(order.userEmail)}</p>` : ""}
     <ul>${items}</ul>
-    <p><strong>合计 ¥${formatMoney(order.total)}</strong></p>
+    <p><strong>合计 $${formatMoney(order.total)}</strong></p>
   `;
 }
 
@@ -572,7 +572,7 @@ function renderCustomers() {
         <td>${escapeHtml(c.region || "-")}</td>
         <td class="admin-addr-cell" title="${escapeHtml(c.address || "")}">${escapeHtml(c.address || "-")}</td>
         <td>${c.orderCount || 0}</td>
-        <td>¥${formatMoney(c.totalSpent)}</td>
+        <td>$${formatMoney(c.totalSpent)}</td>
         <td>${escapeHtml(c.lastOrderId || "-")}<br><span class="admin-muted">${escapeHtml(
             formatTime(c.lastOrderAt)
           )}</span></td>

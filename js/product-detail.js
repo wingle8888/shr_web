@@ -1,4 +1,4 @@
-const CART_KEY = "shr_cart";
+const CART_KEY = "shr_cart_usd";
 let cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
 
 function t(key, vars) {
@@ -85,7 +85,7 @@ function renderCart() {
       <img src="${item.img}" alt="${escapeHtml(item.name)}">
       <div class="cart-item-info">
         <div class="cart-item-title">${escapeHtml(item.name)}</div>
-        <div class="cart-item-price">¥${item.price}</div>
+        <div class="cart-item-price">$${Number(item.price).toFixed(2)}</div>
         <div class="qty-row">
           <button type="button" onclick="changeQty(${item.id}, -1)">−</button>
           <span>${item.qty}</span>
@@ -220,7 +220,7 @@ function renderDetail(product, remoteDownloads) {
         <p class="detail-cat">${escapeHtml(product.category)}</p>
         <h1>${escapeHtml(product.name)}</h1>
         <p class="detail-brief">${escapeHtml(product.desc)}</p>
-        <div class="detail-price"><small>¥</small>${product.price}</div>
+        <div class="detail-price"><small>$</small>${Number(product.price).toFixed(2)}</div>
         <div class="detail-qty-buy">
           <label>
             ${escapeHtml(t("qty"))}

@@ -6,7 +6,7 @@ const CATEGORY_ORDER = [
   { id: "cat-sensor", nameKey: "catSensor", descKey: "catSensorDesc" },
 ];
 
-const CART_KEY = "shr_cart";
+const CART_KEY = "shr_cart_usd";
 const ORDERS_KEY = "shr_orders";
 
 let products = window.PRODUCTS || [];
@@ -156,7 +156,7 @@ function productCardHtml(raw) {
         </div>
       </a>
       <div class="card-bottom card-bottom-pad">
-        <div class="card-price"><small>¥</small>${p.price}</div>
+        <div class="card-price"><small>$</small>${Number(p.price).toFixed(2)}</div>
         <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">${t("addToCart")}</button>
       </div>
     </div>
@@ -248,7 +248,7 @@ function renderCart() {
       <img src="${item.img}" alt="${escapeHtml(item.name)}">
       <div class="cart-item-info">
         <div class="cart-item-title">${escapeHtml(item.name)}</div>
-        <div class="cart-item-price">¥${item.price}</div>
+        <div class="cart-item-price">$${Number(item.price).toFixed(2)}</div>
         <div class="qty-row">
           <button type="button" onclick="changeQty(${item.id}, -1)">−</button>
           <span>${item.qty}</span>
@@ -426,7 +426,7 @@ async function handleLookup(e) {
   }
 
   const itemsHtml = order.items
-    .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　¥${(i.price * i.qty).toFixed(2)}</li>`)
+    .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　$${(i.price * i.qty).toFixed(2)}</li>`)
     .join("");
 
   const locale = window.I18N?.getLang() === "en" ? "en-US" : "zh-CN";

@@ -110,7 +110,7 @@
       cartTitle: "购物车",
       cartEmpty: "购物车是空的，去挑几块开发板吧",
       cartEmptyShort: "购物车是空的",
-      total: "合计：¥",
+      total: "合计：$",
       checkout: "去结算",
       checkoutTitle: "确认订单",
       checkoutHint: "可登录后自动填充资料，也可游客购买。请填写收货信息，下单后请保存订单号。",
@@ -122,7 +122,7 @@
       shipAddress: "详细地址 *",
       shipNote: "备注（选填）",
       payLabel: "国际支付方式 *",
-      payDue: "应付合计：¥",
+      payDue: "应付合计：$",
       submitOrder: "提交订单并支付",
       successTitle: "下单成功",
       done: "完成",
@@ -189,7 +189,7 @@
       address: "地址：",
       email: "邮箱：",
       remark: "备注：",
-      orderTotal: "合计：¥",
+      orderTotal: "合计：$",
       noProducts: "未找到相关商品，请换个关键词试试",
       namePh: "姓名",
       phonePh: "用于发货与订单查询",
@@ -204,7 +204,7 @@
         "您好！我是开发板商城在线客服。可咨询商品、发货、订单查询（订单号+手机号）或售后问题。可注册登录，也可游客购买。",
       botOrder:
         "可登录或游客下单。查询请点顶部「订单查询」，输入订单号与下单手机号即可查看购买与收货记录。",
-      botPrice: "价格以商品页标价为准，批量可议价。直接加购结算即可，无需强制登录。",
+      botPrice: "价格以商品页美元（USD）标价为准，批量可议价。直接加购结算即可，无需强制登录。",
       botShip: "结算时请填写完整收货地址与手机号，现货一般 24 小时内发货。",
       botPay: "支持 PayPal、Visa/Mastercard、Apple Pay、Google Pay。",
       botReg: "可注册登录保存收货信息，也可不登录直接购买；订单号+手机号可查询记录。",
@@ -329,7 +329,7 @@
       cartTitle: "Cart",
       cartEmpty: "Cart is empty — pick a board",
       cartEmptyShort: "Cart is empty",
-      total: "Total: ¥",
+      total: "Total: $",
       checkout: "Checkout",
       checkoutTitle: "Confirm Order",
       checkoutHint: "Log in to autofill, or buy as a guest. Save your order ID after checkout.",
@@ -341,7 +341,7 @@
       shipAddress: "Address *",
       shipNote: "Note (optional)",
       payLabel: "Payment method *",
-      payDue: "Amount due: ¥",
+      payDue: "Amount due: $",
       submitOrder: "Place Order & Pay",
       successTitle: "Order Placed",
       done: "Done",
@@ -409,7 +409,7 @@
       address: "Address: ",
       email: "Email: ",
       remark: "Note: ",
-      orderTotal: "Total: ¥",
+      orderTotal: "Total: $",
       noProducts: "No products found. Try another keyword.",
       namePh: "Full name",
       phonePh: "For shipping & lookup",
@@ -424,7 +424,7 @@
         "Hi! I'm mall support. Ask about products, shipping, order lookup (ID + phone), or after-sales. Login is optional.",
       botOrder:
         "Login optional. Use Order Lookup in the top bar with your order ID and phone.",
-      botPrice: "Prices are listed on each product. Bulk quotes available. No login required to buy.",
+      botPrice: "Prices are listed in USD on each product. Bulk quotes available. No login required to buy.",
       botShip: "Enter full address and phone at checkout. In-stock items usually ship within 24h.",
       botPay: "We accept PayPal, Visa/Mastercard, Apple Pay, and Google Pay.",
       botReg: "You can sign up to save shipping details, or checkout as a guest; look up orders by ID + phone.",
@@ -494,7 +494,16 @@
     });
   }
 
-  window.I18N = { getLang, setLang, t, applyI18n, localizeField, localizeList, dict };
+  function formatMoney(n) {
+    const v = Number(n);
+    return (Number.isFinite(v) ? v : 0).toFixed(2);
+  }
+
+  function money(n) {
+    return "$" + formatMoney(n);
+  }
+
+  window.I18N = { getLang, setLang, t, applyI18n, localizeField, localizeList, dict, formatMoney, money };
 
   function syncChromeOffset() {
     const topBar = document.querySelector(".top-bar");

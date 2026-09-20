@@ -98,9 +98,9 @@ function unwrapGalleries(raw) {
 }
 
 function unwrapCatalog(raw) {
-  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
+  if (Array.isArray(raw)) return { products: raw, hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, currency: "", updatedAt: "" };
   if (raw && typeof raw !== "object") {
-    return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
+    return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, currency: "", updatedAt: "" };
   }
   if (raw && typeof raw === "object") {
     const products = Array.isArray(raw.products) ? raw.products : Array.isArray(raw) ? raw : [];
@@ -110,10 +110,11 @@ function unwrapCatalog(raw) {
       deletedIds: allDeletedIds(raw.deletedIds),
       galleries: unwrapGalleries(raw.galleries),
       categories: unwrapCategories(raw.categories),
+      currency: String(raw.currency || ""),
       updatedAt: String(raw.updatedAt || ""),
     };
   }
-  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, updatedAt: "" };
+  return { products: [], hiddenIds: [], deletedIds: allDeletedIds([]), galleries: {}, categories: null, currency: "", updatedAt: "" };
 }
 
 function mergeProducts(a, b) {
@@ -182,7 +183,28 @@ function mergeCatalog(a, b) {
     deletedIds,
     galleries,
     categories: pickCategories(left, right, b),
+    currency: left.currency === "USD" || right.currency === "USD" ? "USD" : left.currency || right.currency || "",
     updatedAt,
+  };
+}
+
+const CNY_PER_USD = 7.2;
+
+function toUsdPrice(price) {
+  const n = Number(price);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round((n / CNY_PER_USD) * 100) / 100;
+}
+
+function convertCatalogPricesToUsd(cat) {
+  if (!cat || cat.currency === "USD") return cat;
+  return {
+    ...cat,
+    currency: "USD",
+    products: (cat.products || []).map((p) => ({
+      ...p,
+      price: toUsdPrice(p.price),
+    })),
   };
 }
 
@@ -190,11 +212,16 @@ async function readCatalog() {
   const raw = await readJsonStore({
     blobPath: BLOB_PATH,
     localPaths: [TMP_FILE, DATA_FILE],
-    empty: { products: [], hiddenIds: [], deletedIds: [], galleries: {}, categories: [] },
+    empty: { products: [], hiddenIds: [], deletedIds: [], galleries: {}, categories: [], currency: "USD" },
     merge: mergeCatalog,
   });
-  const cat = unwrapCatalog(raw);
+  const cat = convertCatalogPricesToUsd(unwrapCatalog(raw));
   cat.categories = catalogCategories(cat);
+  if (unwrapCatalog(raw).currency !== "USD") {
+    try {
+      await writeCatalog(cat);
+    } catch (_) {}
+  }
   return cat;
 }
 
@@ -258,6 +285,7 @@ async function writeCatalog(catalog) {
     deletedIds,
     galleries,
     categories: catalogCategories(incoming),
+    currency: "USD",
     updatedAt: new Date().toISOString(),
   };
   await writeJsonStore({
