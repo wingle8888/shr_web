@@ -1033,8 +1033,21 @@
   margin-top: 18px;
 }
 
+.admin-dialog-actions .link-btn,
 .admin-dialog-actions .btn {
   min-width: 72px;
+}
+
+.admin-dialog-actions .link-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-dialog.is-alert #adminDialogCancel {
+  display: none;
 }
 
 .admin-password-card {

@@ -61,15 +61,18 @@ function openAdminDialog({ title, message, okText, cancelText, showCancel }) {
     const msgEl = $("adminDialogMessage");
     const okBtn = $("adminDialogOk");
     const cancelBtn = $("adminDialogCancel");
+    const withCancel = showCancel !== false;
     if (titleEl) titleEl.textContent = title || "请确认";
     if (msgEl) msgEl.textContent = message || "";
     if (okBtn) okBtn.textContent = okText || "确定";
     if (cancelBtn) {
       cancelBtn.textContent = cancelText || "取消";
-      cancelBtn.hidden = showCancel === false;
+      cancelBtn.hidden = !withCancel;
     }
+    overlay.classList.toggle("is-alert", !withCancel);
     overlay.hidden = false;
-    if (okBtn) okBtn.focus();
+    if (withCancel && cancelBtn) cancelBtn.focus();
+    else if (okBtn) okBtn.focus();
   });
 }
 
@@ -1957,7 +1960,10 @@ $("importSyncCodeBtn").addEventListener("click", async () => {
 });
 $("refreshDocs").addEventListener("click", () => refreshList().catch((e) => alert(e.message)));
 
-$("productResetBtn").addEventListener("click", resetProductForm);
+$("productResetBtn").addEventListener("click", async () => {
+  if (!(await adminConfirm("确定清空产品表单中已填写的内容？未保存的修改会丢失。", "清空表单"))) return;
+  resetProductForm();
+});
 
 const prodImgFile = $("prodImgFile");
 if (prodImgFile) {
@@ -2244,6 +2250,7 @@ $("galleryList").addEventListener("click", async (e) => {
   }
   const btn = e.target.closest("[data-del-gallery]");
   if (!btn || !state.galleryProductId) return;
+  if (!(await adminConfirm("确定删除这张宣传图？删除后商品详情页不再显示。", "删除宣传图"))) return;
   try {
     const data = await api("/api/admin/products", {
       method: "POST",
