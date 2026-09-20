@@ -126,7 +126,6 @@ const CN_CITY_ZH = {
   wuhan: "武汉",
   changsha: "长沙",
   chengdu: "成都",
-  chongqing: "重庆",
   kunming: "昆明",
   guiyang: "贵阳",
   nanning: "南宁",
