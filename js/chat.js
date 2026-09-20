@@ -561,6 +561,15 @@
           location.href = "/";
           return;
         }
+        if (btn.dataset.q === "warranty") {
+          if (window.opener && !window.opener.closed) {
+            window.opener.location.hash = "warranty";
+            window.opener.focus();
+            return;
+          }
+          location.href = "/#warranty";
+          return;
+        }
         handleChatSend(btn.dataset.q);
       });
     }
