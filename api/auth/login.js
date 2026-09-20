@@ -9,10 +9,11 @@ const {
   signToken,
   publicUser,
   storageStatus,
+  findUsersByAccount,
 } = require("../_lib/auth-store");
 
-function normalizePhone(value) {
-  return String(value || "").replace(/[\s\-()+]/g, "").trim();
+function accountFrom(body) {
+  return String((body && (body.account || body.email || body.phone)) || "").trim();
 }
 
 async function handleReset(req, res, body) {
@@ -26,15 +27,12 @@ async function handleReset(req, res, body) {
     return;
   }
 
-  const email = String(body.email || "")
-    .trim()
-    .toLowerCase();
-  const phone = normalizePhone(body.phone);
+  const account = accountFrom(body);
   const password = String(body.password || "");
   const passwordConfirm = String(body.passwordConfirm != null ? body.passwordConfirm : password);
 
-  if (!email || !phone || !password) {
-    sendJson(res, 400, { ok: false, error: "email, phone and password required" });
+  if (!account || !password) {
+    sendJson(res, 400, { ok: false, error: "account and password required" });
     return;
   }
   if (password !== passwordConfirm) {
@@ -48,19 +46,15 @@ async function handleReset(req, res, body) {
 
   try {
     const users = await readUsers();
-    const idx = users.findIndex((u) => u && u.email === email);
+    const hits = findUsersByAccount(users, account);
+    if (hits.length !== 1) {
+      sendJson(res, 400, { ok: false, error: "account not found" });
+      return;
+    }
+    const user = hits[0];
+    const idx = users.findIndex((u) => u && (u.id === user.id || u.email === user.email));
     if (idx < 0) {
-      sendJson(res, 400, { ok: false, error: "phone mismatch" });
-      return;
-    }
-    const user = users[idx];
-    const storedPhone = normalizePhone(user.phone);
-    if (!storedPhone) {
-      sendJson(res, 400, { ok: false, error: "no phone" });
-      return;
-    }
-    if (storedPhone !== phone) {
-      sendJson(res, 400, { ok: false, error: "phone mismatch" });
+      sendJson(res, 400, { ok: false, error: "account not found" });
       return;
     }
 
@@ -91,19 +85,19 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const email = String(body.email || "")
-    .trim()
-    .toLowerCase();
+  const account = accountFrom(body);
   const password = String(body.password || "");
 
-  if (!email || !password) {
-    sendJson(res, 400, { ok: false, error: "email and password required" });
+  if (!account || !password) {
+    sendJson(res, 400, { ok: false, error: "account and password required" });
     return;
   }
 
   const users = await readUsers();
-  const user = users.find((u) => u.email === email);
-  if (!user || !user.salt || !user.hash || !verifyPassword(password, user.salt, user.hash)) {
+  const user = findUsersByAccount(users, account).find(
+    (u) => u && u.salt && u.hash && verifyPassword(password, u.salt, u.hash)
+  );
+  if (!user) {
     sendJson(res, 401, { ok: false, error: "invalid credentials" });
     return;
   }

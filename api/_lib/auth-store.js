@@ -41,6 +41,26 @@ function emailKey(email) {
     .slice(0, 120);
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/[\s\-()+]/g, "").trim();
+}
+
+function findUsersByAccount(users, account) {
+  const list = Array.isArray(users) ? users : [];
+  const raw = String(account || "").trim();
+  if (!raw) return [];
+  const email = raw.toLowerCase();
+  const phone = normalizePhone(raw);
+  const byEmail = list.filter((u) => u && String(u.email || "").trim().toLowerCase() === email);
+  if (byEmail.length) return byEmail;
+  if (phone.length < 6) return [];
+  return list.filter((u) => u && normalizePhone(u.phone) === phone);
+}
+
+function findUserByAccount(users, account) {
+  return findUsersByAccount(users, account)[0] || null;
+}
+
 function readUsersLocal() {
   try {
     if (fs.existsSync(TMP_USERS)) return JSON.parse(fs.readFileSync(TMP_USERS, "utf8"));
@@ -203,11 +223,13 @@ function findStoredUser(users, hint) {
   const list = Array.isArray(users) ? users : [];
   const id = String((hint && hint.id) || "").trim();
   const email = String((hint && hint.email) || "").trim().toLowerCase();
+  const phone = normalizePhone((hint && hint.phone) || "");
   return (
     list.find((u) => {
       if (!u) return false;
       if (id && String(u.id || "") === id) return true;
       if (email && String(u.email || "").trim().toLowerCase() === email) return true;
+      if (phone.length >= 6 && normalizePhone(u.phone) === phone) return true;
       return false;
     }) || null
   );
@@ -305,6 +327,9 @@ module.exports = {
   verifyToken,
   resolveUserFromToken,
   findStoredUser,
+  findUserByAccount,
+  findUsersByAccount,
+  normalizePhone,
   publicUser,
   deleteUsers,
   clearUsers,

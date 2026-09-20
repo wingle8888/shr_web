@@ -60,10 +60,26 @@
     }
   }
 
+  function findLocalUser(account) {
+    const raw = String(account || "").trim();
+    if (!raw) return null;
+    const email = raw.toLowerCase();
+    const phone = normalizePhone(raw);
+    const users = localUsers();
+    const byEmail = users.find((u) => u && String(u.email || "").toLowerCase() === email);
+    if (byEmail) return byEmail;
+    if (phone.length < 6) return null;
+    return users.find((u) => u && normalizePhone(u.phone) === phone) || null;
+  }
+
   async function registerLocal({ name, email, password, phone }) {
     const users = localUsers();
     const key = email.toLowerCase();
     if (users.some((u) => u.email === key)) throw new Error("email already registered");
+    const phoneKey = normalizePhone(phone);
+    if (phoneKey && users.some((u) => normalizePhone(u.phone) === phoneKey)) {
+      throw new Error("phone already registered");
+    }
     const nameKey = String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
     if (
       users.some((u) => String(u.name || "").trim().replace(/\s+/g, " ").toLowerCase() === nameKey)
@@ -199,11 +215,11 @@
     }
   }
 
-  async function loginLocal({ email, password }) {
-    const key = email.toLowerCase();
-    const user = localUsers().find((u) => u.email === key);
-    const hash = await sha256(`shr:${key}:${password}`);
-    if (!user || user.hash !== hash) throw new Error("invalid credentials");
+  async function loginLocal({ email, account, password }) {
+    const user = findLocalUser(account || email);
+    if (!user) throw new Error("invalid credentials");
+    const hash = await sha256(`shr:${user.email}:${password}`);
+    if (user.hash !== hash) throw new Error("invalid credentials");
     const session = {
       token: `local.${user.id}`,
       user: { id: user.id, email: user.email, name: user.name, phone: user.phone || "" },
@@ -286,15 +302,13 @@
     return sessionSync;
   }
 
-  async function resetLocal({ email, phone, password }) {
-    const key = String(email || "").toLowerCase();
+  async function resetLocal({ email, phone, account, password }) {
+    const user = findLocalUser(account || email || phone);
+    if (!user) throw new Error("account not found");
     const users = localUsers();
-    const idx = users.findIndex((u) => u.email === key);
-    if (idx < 0) throw new Error("phone mismatch");
-    const storedPhone = normalizePhone(users[idx].phone);
-    if (!storedPhone) throw new Error("no phone");
-    if (storedPhone !== normalizePhone(phone)) throw new Error("phone mismatch");
-    users[idx] = { ...users[idx], hash: await sha256(`shr:${key}:${password}`) };
+    const idx = users.findIndex((u) => u && u.email === user.email);
+    if (idx < 0) throw new Error("account not found");
+    users[idx] = { ...users[idx], hash: await sha256(`shr:${user.email}:${password}`) };
     saveLocalUsers(users);
     return { ok: true, reset: true, storage: "local" };
   }
@@ -316,6 +330,7 @@
         msg.includes("mismatch") ||
         msg.includes("short") ||
         msg.includes("required") ||
+        msg.includes("not found") ||
         msg.includes("no phone") ||
         msg.includes("storage")
       ) {
@@ -330,10 +345,12 @@
   function mapAuthError(err) {
     const msg = String(err && err.message ? err.message : err || "");
     if (msg.includes("name already")) return "authNameTaken";
+    if (msg.includes("phone already")) return "authPhoneTaken";
     if (msg.includes("already")) return "authEmailTaken";
     if (msg.includes("mismatch") && msg.includes("password")) return "authPwdMismatch";
     if (msg.includes("short")) return "authPwdShort";
     if (msg.includes("invalid email")) return "authEmailInvalid";
+    if (msg.includes("account not found")) return "authAccountNotFound";
     if (msg.includes("no phone")) return "authNoPhone";
     if (msg.includes("phone mismatch")) return "authPhoneMismatch";
     if (msg.includes("phone required")) return "authPhoneRequired";
@@ -464,8 +481,8 @@
     }
     if (forgotPasswordBtn) {
       forgotPasswordBtn.addEventListener("click", () => {
-        const email = document.getElementById("loginEmail");
-        const forgotEmail = document.getElementById("forgotEmail");
+        const email = document.getElementById("loginAccount") || document.getElementById("loginEmail");
+        const forgotEmail = document.getElementById("forgotAccount") || document.getElementById("forgotEmail");
         if (email && forgotEmail && email.value) forgotEmail.value = email.value;
         closeAuthModal("loginModal");
         closeAuthModal("registerModal");
@@ -498,12 +515,13 @@
     if (loginForm) {
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = document.getElementById("loginEmail").value.trim();
+        const accountEl = document.getElementById("loginAccount") || document.getElementById("loginEmail");
+        const account = accountEl ? accountEl.value.trim() : "";
         const password = document.getElementById("loginPassword").value;
         const errEl = document.getElementById("loginError");
         if (errEl) errEl.hidden = true;
         try {
-          await login({ email, password });
+          await login({ account, email: account, password });
           closeAuthModal("loginModal");
           loginForm.reset();
           afterAuth();
@@ -563,15 +581,23 @@
     if (forgotForm) {
       forgotForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = document.getElementById("forgotEmail").value.trim();
-        const phone = document.getElementById("forgotPhone").value.trim();
+        const accountEl = document.getElementById("forgotAccount") || document.getElementById("forgotEmail");
+        const account = accountEl ? accountEl.value.trim() : "";
+        const phoneEl = document.getElementById("forgotPhone");
         const password = document.getElementById("forgotPassword").value;
         const passwordConfirm = document.getElementById("forgotPasswordConfirm").value;
         const errEl = document.getElementById("forgotError");
         if (errEl) errEl.hidden = true;
         try {
+          if (!account) throw new Error("required");
           if (password !== passwordConfirm) throw new Error("password mismatch");
-          await resetPassword({ email, phone, password, passwordConfirm });
+          await resetPassword({
+            account,
+            email: account,
+            phone: phoneEl ? phoneEl.value.trim() : "",
+            password,
+            passwordConfirm,
+          });
           closeAuthModal("forgotModal");
           forgotForm.reset();
           openAuthModal("loginModal");

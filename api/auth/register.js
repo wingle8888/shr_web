@@ -8,6 +8,7 @@ const {
   signToken,
   publicUser,
   storageStatus,
+  normalizePhone,
 } = require("../_lib/auth-store");
 const { readRegisterPlace } = require("../_lib/geo");
 const { ensureWarehouse } = require("../_lib/warehouse-store");
@@ -45,7 +46,7 @@ module.exports = async function handler(req, res) {
   const password = String(body.password || "");
   const passwordConfirm = String(body.passwordConfirm != null ? body.passwordConfirm : password);
   const name = String(body.name || "").trim();
-  const phone = String(body.phone || "").replace(/[\s-]/g, "").trim();
+  const phone = normalizePhone(body.phone);
 
   if (!email || !password || !name) {
     sendJson(res, 400, { ok: false, error: "name, email and password required" });
@@ -72,6 +73,10 @@ module.exports = async function handler(req, res) {
     const users = await readUsers();
     if (users.some((u) => u.email === email)) {
       sendJson(res, 409, { ok: false, error: "email already registered" });
+      return;
+    }
+    if (phone && users.some((u) => normalizePhone(u.phone) === phone)) {
+      sendJson(res, 409, { ok: false, error: "phone already registered" });
       return;
     }
     const nameKey = name.replace(/\s+/g, " ").toLowerCase();
