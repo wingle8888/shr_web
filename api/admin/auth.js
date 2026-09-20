@@ -1,6 +1,6 @@
 const { cors, sendJson, parseBody } = require("../_lib/docs-store");
 const { checkAdmin, changeAdminPassword } = require("../_lib/admin-auth");
-const { readLoginHistory, appendLogin, asList } = require("../_lib/login-history-store");
+const { readLoginHistory, appendLogin, deleteLogins, clearLogins, asList } = require("../_lib/login-history-store");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -46,6 +46,32 @@ module.exports = async function handler(req, res) {
         ok: true,
         recorded: false,
         error: err && err.code === "BLOB_MISSING" ? "登录历史未能保存" : String(err.message || err),
+      });
+    }
+    return;
+  }
+
+  if (action === "delete") {
+    try {
+      const data = await deleteLogins(body.ids || body.id);
+      sendJson(res, 200, { ok: true, logins: asList(data) });
+    } catch (err) {
+      sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+        ok: false,
+        error: err && err.code === "BLOB_MISSING" ? "登录记录未能删除，请重试" : String(err.message || err),
+      });
+    }
+    return;
+  }
+
+  if (action === "clear") {
+    try {
+      const data = await clearLogins();
+      sendJson(res, 200, { ok: true, logins: asList(data) });
+    } catch (err) {
+      sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+        ok: false,
+        error: err && err.code === "BLOB_MISSING" ? "登录历史未能清空，请重试" : String(err.message || err),
       });
     }
     return;

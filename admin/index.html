@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920g">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920h">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -421,9 +421,12 @@
         <div class="admin-card">
           <div class="admin-panel-head">
             <h1>登录历史</h1>
-            <button type="button" class="link-btn" id="refreshLogins">刷新</button>
+            <div class="admin-inline-actions">
+              <button type="button" class="link-btn" id="refreshLogins">刷新</button>
+              <button type="button" class="link-btn danger" id="clearLogins">清空</button>
+            </div>
           </div>
-          <p class="admin-tip">记录网页后台、Windows 客户端和 Android 客户端的登录时间、系统、登录地址等信息。</p>
+          <p class="admin-tip">记录网页后台、Windows 客户端和 Android 客户端的登录时间、系统、登录地址等信息。可删除指定记录，或清空全部历史。</p>
           <div class="admin-table-wrap">
             <table class="admin-table" id="loginsTable">
               <thead>
@@ -436,6 +439,7 @@
                   <th>登录地址</th>
                   <th>IP</th>
                   <th>方式</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -528,6 +532,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920p"></script>
+  <script src="/admin/admin.js?v=20260920q"></script>
 </body>
 </html>

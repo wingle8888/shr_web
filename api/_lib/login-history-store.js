@@ -7,7 +7,7 @@ const TMP_FILE = path.join("/tmp", "shr-login-history.json");
 const MAX_LOGINS = 300;
 
 function emptyStore() {
-  return { logins: [] };
+  return { logins: [], deletedIds: [], clearedAt: "" };
 }
 
 function asList(raw) {
@@ -16,11 +16,28 @@ function asList(raw) {
   return [];
 }
 
+function asDeletedIds(raw) {
+  if (raw && Array.isArray(raw.deletedIds)) {
+    return raw.deletedIds.map((id) => String(id || "").trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function laterStamp(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  return x >= y ? x : y;
+}
+
 function mergeHistory(a, b) {
+  const deletedSet = new Set([...asDeletedIds(a), ...asDeletedIds(b)]);
+  const clearedAt = laterStamp(a && a.clearedAt, b && b.clearedAt);
   const map = new Map();
   [...asList(a), ...asList(b)].forEach((row) => {
     if (!row || !row.id) return;
     const key = String(row.id);
+    if (deletedSet.has(key)) return;
+    if (clearedAt && String(row.at || "") && String(row.at) <= clearedAt) return;
     const prev = map.get(key);
     if (!prev) {
       map.set(key, row);
@@ -34,6 +51,8 @@ function mergeHistory(a, b) {
     logins: Array.from(map.values())
       .sort((x, y) => String(y.at || "").localeCompare(String(x.at || "")))
       .slice(0, MAX_LOGINS),
+    deletedIds: Array.from(deletedSet).slice(-500),
+    clearedAt,
   };
 }
 
@@ -136,14 +155,50 @@ function buildLoginRecord(req, body) {
 async function appendLogin(req, body) {
   const row = buildLoginRecord(req, body);
   const current = await readLoginHistory();
-  const next = { logins: [row, ...asList(current)].slice(0, MAX_LOGINS) };
+  const next = {
+    logins: [row, ...asList(current)].slice(0, MAX_LOGINS),
+    deletedIds: current.deletedIds || [],
+    clearedAt: current.clearedAt || "",
+  };
   await writeLoginHistory(next);
   return row;
+}
+
+function normalizeIds(ids) {
+  const list = Array.isArray(ids) ? ids : ids != null ? [ids] : [];
+  return [...new Set(list.map((id) => String(id || "").trim()).filter(Boolean))];
+}
+
+async function deleteLogins(ids) {
+  const remove = normalizeIds(ids);
+  const current = await readLoginHistory();
+  if (!remove.length) return current;
+  const drop = new Set(remove);
+  const next = {
+    logins: asList(current).filter((row) => !drop.has(String(row.id || ""))),
+    deletedIds: [...new Set([...(current.deletedIds || []), ...remove])].slice(-500),
+    clearedAt: current.clearedAt || "",
+  };
+  return writeLoginHistory(next);
+}
+
+async function clearLogins() {
+  const current = await readLoginHistory();
+  const ids = asList(current).map((row) => String(row.id || "")).filter(Boolean);
+  const next = {
+    logins: [],
+    deletedIds: [...new Set([...(current.deletedIds || []), ...ids])].slice(-500),
+    clearedAt: new Date().toISOString(),
+  };
+  return writeLoginHistory(next);
 }
 
 module.exports = {
   readLoginHistory,
   appendLogin,
+  deleteLogins,
+  clearLogins,
   asList,
   buildLoginRecord,
+  mergeHistory,
 };

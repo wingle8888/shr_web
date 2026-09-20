@@ -563,6 +563,13 @@
   border-color: rgba(255, 92, 108, 0.4);
 }
 
+.link-btn:disabled,
+.link-btn.danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);

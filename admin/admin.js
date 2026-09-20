@@ -911,6 +911,8 @@ function renderLogins() {
   if (!table) return;
   const tbody = table.querySelector("tbody");
   const list = state.logins || [];
+  const clearBtn = $("clearLogins");
+  if (clearBtn) clearBtn.disabled = !list.length;
   tbody.innerHTML = list.length
     ? list
         .map(
@@ -923,14 +925,45 @@ function renderLogins() {
         <td class="admin-addr-cell" title="${escapeHtml(row.address || "")}">${escapeHtml(row.address || "-")}</td>
         <td>${escapeHtml(row.ip || "-")}</td>
         <td>${escapeHtml(row.reason === "password" ? "密码登录" : "自动进入")}</td>
+        <td class="admin-row-actions">${
+          row.id
+            ? `<button type="button" class="danger" data-del-login="${escapeHtml(row.id)}">删除</button>`
+            : "-"
+        }</td>
       </tr>`
         )
         .join("")
-    : `<tr><td colspan="8" class="admin-empty">暂无登录记录。使用密码登录后台后会出现在这里。</td></tr>`;
+    : `<tr><td colspan="9" class="admin-empty">暂无登录记录。使用密码登录后台后会出现在这里。</td></tr>`;
 }
 
 async function loadLoginHistory() {
   const data = await api("/api/admin/auth");
+  state.logins = data.logins || [];
+  renderLogins();
+}
+
+async function deleteLogin(id) {
+  const loginId = String(id || "").trim();
+  if (!loginId) return;
+  if (!(await adminConfirm("确定删除这条登录记录？删除后无法恢复。", "删除登录记录"))) return;
+  const data = await api("/api/admin/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "delete", id: loginId }),
+  });
+  state.logins = data.logins || [];
+  renderLogins();
+}
+
+async function clearLoginHistory() {
+  if (!(state.logins || []).length) {
+    await adminAlert("当前没有登录记录。", "清空登录历史");
+    return;
+  }
+  if (!(await adminConfirm("确定清空全部登录历史？所有记录会从服务器删除，无法恢复。", "清空登录历史"))) return;
+  const data = await api("/api/admin/auth", {
+    method: "POST",
+    body: JSON.stringify({ action: "clear" }),
+  });
   state.logins = data.logins || [];
   renderLogins();
 }
@@ -1532,7 +1565,15 @@ $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) 
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
-$("refreshLogins").addEventListener("click", () => loadLoginHistory().catch((e) => alert(e.message)));
+$("refreshLogins").addEventListener("click", () => loadLoginHistory().catch((e) => adminAlert(e.message)));
+$("clearLogins").addEventListener("click", () => {
+  clearLoginHistory().catch((err) => adminAlert(err.message));
+});
+$("loginsTable").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-del-login]");
+  if (!btn) return;
+  deleteLogin(btn.dataset.delLogin).catch((err) => adminAlert(err.message));
+});
 $("refreshChat").addEventListener("click", () => loadChatList().catch((e) => alert(e.message)));
 
 $("autoReplyForm").addEventListener("submit", async (e) => {
