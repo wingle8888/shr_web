@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920e">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920f">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -53,7 +53,7 @@
         <button type="button" class="admin-tab" data-tab="geo">全球地址</button>
         <button type="button" class="admin-tab" data-tab="products">产品</button>
         <button type="button" class="admin-tab" data-tab="docs">资料</button>
-        <button type="button" class="admin-tab" data-tab="orders">订单</button>
+        <button type="button" class="admin-tab" data-tab="orders">订单 <span class="admin-tab-badge" id="ordersTabBadge" hidden>0</span></button>
         <button type="button" class="admin-tab" data-tab="customers">客户资料</button>
         <button type="button" class="admin-tab" data-tab="chat">客服 <span class="admin-tab-badge" id="chatTabBadge" hidden>0</span></button>
         <button type="button" class="admin-tab" data-tab="users">注册资料</button>
@@ -316,7 +316,8 @@
               <button type="button" class="link-btn" id="refreshOrders">刷新</button>
             </div>
           </div>
-          <p class="admin-tip">包含服务器订单；可把当前浏览器本地订单同步到后台。</p>
+          <p class="admin-tip">包含服务器订单；可把当前浏览器本地订单同步到后台。客户付款后会在下方提示发货。</p>
+          <div class="admin-ship-alert" id="shipAlert" hidden></div>
           <h2 class="admin-sub">购买客户地址统计</h2>
           <div class="admin-table-wrap" style="margin-bottom:20px">
             <table class="admin-table" id="addressStatsTable">
@@ -346,6 +347,7 @@
                   <th>金额</th>
                   <th>状态</th>
                   <th>支付</th>
+                  <th>发货</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -498,6 +500,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920m"></script>
+  <script src="/admin/admin.js?v=20260920n"></script>
 </body>
 </html>

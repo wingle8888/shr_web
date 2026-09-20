@@ -181,6 +181,9 @@ function switchTab(tab) {
   if ((tab === "dashboard" || tab === "geo") && getPass()) {
     loadVisits().catch(() => {});
   }
+  if (tab === "orders" && getPass()) {
+    loadOrdersBundle().catch(() => {});
+  }
   if (tab === "geo") {
     requestAnimationFrame(() => renderWorldMap());
   }
@@ -399,6 +402,88 @@ function cancelledOrder(order) {
   return /取消|已退|cancel|refund/i.test(String((order && order.status) || ""));
 }
 
+function orderStatusText(order) {
+  return String((order && order.status) || "");
+}
+
+function isShippedOrder(order) {
+  return /已发货|已完成|已签收|已送达|shipped|delivered|completed/i.test(orderStatusText(order));
+}
+
+function needsShipping(order) {
+  if (!order || cancelledOrder(order) || isShippedOrder(order)) return false;
+  return /待发货|已支付|awaiting shipment|\bpaid\b/i.test(orderStatusText(order));
+}
+
+function shippedStatusFor(order) {
+  const status = orderStatusText(order);
+  if (/[A-Za-z]/.test(status) && !/[\u4e00-\u9fa5]/.test(status)) return "Shipped";
+  return "已发货";
+}
+
+function pendingShipOrders() {
+  return (state.orders || []).filter(needsShipping);
+}
+
+function updateOrdersBadge() {
+  const badge = $("ordersTabBadge");
+  if (!badge) return;
+  const n = pendingShipOrders().length;
+  badge.hidden = n <= 0;
+  badge.textContent = n > 99 ? "99+" : String(n);
+}
+
+function renderShipAlert() {
+  const box = $("shipAlert");
+  if (!box) return;
+  const list = pendingShipOrders();
+  updateOrdersBadge();
+  if (!list.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = `
+    <strong>需要发货</strong>
+    <p>有 ${list.length} 笔订单已付款，请尽快发货。</p>
+    <div class="admin-ship-list">
+      ${list
+        .map((o) => {
+          const s = o.shipping || {};
+          return `<div class="admin-ship-row">
+            <button type="button" class="link-btn" data-open-order="${escapeHtml(o.id)}">${escapeHtml(o.id)}</button>
+            <span>${escapeHtml(s.name || "-")} · ${escapeHtml(s.phone || "-")}</span>
+            <span>$${formatMoney(o.total)}</span>
+            <button type="button" class="btn btn-sm" data-ship-order="${escapeHtml(o.id)}">标记已发货</button>
+          </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+async function markOrderShipped(id) {
+  const order = (state.orders || []).find((o) => String(o.id) === String(id));
+  if (!order) return;
+  const ok = await adminConfirm(`确认订单 ${order.id} 已发货？`, "确认发货");
+  if (!ok) return;
+  try {
+    const data = await api("/api/admin/orders", {
+      method: "POST",
+      body: JSON.stringify({ action: "status", id: order.id, status: shippedStatusFor(order) }),
+    });
+    if (data.order) {
+      const idx = state.orders.findIndex((o) => String(o.id) === String(order.id));
+      if (idx >= 0) state.orders[idx] = data.order;
+    }
+    await loadOrdersBundle();
+    const updated = (state.orders || []).find((o) => String(o.id) === String(order.id));
+    if (updated && $("orderDetail") && !$("orderDetail").hidden) showOrderDetail(updated);
+  } catch (err) {
+    await adminAlert(err.message || "更新失败", "发货失败");
+  }
+}
+
 function productSalesMap() {
   const byId = new Map();
   const byName = new Map();
@@ -499,25 +584,42 @@ function renderGalleryPanel(productId) {
 
 function renderOrders() {
   const tbody = $("ordersTable").querySelector("tbody");
-  const list = state.orders || [];
+  const pending = [];
+  const rest = [];
+  (state.orders || []).forEach((o) => (needsShipping(o) ? pending : rest).push(o));
+  const list = [...pending, ...rest];
   tbody.innerHTML = list.length
     ? list
         .map((o) => {
           const s = o.shipping || {};
           const addr = [s.region, s.address].filter(Boolean).join(" ") || "-";
-          return `<tr data-order-id="${escapeHtml(o.id)}" class="admin-click-row">
+          const ship = needsShipping(o);
+          const shipped = isShippedOrder(o);
+          const statusCell = ship
+            ? `<span class="admin-pill ship">请发货</span> ${escapeHtml(o.status || "")}`
+            : shipped
+              ? `<span class="admin-pill done">已发货</span> ${escapeHtml(o.status || "")}`
+              : escapeHtml(o.status || "-");
+          const actionCell = ship
+            ? `<button type="button" class="btn btn-sm" data-ship-order="${escapeHtml(o.id)}">标记已发货</button>`
+            : shipped
+              ? `<span class="admin-muted">已处理</span>`
+              : "-";
+          return `<tr data-order-id="${escapeHtml(o.id)}" class="admin-click-row${ship ? " needs-ship" : ""}">
         <td>${escapeHtml(o.id)}</td>
         <td>${escapeHtml(formatTime(o.createdAt))}</td>
         <td>${escapeHtml(s.name || "-")}</td>
         <td>${escapeHtml(s.phone || "-")}</td>
         <td class="admin-addr-cell" title="${escapeHtml(addr)}">${escapeHtml(addr)}</td>
         <td>$${formatMoney(o.total)}</td>
-        <td>${escapeHtml(o.status || "-")}</td>
+        <td>${statusCell}</td>
         <td>${escapeHtml(o.payMethod || "-")}</td>
+        <td class="admin-row-actions">${actionCell}</td>
       </tr>`;
         })
         .join("")
-    : `<tr><td colspan="8" class="admin-empty">暂无订单</td></tr>`;
+    : `<tr><td colspan="9" class="admin-empty">暂无订单</td></tr>`;
+  renderShipAlert();
 }
 
 function renderAddressStats() {
@@ -710,9 +812,18 @@ function showOrderDetail(order) {
   const items = (order.items || [])
     .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　$${formatMoney((i.price || 0) * (i.qty || 0))}</li>`)
     .join("");
+  const shipNote = needsShipping(order)
+    ? `<p class="admin-ship-note">客户已付款，请尽快发货。收货：${escapeHtml(s.name || "-")} · ${escapeHtml(
+        s.phone || "-"
+      )} · ${escapeHtml([s.region, s.address].filter(Boolean).join(" ") || "-")}</p>
+       <p><button type="button" class="btn btn-sm" data-ship-order="${escapeHtml(order.id)}">标记已发货</button></p>`
+    : isShippedOrder(order)
+      ? `<p class="admin-muted">此订单已发货。</p>`
+      : "";
   box.hidden = false;
   box.innerHTML = `
     <h3>订单详情 ${escapeHtml(order.id)}</h3>
+    ${shipNote}
     <p>收货：${escapeHtml(s.name || "")} · ${escapeHtml(s.phone || "")} · ${escapeHtml(s.email || "")}</p>
     <p>地址：${escapeHtml(s.region || "")} ${escapeHtml(s.address || "")}</p>
     <p>支付：${escapeHtml(order.payMethod || "-")} · 状态：${escapeHtml(order.status || "-")}</p>
@@ -858,6 +969,7 @@ function startVisitLive() {
   visitTimer = setInterval(() => {
     if (!getPass() || document.hidden) return;
     if (state.currentTab === "dashboard" || state.currentTab === "geo") loadVisits().catch(() => {});
+    loadOrdersBundle().catch(() => {});
     if (state.currentTab !== "chat") loadChatList().catch(() => {});
   }, 15000);
 }
@@ -1332,6 +1444,7 @@ $("refreshGeo").addEventListener("click", () =>
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !getPass()) return;
   if (state.currentTab === "dashboard" || state.currentTab === "geo") loadVisits().catch(() => {});
+  if (state.currentTab === "orders") loadOrdersBundle().catch(() => {});
   if (state.currentTab === "chat") loadChatList().catch(() => {});
 });
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
@@ -1820,11 +1933,43 @@ $("productsTable").addEventListener("click", async (e) => {
 });
 
 $("ordersTable").addEventListener("click", (e) => {
+  const shipBtn = e.target.closest("[data-ship-order]");
+  if (shipBtn) {
+    markOrderShipped(shipBtn.dataset.shipOrder);
+    return;
+  }
   const row = e.target.closest("[data-order-id]");
   if (!row) return;
   const order = state.orders.find((o) => String(o.id) === String(row.dataset.orderId));
   showOrderDetail(order);
 });
+
+const shipAlert = $("shipAlert");
+if (shipAlert) {
+  shipAlert.addEventListener("click", (e) => {
+    const shipBtn = e.target.closest("[data-ship-order]");
+    if (shipBtn) {
+      markOrderShipped(shipBtn.dataset.shipOrder);
+      return;
+    }
+    const openBtn = e.target.closest("[data-open-order]");
+    if (!openBtn) return;
+    const order = state.orders.find((o) => String(o.id) === String(openBtn.dataset.openOrder));
+    showOrderDetail(order);
+    const row = Array.from(document.querySelectorAll("#ordersTable [data-order-id]")).find(
+      (el) => String(el.dataset.orderId) === String(openBtn.dataset.openOrder)
+    );
+    if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
+}
+
+const orderDetail = $("orderDetail");
+if (orderDetail) {
+  orderDetail.addEventListener("click", (e) => {
+    const shipBtn = e.target.closest("[data-ship-order]");
+    if (shipBtn) markOrderShipped(shipBtn.dataset.shipOrder);
+  });
+}
 
 $("importLocalOrders").addEventListener("click", async () => {
   let local = [];

@@ -350,6 +350,16 @@
   background: rgba(255, 92, 108, 0.28);
 }
 
+.admin-pill.ship {
+  color: #ffd8b0;
+  background: rgba(255, 122, 24, 0.28);
+}
+
+.admin-pill.done {
+  color: #b8f0d8;
+  background: rgba(46, 230, 160, 0.2);
+}
+
 .admin-table tr.is-hidden-product td {
   opacity: 0.62;
 }
@@ -591,6 +601,65 @@
 
 .admin-click-row:hover td {
   background: rgba(46, 230, 255, 0.05);
+}
+
+.admin-table tr.needs-ship td {
+  background: rgba(255, 122, 24, 0.1);
+}
+
+.admin-table tr.needs-ship:hover td {
+  background: rgba(255, 122, 24, 0.16);
+}
+
+.admin-ship-alert {
+  border: 1px solid rgba(255, 122, 24, 0.5);
+  background: rgba(255, 122, 24, 0.12);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 20px;
+}
+
+.admin-ship-alert[hidden] {
+  display: none !important;
+}
+
+.admin-ship-alert strong {
+  display: block;
+  color: #ff7a18;
+  font-family: var(--font-ui);
+  margin-bottom: 6px;
+}
+
+.admin-ship-alert p {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.admin-ship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-ship-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(7, 11, 20, 0.45);
+  font-size: 13px;
+}
+
+.admin-ship-row button {
+  margin-left: auto;
+}
+
+.admin-detail .admin-ship-note {
+  margin: 0 0 10px;
+  color: #ff9a4a;
 }
 
 .admin-empty {
