@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { readJsonStore, writeJsonStore, hasBlob } = require("./blob-store");
 const { getCatalogStub } = require("./runtime-env");
+const { normalizeCountryCode, countryName } = require("./geo");
 
 const DATA_FILE = path.join(process.cwd(), "data", "visits.json");
 const TMP_FILE = path.join("/tmp", "shr-visits.json");
@@ -56,6 +57,7 @@ function mergeVisits(a, b) {
       uvIds: Array.from(uvSet).slice(-MAX_UV_IDS),
       paths,
       lastReferrer: rb.lastReferrer || ra.lastReferrer || "",
+      countries: mergeCountryDay(ra.countries, rb.countries),
     };
   });
   return { days };
@@ -120,6 +122,60 @@ async function writeVisits(data) {
   return payload;
 }
 
+function mergeCountryDay(a, b) {
+  const out = {};
+  const keys = new Set([...Object.keys(a && typeof a === "object" ? a : {}), ...Object.keys(b && typeof b === "object" ? b : {})]);
+  keys.forEach((code) => {
+    const ra = (a && a[code]) || {};
+    const rb = (b && b[code]) || {};
+    const uvSet = new Set([
+      ...(Array.isArray(ra.uvIds) ? ra.uvIds : []),
+      ...(Array.isArray(rb.uvIds) ? rb.uvIds : []),
+    ]);
+    out[code] = {
+      pv: Math.max(Number(ra.pv) || 0, Number(rb.pv) || 0),
+      uvIds: Array.from(uvSet).slice(-MAX_UV_IDS),
+    };
+  });
+  return out;
+}
+
+function bumpCountry(row, countryCode, visitorId) {
+  const code = normalizeCountryCode(countryCode);
+  if (!code || !row) return;
+  if (!row.countries || typeof row.countries !== "object") row.countries = {};
+  const prev = row.countries[code] && typeof row.countries[code] === "object" ? row.countries[code] : { pv: 0, uvIds: [] };
+  prev.pv = (Number(prev.pv) || 0) + 1;
+  if (!Array.isArray(prev.uvIds)) prev.uvIds = [];
+  const vid = String(visitorId || "").slice(0, 64);
+  if (vid && !prev.uvIds.includes(vid)) {
+    prev.uvIds.push(vid);
+    if (prev.uvIds.length > MAX_UV_IDS) prev.uvIds = prev.uvIds.slice(-MAX_UV_IDS);
+  }
+  row.countries[code] = prev;
+}
+
+function extractVisitCountries(daysMap) {
+  const by = {};
+  Object.values(daysMap || {}).forEach((row) => {
+    const cmap = row && row.countries;
+    if (!cmap || typeof cmap !== "object") return;
+    Object.keys(cmap).forEach((rawCode) => {
+      const code = normalizeCountryCode(rawCode);
+      if (!code) return;
+      const item = cmap[rawCode] || {};
+      if (!by[code]) by[code] = { code, name: countryName(code) || code, pv: 0, uvSet: new Set() };
+      by[code].pv += Number(item.pv) || 0;
+      (Array.isArray(item.uvIds) ? item.uvIds : []).forEach((id) => {
+        if (id) by[code].uvSet.add(String(id));
+      });
+    });
+  });
+  return Object.values(by)
+    .map((row) => ({ code: row.code, name: row.name, pv: row.pv, uv: row.uvSet.size }))
+    .sort((a, b) => b.pv - a.pv);
+}
+
 function lastNDayKeys(n) {
   const today = dayKey();
   const [y, m, d] = today.split("-").map(Number);
@@ -140,11 +196,11 @@ function lastNMonthKeys(n) {
   return keys;
 }
 
-function applyVisitRecord(data, { visitorId, pathName, referrer, day } = {}) {
+function applyVisitRecord(data, { visitorId, pathName, referrer, day, countryCode } = {}) {
   const payload = normalizeStore(data);
   if (!payload.days) payload.days = {};
   const key = /^\d{4}-\d{2}-\d{2}$/.test(String(day || "")) ? String(day) : dayKey();
-  const row = payload.days[key] || { pv: 0, uvIds: [], paths: {} };
+  const row = payload.days[key] || { pv: 0, uvIds: [], paths: {}, countries: {} };
   row.pv = (Number(row.pv) || 0) + 1;
 
   const vid = String(visitorId || "").slice(0, 64);
@@ -158,6 +214,7 @@ function applyVisitRecord(data, { visitorId, pathName, referrer, day } = {}) {
   if (!row.paths || typeof row.paths !== "object") row.paths = {};
   row.paths[p] = (Number(row.paths[p]) || 0) + 1;
   if (referrer) row.lastReferrer = String(referrer).slice(0, 200);
+  bumpCountry(row, countryCode, vid);
 
   payload.days[key] = row;
   return { data: payload, day: key, pv: row.pv, uv: row.uvIds.length };
@@ -184,9 +241,9 @@ async function recordVisitAtomic(payload) {
   }
 }
 
-async function recordVisit({ visitorId, pathName, referrer } = {}) {
+async function recordVisit({ visitorId, pathName, referrer, countryCode } = {}) {
   const day = dayKey();
-  const atomic = await recordVisitAtomic({ visitorId, pathName, referrer, day });
+  const atomic = await recordVisitAtomic({ visitorId, pathName, referrer, day, countryCode });
   if (atomic && atomic.day) {
     return {
       day: atomic.day,
@@ -196,7 +253,7 @@ async function recordVisit({ visitorId, pathName, referrer } = {}) {
     };
   }
 
-  const applied = applyVisitRecord(await readVisits(), { visitorId, pathName, referrer, day });
+  const applied = applyVisitRecord(await readVisits(), { visitorId, pathName, referrer, day, countryCode });
   await writeVisits(applied.data);
   return {
     day: applied.day,
@@ -260,6 +317,7 @@ function buildVisitStats(raw) {
     timezone: TZ,
     updatedAt: new Date().toISOString(),
     storage: hasBlob() ? "blob" : "local",
+    countries: extractVisitCountries(daysMap),
   };
 }
 

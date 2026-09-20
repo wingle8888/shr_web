@@ -37,6 +37,7 @@
         visitorId: visitorId(),
         path: location.pathname + (location.search || ""),
         referrer: document.referrer || "",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
       }),
       keepalive: true,
     }).catch(() => {});

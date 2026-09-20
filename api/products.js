@@ -2,6 +2,7 @@ const { cors, sendJson, parseBody } = require("./_lib/docs-store");
 const { readCatalog, readProductImage, listVisibleProducts, catalogCategories } = require("./_lib/products-store");
 const { recordVisit } = require("./_lib/visits-store");
 const { storageKind } = require("./_lib/blob-store");
+const { readRegisterPlace } = require("./_lib/geo");
 
 module.exports = async function handler(req, res) {
   cors(res);
@@ -51,10 +52,12 @@ module.exports = async function handler(req, res) {
         return;
       }
       try {
+        const place = readRegisterPlace(req, body);
         const result = await recordVisit({
           visitorId: body.visitorId,
           pathName: pathName || "/",
           referrer: body.referrer,
+          countryCode: place && place.countryCode,
         });
         sendJson(res, 200, { ok: true, ...result });
       } catch (err) {

@@ -153,10 +153,151 @@ function clean(value) {
   return String(value || "").trim();
 }
 
+const COUNTRY_EN = {
+  china: "CN",
+  "hong kong": "HK",
+  macau: "MO",
+  macao: "MO",
+  taiwan: "TW",
+  "united states": "US",
+  usa: "US",
+  america: "US",
+  "united kingdom": "GB",
+  england: "GB",
+  britain: "GB",
+  japan: "JP",
+  korea: "KR",
+  "south korea": "KR",
+  singapore: "SG",
+  malaysia: "MY",
+  thailand: "TH",
+  vietnam: "VN",
+  philippines: "PH",
+  indonesia: "ID",
+  india: "IN",
+  australia: "AU",
+  "new zealand": "NZ",
+  germany: "DE",
+  france: "FR",
+  italy: "IT",
+  spain: "ES",
+  netherlands: "NL",
+  holland: "NL",
+  belgium: "BE",
+  switzerland: "CH",
+  sweden: "SE",
+  norway: "NO",
+  denmark: "DK",
+  finland: "FI",
+  russia: "RU",
+  ukraine: "UA",
+  poland: "PL",
+  canada: "CA",
+  brazil: "BR",
+  mexico: "MX",
+  argentina: "AR",
+  chile: "CL",
+  turkey: "TR",
+  israel: "IL",
+  egypt: "EG",
+  "south africa": "ZA",
+  "saudi arabia": "SA",
+  uae: "AE",
+  "united arab emirates": "AE",
+  portugal: "PT",
+  greece: "GR",
+  ireland: "IE",
+  austria: "AT",
+  "czech republic": "CZ",
+  czechia: "CZ",
+  mongolia: "MN",
+  pakistan: "PK",
+  bangladesh: "BD",
+  cambodia: "KH",
+  myanmar: "MM",
+  laos: "LA",
+  nepal: "NP",
+};
+
+function normalizeCountryCode(code) {
+  let key = clean(code).toUpperCase();
+  if (key === "UK") key = "GB";
+  if (!/^[A-Z]{2}$/.test(key) || key === "XX" || key === "T1" || key === "ZZ") return "";
+  return key;
+}
+
 function countryName(code) {
-  const key = clean(code).toUpperCase();
-  if (!key || key === "XX" || key === "T1") return "";
-  return COUNTRY_ZH[key] || key;
+  const key = normalizeCountryCode(code) || clean(code).toUpperCase();
+  if (!key || key === "UN" || key === "XX" || key === "T1" || key === "ZZ") return "";
+  if (COUNTRY_ZH[key]) return COUNTRY_ZH[key];
+  try {
+    const label = new Intl.DisplayNames(["zh-CN"], { type: "region" }).of(key);
+    if (label) return label;
+  } catch (_) {}
+  return key;
+}
+
+function inferCountryFromText(text) {
+  const raw = clean(text);
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (/^[A-Z]{2}$/.test(upper)) return normalizeCountryCode(upper);
+  if (/香港|hong\s*kong/i.test(raw)) return "HK";
+  if (/澳门|macau|macao/i.test(raw)) return "MO";
+  if (/台湾|taiwan/i.test(raw)) return "TW";
+  for (const [code, name] of Object.entries(COUNTRY_ZH)) {
+    if (name && raw.includes(name)) return code;
+  }
+  const lower = raw.toLowerCase();
+  const aliases = Object.keys(COUNTRY_EN).sort((a, b) => b.length - a.length);
+  for (let i = 0; i < aliases.length; i++) {
+    const name = aliases[i];
+    if (lower.includes(name)) return COUNTRY_EN[name];
+  }
+  if (/[省市自治区特别行政区]|北京|上海|天津|重庆|深圳|广州|杭州|成都|武汉|南京|苏州|西安|东莞|佛山/.test(raw)) {
+    return "CN";
+  }
+  return "";
+}
+
+function resolveOrderCountry(order) {
+  const shipping = (order && order.shipping) || {};
+  return (
+    normalizeCountryCode(order && order.countryCode) ||
+    normalizeCountryCode(order && order.place && order.place.countryCode) ||
+    inferCountryFromText(
+      [shipping.country, shipping.region, shipping.city, shipping.address, shipping.zip].filter(Boolean).join(" ")
+    )
+  );
+}
+
+function buildGeoStats(visitCountries, orders) {
+  const map = new Map();
+  function ensure(code) {
+    const cc = normalizeCountryCode(code) || "UN";
+    if (!map.has(cc)) {
+      map.set(cc, {
+        code: cc,
+        name: cc === "UN" ? "未知地区" : countryName(cc) || cc,
+        visits: 0,
+        visitors: 0,
+        orders: 0,
+      });
+    }
+    return map.get(cc);
+  }
+  (Array.isArray(visitCountries) ? visitCountries : []).forEach((row) => {
+    const item = ensure(row && row.code);
+    item.visits += Number(row && (row.pv != null ? row.pv : row.visits)) || 0;
+    item.visitors += Number(row && (row.uv != null ? row.uv : row.visitors)) || 0;
+    if (row && row.name && item.code !== "UN" && item.name === item.code) item.name = row.name;
+  });
+  (Array.isArray(orders) ? orders : []).forEach((order) => {
+    ensure(resolveOrderCountry(order) || "UN").orders += 1;
+  });
+  return Array.from(map.values())
+    .map((row) => ({ ...row, total: row.visits + row.orders }))
+    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
 }
 
 function regionName(country, region, regionCode) {
@@ -184,7 +325,7 @@ function fromCf(cf, headers) {
     clean(cf && cf.country) ||
     clean(headers && (headers["cf-ipcountry"] || headers["CF-IPCountry"]));
   return {
-    countryCode: country && country !== "XX" && country !== "T1" ? country.toUpperCase() : "",
+    countryCode: normalizeCountryCode(country),
     country: countryName(country),
     region: regionName(country, cf && cf.region, cf && cf.regionCode),
     regionCode: clean(cf && cf.regionCode).toUpperCase(),
@@ -239,4 +380,9 @@ module.exports = {
   readRegisterPlace,
   formatRegisterPlace,
   normalizePlace,
+  countryName,
+  normalizeCountryCode,
+  inferCountryFromText,
+  resolveOrderCountry,
+  buildGeoStats,
 };

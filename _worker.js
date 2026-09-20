@@ -116,6 +116,19 @@ export class CatalogDO {
       if (!row.paths || typeof row.paths !== "object") row.paths = {};
       row.paths[p] = (Number(row.paths[p]) || 0) + 1;
       if (body.referrer) row.lastReferrer = String(body.referrer).slice(0, 200);
+      let cc = String(body.countryCode || "").toUpperCase().slice(0, 2);
+      if (cc === "UK") cc = "GB";
+      if (/^[A-Z]{2}$/.test(cc) && cc !== "XX" && cc !== "T1") {
+        if (!row.countries || typeof row.countries !== "object") row.countries = {};
+        const ctry = row.countries[cc] && typeof row.countries[cc] === "object" ? row.countries[cc] : { pv: 0, uvIds: [] };
+        ctry.pv = (Number(ctry.pv) || 0) + 1;
+        if (!Array.isArray(ctry.uvIds)) ctry.uvIds = [];
+        if (vid && !ctry.uvIds.includes(vid)) {
+          ctry.uvIds.push(vid);
+          if (ctry.uvIds.length > 3000) ctry.uvIds = ctry.uvIds.slice(-3000);
+        }
+        row.countries[cc] = ctry;
+      }
       data.days[day] = row;
       const keys = Object.keys(data.days).sort();
       if (keys.length > 400) {

@@ -1,4 +1,5 @@
 const { readOrders, writeOrders, findOrder } = require("./_lib/orders-store");
+const { readRegisterPlace, inferCountryFromText, countryName, normalizeCountryCode } = require("./_lib/geo");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -28,6 +29,20 @@ module.exports = async function handler(req, res) {
       return;
     }
     try {
+      try {
+        const place = readRegisterPlace(req, body);
+        const ship = body.shipping || {};
+        const fromShip = inferCountryFromText(
+          [ship.country, ship.region, ship.city, ship.address, ship.zip].filter(Boolean).join(" ")
+        );
+        const code =
+          normalizeCountryCode(body.countryCode) || (place && place.countryCode) || fromShip || "";
+        if (code) {
+          body.countryCode = code;
+          body.country = countryName(code) || body.country || "";
+        }
+        if (place) body.place = place;
+      } catch (_) {}
       const orders = await readOrders();
       const idx = orders.findIndex((o) => String(o.id) === String(body.id));
       if (idx >= 0) orders[idx] = body;

@@ -348,6 +348,7 @@ async function submitOrder(e) {
     items: cart.map((i) => ({ ...i })),
     total: cartTotal(),
     shipping,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
   };
 
   const user = window.Auth?.currentUser?.();

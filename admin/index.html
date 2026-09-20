@@ -9,7 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920c">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920d">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
   <div class="bg-grid" aria-hidden="true"></div>
@@ -27,7 +28,7 @@
 
     <section class="admin-card" id="loginCard">
       <h1>后台管理</h1>
-      <p class="admin-tip">登录后可查看数据总览（日/月访问量图表）、上传产品与资料，管理订单、客户与注册用户。</p>
+      <p class="admin-tip">登录后可查看数据总览、全球地址统计（世界地图）、上传产品与资料，管理订单、客户与注册用户。</p>
       <div class="admin-client-box">
         <strong>需要独立打开的客户端？</strong>
         <p>电脑下载 Windows 客户端，手机下载 Android 安装包，安装后点开即可进入后台。</p>
@@ -48,6 +49,7 @@
     <section id="panelCard" hidden>
       <nav class="admin-tabs" id="adminTabs">
         <button type="button" class="admin-tab active" data-tab="dashboard">数据总览</button>
+        <button type="button" class="admin-tab" data-tab="geo">全球地址</button>
         <button type="button" class="admin-tab" data-tab="products">产品</button>
         <button type="button" class="admin-tab" data-tab="docs">资料</button>
         <button type="button" class="admin-tab" data-tab="orders">订单</button>
@@ -84,6 +86,41 @@
             <table class="admin-table" id="monthlyTable">
               <thead>
                 <tr><th>月份</th><th>订单数</th><th>件数</th><th>销售额 ($)</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-tab-panel" id="tab-geo">
+        <div class="admin-card">
+          <div class="admin-panel-head">
+            <h1>全球地址统计</h1>
+            <div class="admin-inline-actions">
+              <button type="button" class="link-btn" id="refreshGeo">刷新</button>
+            </div>
+          </div>
+          <p class="admin-tip">世界地图按国家/地区汇总访问次数与下单次数。定位来自访问与下单时的网络国家码（Cloudflare），并辅以收货地址识别。颜色越亮表示合计越多。</p>
+          <div class="admin-geo-legend">
+            <span>少</span>
+            <span class="admin-geo-legend-bar" aria-hidden="true"></span>
+            <span>多</span>
+            <span class="admin-hint" id="geoSummary"></span>
+          </div>
+          <div class="admin-world-map" id="geoWorldMap"></div>
+          <h2 class="admin-sub">各国 / 地区明细</h2>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="geoStatsTable">
+              <thead>
+                <tr>
+                  <th>国家 / 地区</th>
+                  <th>代码</th>
+                  <th>访问次数</th>
+                  <th>独立访客</th>
+                  <th>下单次数</th>
+                  <th>合计</th>
+                </tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -436,7 +473,9 @@
   <script src="/js/auth.js?v=20260919e"></script>
   <!-- deploy-marker: server-users-blob-v1 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920j"></script>
+  <script src="/admin/admin.js?v=20260920l"></script>
 </body>
 </html>

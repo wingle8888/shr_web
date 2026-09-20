@@ -12,6 +12,7 @@ const state = {
   orders: [],
   customers: [],
   addressStats: [],
+  geoStats: [],
   users: [],
   usersStorage: "ephemeral",
   usersStorageOk: false,
@@ -29,6 +30,8 @@ const state = {
 let dailyVisitChart = null;
 let monthlyVisitChart = null;
 let visitTimer = null;
+let geoMap = null;
+let geoMapTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -174,8 +177,11 @@ function switchTab(tab) {
   document.querySelectorAll(".admin-tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tab}`);
   });
-  if (tab === "dashboard" && getPass()) {
+  if ((tab === "dashboard" || tab === "geo") && getPass()) {
     loadVisits().catch(() => {});
+  }
+  if (tab === "geo") {
+    requestAnimationFrame(() => renderWorldMap());
   }
   if (tab === "chat" && getPass()) {
     loadChatList().catch(() => {});
@@ -533,7 +539,163 @@ function renderAddressStats() {
       </tr>`
         )
         .join("")
-    : `<tr><td colspan="6" class="admin-empty">暂无地址统计（有订单后按收货地址汇总）</td></tr>`;
+        : `<tr><td colspan="6" class="admin-empty">暂无地址统计（有订单后按收货地址汇总）</td></tr>`;
+}
+
+function lookupGeoRow(code) {
+  const up = String(code || "").toUpperCase();
+  const alts = up === "UK" ? ["UK", "GB"] : up === "GB" ? ["GB", "UK"] : [up];
+  return (state.geoStats || []).find((row) => alts.includes(String(row.code || "").toUpperCase()));
+}
+
+function applyVisitCountriesToGeo() {
+  const visitList = Array.isArray(state.visits && state.visits.countries) ? state.visits.countries : null;
+  if (!visitList) return;
+  const visitMap = new Map(visitList.map((row) => [String(row.code || "").toUpperCase(), row]));
+  const prevList = state.geoStats || [];
+  const codes = new Set();
+  prevList.forEach((row) => codes.add(String(row.code || "").toUpperCase()));
+  visitList.forEach((row) => codes.add(String(row.code || "").toUpperCase()));
+  state.geoStats = Array.from(codes)
+    .filter(Boolean)
+    .map((code) => {
+      const prev = prevList.find((row) => String(row.code || "").toUpperCase() === code) || {};
+      const visit = visitMap.get(code) || {};
+      const visits = visitMap.has(code) ? Number(visit.pv) || 0 : Number(prev.visits) || 0;
+      const visitors = visitMap.has(code) ? Number(visit.uv) || 0 : Number(prev.visitors) || 0;
+      const orders = Number(prev.orders) || 0;
+      return {
+        code,
+        name: prev.name || visit.name || (code === "UN" ? "未知地区" : code),
+        visits,
+        visitors,
+        orders,
+        total: visits + orders,
+      };
+    })
+    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
+}
+
+function renderGeoStats() {
+  const table = $("geoStatsTable");
+  const summary = $("geoSummary");
+  const list = state.geoStats || [];
+  const visitSum = list.reduce((s, row) => s + (Number(row.visits) || 0), 0);
+  const orderSum = list.reduce((s, row) => s + (Number(row.orders) || 0), 0);
+  if (summary) {
+    summary.textContent = list.length
+      ? `${list.length} 个国家/地区 · 访问 ${visitSum} · 下单 ${orderSum}`
+      : "";
+  }
+  if (table) {
+    const tbody = table.querySelector("tbody");
+    tbody.innerHTML = list.length
+      ? list
+          .map(
+            (row) => `<tr>
+        <td>${escapeHtml(row.name || row.code || "-")}</td>
+        <td>${escapeHtml(row.code || "-")}</td>
+        <td>${row.visits || 0}</td>
+        <td>${row.visitors || 0}</td>
+        <td>${row.orders || 0}</td>
+        <td><strong>${row.total || 0}</strong></td>
+      </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="6" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按所在国家/地区累计。</td></tr>`;
+  }
+  if (state.currentTab === "geo") {
+    if (geoMapTimer) clearTimeout(geoMapTimer);
+    geoMapTimer = setTimeout(() => renderWorldMap(), 40);
+  }
+}
+
+function destroyGeoMap() {
+  if (geoMap && typeof geoMap.destroy === "function") {
+    try {
+      geoMap.destroy();
+    } catch (_) {}
+  }
+  geoMap = null;
+}
+
+function heatColor(value, max) {
+  const t = max <= 0 ? 0 : 0.22 + 0.78 * Math.sqrt(Math.max(0, Number(value) || 0) / max);
+  const from = [26, 61, 88];
+  const to = [46, 230, 255];
+  const rgb = from.map((c, i) => Math.round(c + (to[i] - c) * t));
+  return `#${rgb.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function paintGeoRegions(values) {
+  if (!geoMap || !geoMap.regions) return;
+  const max = Math.max(1, ...Object.values(values).map((n) => Number(n) || 0));
+  Object.keys(geoMap.regions).forEach((code) => {
+    const region = geoMap.regions[code];
+    if (!region || !region.element || typeof region.element.setStyle !== "function") return;
+    const val = Number(values[code]) || 0;
+    region.element.setStyle("fill", val > 0 ? heatColor(val, max) : "#152033");
+  });
+}
+
+function renderWorldMap() {
+  const host = $("geoWorldMap");
+  if (!host) return;
+  const list = state.geoStats || [];
+  const values = {};
+  list.forEach((row) => {
+    const code = String(row.code || "").toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code) || code === "UN") return;
+    const total = Number(row.total) || 0;
+    if (total <= 0) return;
+    values[code] = total;
+    if (code === "GB") values.UK = total;
+  });
+
+  if (typeof jsVectorMap !== "function") {
+    destroyGeoMap();
+    host.innerHTML = `<div class="admin-geo-empty">世界地图组件未能加载，下方表格仍可查看各国访问与下单次数。</div>`;
+    return;
+  }
+
+  destroyGeoMap();
+  host.innerHTML = "";
+  try {
+    geoMap = new jsVectorMap({
+      selector: "#geoWorldMap",
+      map: "world",
+      backgroundColor: "transparent",
+      draggable: true,
+      zoomButtons: true,
+      zoomOnScroll: false,
+      regionStyle: {
+        initial: {
+          fill: "#152033",
+          fillOpacity: 1,
+          stroke: "rgba(46, 230, 255, 0.28)",
+          strokeWidth: 0.4,
+          strokeOpacity: 1,
+        },
+        hover: {
+          fill: "#ff7a18",
+          fillOpacity: 1,
+        },
+      },
+      onRegionTooltipShow(event, tooltip, code) {
+        const row = lookupGeoRow(code);
+        const text = row
+          ? `${row.name}（${row.code}）\n访问 ${row.visits || 0} · 下单 ${row.orders || 0} · 合计 ${row.total || 0}`
+          : `${code}：暂无记录`;
+        if (tooltip && typeof tooltip.text === "function") tooltip.text(text);
+      },
+    });
+    paintGeoRegions(values);
+    if (geoMap && typeof geoMap.updateSize === "function") {
+      requestAnimationFrame(() => geoMap.updateSize());
+    }
+  } catch (err) {
+    host.innerHTML = `<div class="admin-geo-empty">地图渲染失败：${escapeHtml(err.message || err)}</div>`;
+  }
 }
 
 function showOrderDetail(order) {
@@ -669,10 +831,12 @@ async function loadOrdersBundle() {
   state.stats = data.stats || null;
   state.customers = data.customers || [];
   state.addressStats = data.addressStats || [];
+  state.geoStats = data.geoStats || [];
   if (data.visits) state.visits = data.visits;
   renderStats();
   renderOrders();
   renderAddressStats();
+  renderGeoStats();
   renderCustomers();
   renderProductsTable();
 }
@@ -692,7 +856,7 @@ function startVisitLive() {
   if (visitTimer) return;
   visitTimer = setInterval(() => {
     if (!getPass() || document.hidden) return;
-    if (state.currentTab === "dashboard") loadVisits().catch(() => {});
+    if (state.currentTab === "dashboard" || state.currentTab === "geo") loadVisits().catch(() => {});
     if (state.currentTab !== "chat") loadChatList().catch(() => {});
   }, 15000);
 }
@@ -706,7 +870,9 @@ function stopVisitLive() {
 async function loadVisits() {
   const data = await api("/api/admin/orders?only=visits");
   if (data.visits) state.visits = data.visits;
+  applyVisitCountriesToGeo();
   renderStats();
+  renderGeoStats();
 }
 
 async function loadProductsBundle() {
@@ -1077,10 +1243,13 @@ $("adminTabs").addEventListener("click", (e) => {
 $("refreshDashboard").addEventListener("click", () =>
   Promise.all([loadOrdersBundle(), loadVisits()]).catch((e) => alert(e.message))
 );
+$("refreshGeo").addEventListener("click", () =>
+  loadOrdersBundle().catch((e) => alert(e.message))
+);
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !getPass()) return;
-  if (state.currentTab === "dashboard") loadVisits().catch(() => {});
+  if (state.currentTab === "dashboard" || state.currentTab === "geo") loadVisits().catch(() => {});
   if (state.currentTab === "chat") loadChatList().catch(() => {});
 });
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
