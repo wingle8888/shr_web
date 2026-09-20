@@ -687,6 +687,18 @@
   word-break: break-word;
 }
 
+.admin-geo-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-geo-time-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: normal;
+}
+
 .admin-detail {
   margin-top: 16px;
   border: 1px solid var(--border);

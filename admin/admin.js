@@ -671,8 +671,70 @@ function lookupGeoRow(code) {
   };
 }
 
+function laterIso(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (!x) return y;
+  if (!y) return x;
+  return x >= y ? x : y;
+}
+
+function earlierIso(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (!x) return y;
+  if (!y) return x;
+  return x <= y ? x : y;
+}
+
+function normalizeGeoKey(key) {
+  const parts = String(key || "").split("|");
+  if (parts.length >= 4) return parts.slice(0, 3).join("|");
+  return String(key || "");
+}
+
 function geoRowKey(row) {
-  return row.key || [row.code || "", row.region || "", row.city || "", row.postalCode || ""].join("|");
+  if (row && row.key) return normalizeGeoKey(row.key);
+  return [row.code || "", row.region || "", row.city || ""].join("|");
+}
+
+function formatVisitorLocalTime(iso, timezone) {
+  const raw = String(iso || "").trim();
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  const opts = {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  };
+  const tz = String(timezone || "").trim();
+  try {
+    return date.toLocaleString("zh-CN", tz ? Object.assign({}, opts, { timeZone: tz }) : opts);
+  } catch (_) {
+    try {
+      return date.toLocaleString("zh-CN", opts);
+    } catch {
+      return raw;
+    }
+  }
+}
+
+function renderGeoVisitTime(row) {
+  const last = formatVisitorLocalTime(row.lastAt, row.timezone);
+  const first = formatVisitorLocalTime(row.firstAt, row.timezone);
+  if (!last && !first) return "-";
+  const tz = String(row.timezone || "").trim();
+  const bits = [escapeHtml(last || first)];
+  if (first && last && first !== last) {
+    bits.push(`<div class="admin-geo-time-sub">首次 ${escapeHtml(first)}</div>`);
+  }
+  if (tz) bits.push(`<div class="admin-geo-time-sub">${escapeHtml(tz)}</div>`);
+  return bits.join("");
 }
 
 function applyVisitCountriesToGeo() {
@@ -686,11 +748,18 @@ function applyVisitCountriesToGeo() {
   const nextMap = new Map();
 
   function upsertVisit(row) {
-    const key = row.key || geoRowKey(row);
+    const key = geoRowKey(row);
     const prev = prevMap.get(key) || nextMap.get(key) || {};
     const visitCount = Number(row.visits != null ? row.visits : row.pv) || 0;
     const visitorCount = Number(row.visitors != null ? row.visitors : row.uv) || 0;
     const orders = Number(prev.orders) || 0;
+    const lastAt = laterIso(row.lastAt, prev.lastAt);
+    const firstAt = earlierIso(row.firstAt, prev.firstAt);
+    const timezone =
+      (lastAt && lastAt === String(row.lastAt || "") ? row.timezone : prev.timezone) ||
+      row.timezone ||
+      prev.timezone ||
+      "";
     nextMap.set(key, {
       key,
       code: row.code || prev.code || "",
@@ -698,13 +767,15 @@ function applyVisitCountriesToGeo() {
       country: row.country || row.name || prev.country || prev.name || "",
       region: row.region || prev.region || "",
       city: row.city || prev.city || "",
-      postalCode: row.postalCode || prev.postalCode || "",
       label: row.label || prev.label || "",
       streets: Array.isArray(prev.streets) ? prev.streets : [],
       visits: visitCount,
       visitors: visitorCount,
       orders,
       total: visitCount + orders,
+      lastAt,
+      firstAt,
+      timezone,
     });
   }
 
@@ -722,7 +793,7 @@ function applyVisitCountriesToGeo() {
     if (!remPv && !remUv) return;
     const name = row.name || code;
     upsertVisit({
-      key: code + "|||",
+      key: code + "||",
       code,
       country: name,
       name,
@@ -731,6 +802,9 @@ function applyVisitCountriesToGeo() {
       visitors: remUv,
       pv: remPv,
       uv: remUv,
+      lastAt: row.lastAt,
+      firstAt: row.firstAt,
+      timezone: row.timezone,
     });
   });
   prevMap.forEach((row, key) => {
@@ -743,7 +817,9 @@ function applyVisitCountriesToGeo() {
       total: (Number(row.visits) || 0) + (Number(row.orders) || 0),
     });
   });
-  const deleted = new Set(Array.isArray(visits.geoDeletedKeys) ? visits.geoDeletedKeys.map(String) : []);
+  const deleted = new Set(
+    Array.isArray(visits.geoDeletedKeys) ? visits.geoDeletedKeys.map((id) => normalizeGeoKey(id)) : []
+  );
   state.geoStats = Array.from(nextMap.values())
     .filter((row) => !deleted.has(geoRowKey(row)))
     .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
@@ -768,13 +844,10 @@ function renderGeoStats() {
       ? list
           .map((row) => {
             const key = geoRowKey(row);
-            const label = row.label || [row.country || row.name, row.region, row.city, row.postalCode].filter(Boolean).join(" · ") || row.code || "-";
+            const label = row.label || [row.country || row.name, row.region, row.city].filter(Boolean).join(" · ") || row.code || "-";
             return `<tr>
         <td class="admin-addr-detail" title="${escapeHtml(label)}">${escapeHtml(label)}</td>
-        <td>${escapeHtml(row.country || row.name || row.code || "-")}</td>
-        <td>${escapeHtml(row.region || "-")}</td>
-        <td>${escapeHtml(row.city || "-")}</td>
-        <td>${escapeHtml(row.postalCode || "-")}</td>
+        <td class="admin-geo-time">${renderGeoVisitTime(row)}</td>
         <td>${row.visits || 0}</td>
         <td>${row.visitors || 0}</td>
         <td>${row.orders || 0}</td>
@@ -787,7 +860,7 @@ function renderGeoStats() {
       </tr>`;
           })
           .join("")
-      : `<tr><td colspan="10" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按国家、城市等尽量详细的地址累计。</td></tr>`;
+      : `<tr><td colspan="7" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按详细地址累计，并记录访问者当地时间。</td></tr>`;
   }
   if (state.currentTab === "geo") {
     if (geoMapTimer) clearTimeout(geoMapTimer);

@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { readJsonStore, writeJsonStore, hasBlob } = require("./blob-store");
 const { getCatalogStub } = require("./runtime-env");
-const { normalizeCountryCode, countryName, compactPlace } = require("./geo");
+const { normalizeCountryCode, countryName, compactPlace, laterIso, earlierIso, normalizeGeoKey } = require("./geo");
 
 const DATA_FILE = path.join(process.cwd(), "data", "visits.json");
 const TMP_FILE = path.join("/tmp", "shr-visits.json");
@@ -32,7 +32,7 @@ function emptyStore() {
 
 function asGeoKeys(raw) {
   if (raw && Array.isArray(raw.geoDeletedKeys)) {
-    return raw.geoDeletedKeys.map((id) => String(id || "").trim()).filter(Boolean);
+    return raw.geoDeletedKeys.map((id) => normalizeGeoKey(id)).filter(Boolean);
   }
   return [];
 }
@@ -172,6 +172,9 @@ function mergeCountryDay(a, b) {
     out[code] = {
       pv: Math.max(Number(ra.pv) || 0, Number(rb.pv) || 0),
       uvIds: Array.from(uvSet).slice(-MAX_UV_IDS),
+      lastAt: laterIso(ra.lastAt, rb.lastAt),
+      firstAt: earlierIso(ra.firstAt, rb.firstAt),
+      timezone: (laterIso(ra.lastAt, rb.lastAt) === String(rb.lastAt || "") ? rb.timezone : ra.timezone) || rb.timezone || ra.timezone || "",
     };
   });
   return out;
@@ -199,13 +202,16 @@ function mergePlaceDay(a, b) {
       region: compact.region || rb.region || ra.region || "",
       city: compact.city || rb.city || ra.city || "",
       postalCode: compact.postalCode || rb.postalCode || ra.postalCode || "",
+      timezone: (laterIso(ra.lastAt, rb.lastAt) === String(rb.lastAt || "") ? rb.timezone : ra.timezone) || rb.timezone || ra.timezone || compact.timezone || "",
+      lastAt: laterIso(ra.lastAt, rb.lastAt),
+      firstAt: earlierIso(ra.firstAt, rb.firstAt),
       label: compact.label || rb.label || ra.label || "",
     };
   });
   return out;
 }
 
-function bumpCountry(row, countryCode, visitorId) {
+function bumpCountry(row, countryCode, visitorId, meta) {
   const code = normalizeCountryCode(countryCode);
   if (!code || !row) return;
   if (!row.countries || typeof row.countries !== "object") row.countries = {};
@@ -217,22 +223,27 @@ function bumpCountry(row, countryCode, visitorId) {
     prev.uvIds.push(vid);
     if (prev.uvIds.length > MAX_UV_IDS) prev.uvIds = prev.uvIds.slice(-MAX_UV_IDS);
   }
+  const at = (meta && meta.at) || new Date().toISOString();
+  const tz = (meta && meta.timezone) || "";
+  prev.lastAt = laterIso(prev.lastAt, at);
+  prev.firstAt = earlierIso(prev.firstAt, at) || at;
+  if (tz) prev.timezone = tz;
   row.countries[code] = prev;
 }
 
 const MAX_PLACES = 400;
 
-function bumpPlace(row, place, visitorId) {
+function bumpPlace(row, place, visitorId, meta) {
   const compact = compactPlace(place);
   if (!compact.countryCode || compact.countryCode === "UN") return;
-  if (!compact.region && !compact.city && !compact.postalCode) return;
+  if (!compact.region && !compact.city) return;
   if (!row.places || typeof row.places !== "object") row.places = {};
   const key = compact.key;
   if (!row.places[key] && Object.keys(row.places).length >= MAX_PLACES) return;
   const prev =
     row.places[key] && typeof row.places[key] === "object"
       ? row.places[key]
-      : { pv: 0, uvIds: [], countryCode: compact.countryCode, country: compact.country, region: compact.region, city: compact.city, postalCode: compact.postalCode, label: compact.label };
+      : { pv: 0, uvIds: [], countryCode: compact.countryCode, country: compact.country, region: compact.region, city: compact.city, label: compact.label };
   prev.pv = (Number(prev.pv) || 0) + 1;
   if (!Array.isArray(prev.uvIds)) prev.uvIds = [];
   const vid = String(visitorId || "").slice(0, 64);
@@ -240,12 +251,15 @@ function bumpPlace(row, place, visitorId) {
     prev.uvIds.push(vid);
     if (prev.uvIds.length > MAX_UV_IDS) prev.uvIds = prev.uvIds.slice(-MAX_UV_IDS);
   }
+  const at = (meta && meta.at) || new Date().toISOString();
   prev.countryCode = compact.countryCode;
   prev.country = compact.country || prev.country;
   prev.region = compact.region || prev.region;
   prev.city = compact.city || prev.city;
-  prev.postalCode = compact.postalCode || prev.postalCode;
   prev.label = compact.label || prev.label;
+  prev.lastAt = laterIso(prev.lastAt, at);
+  prev.firstAt = earlierIso(prev.firstAt, at) || at;
+  if (compact.timezone) prev.timezone = compact.timezone;
   row.places[key] = prev;
 }
 
@@ -260,15 +274,18 @@ function extractVisitCountries(daysMap, resetAt) {
       const code = normalizeCountryCode(rawCode);
       if (!code) return;
       const item = cmap[rawCode] || {};
-      if (!by[code]) by[code] = { code, name: countryName(code) || code, pv: 0, uvSet: new Set() };
+      if (!by[code]) by[code] = { code, name: countryName(code) || code, pv: 0, uvSet: new Set(), lastAt: "", firstAt: "", timezone: "" };
       by[code].pv += Number(item.pv) || 0;
+      by[code].lastAt = laterIso(by[code].lastAt, item.lastAt);
+      by[code].firstAt = earlierIso(by[code].firstAt, item.firstAt);
+      if (item.timezone && (item.lastAt === by[code].lastAt || !by[code].timezone)) by[code].timezone = item.timezone;
       (Array.isArray(item.uvIds) ? item.uvIds : []).forEach((id) => {
         if (id) by[code].uvSet.add(String(id));
       });
     });
   });
   return Object.values(by)
-    .map((row) => ({ code: row.code, name: row.name, pv: row.pv, uv: row.uvSet.size }))
+    .map((row) => ({ code: row.code, name: row.name, pv: row.pv, uv: row.uvSet.size, lastAt: row.lastAt, firstAt: row.firstAt, timezone: row.timezone }))
     .sort((a, b) => b.pv - a.pv);
 }
 
@@ -281,7 +298,13 @@ function extractVisitPlaces(daysMap, resetAt) {
     if (!pmap || typeof pmap !== "object") return;
     Object.keys(pmap).forEach((key) => {
       const item = pmap[key] || {};
-      const compact = compactPlace({ ...item, countryCode: item.countryCode || String(key).split("|")[0] });
+      const keyParts = String(key).split("|");
+      const compact = compactPlace({
+        ...item,
+        countryCode: item.countryCode || keyParts[0],
+        region: item.region || keyParts[1],
+        city: item.city || keyParts[2],
+      });
       if (!compact.countryCode || compact.countryCode === "UN") return;
       if (!by[compact.key]) {
         by[compact.key] = {
@@ -291,13 +314,20 @@ function extractVisitPlaces(daysMap, resetAt) {
           name: compact.country,
           region: compact.region,
           city: compact.city,
-          postalCode: compact.postalCode,
           label: compact.label,
           pv: 0,
           uvSet: new Set(),
+          lastAt: "",
+          firstAt: "",
+          timezone: "",
         };
       }
       by[compact.key].pv += Number(item.pv) || 0;
+      by[compact.key].lastAt = laterIso(by[compact.key].lastAt, item.lastAt);
+      by[compact.key].firstAt = earlierIso(by[compact.key].firstAt, item.firstAt);
+      if (item.timezone && (item.lastAt === by[compact.key].lastAt || !by[compact.key].timezone)) {
+        by[compact.key].timezone = item.timezone;
+      }
       (Array.isArray(item.uvIds) ? item.uvIds : []).forEach((id) => {
         if (id) by[compact.key].uvSet.add(String(id));
       });
@@ -311,8 +341,10 @@ function extractVisitPlaces(daysMap, resetAt) {
       name: row.name,
       region: row.region,
       city: row.city,
-      postalCode: row.postalCode,
       label: row.label,
+      lastAt: row.lastAt,
+      firstAt: row.firstAt,
+      timezone: row.timezone,
       pv: row.pv,
       uv: row.uvSet.size,
     }))
@@ -358,8 +390,9 @@ function applyVisitRecord(data, { visitorId, pathName, referrer, day, countryCod
   row.paths[p] = (Number(row.paths[p]) || 0) + 1;
   if (referrer) row.lastReferrer = String(referrer).slice(0, 200);
   const resolved = compactPlace(place || { countryCode });
-  bumpCountry(row, resolved.countryCode || countryCode, vid);
-  bumpPlace(row, resolved, vid);
+  const at = new Date().toISOString();
+  bumpCountry(row, resolved.countryCode || countryCode, vid, { at, timezone: resolved.timezone });
+  bumpPlace(row, resolved, vid, { at });
 
   payload.days[key] = row;
   const pruned = pruneDays(payload);
@@ -477,7 +510,7 @@ async function loadVisitStats() {
 
 function normalizeGeoKeys(ids) {
   const list = Array.isArray(ids) ? ids : ids != null ? [ids] : [];
-  return [...new Set(list.map((id) => String(id || "").trim()).filter(Boolean))];
+  return [...new Set(list.map((id) => normalizeGeoKey(id)).filter(Boolean))];
 }
 
 async function deleteGeoKeys(ids) {

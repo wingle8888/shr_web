@@ -309,7 +309,7 @@ function fromCf(cf, headers) {
 
 function formatPlaceLabel(place, extras) {
   if (!place || typeof place !== "object") return "";
-  const parts = [place.country, place.region, place.city, place.postalCode]
+  const parts = [place.country, place.region, place.city]
     .concat(Array.isArray(extras) ? extras : extras ? [extras] : [])
     .map((part) => clean(part))
     .filter(Boolean);
@@ -328,6 +328,28 @@ function formatRegisterPlace(place) {
   return formatPlaceLabel(place);
 }
 
+function laterIso(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (!x) return y;
+  if (!y) return x;
+  return x >= y ? x : y;
+}
+
+function earlierIso(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (!x) return y;
+  if (!y) return x;
+  return x <= y ? x : y;
+}
+
+function normalizeGeoKey(key) {
+  const parts = String(key || "").split("|");
+  if (parts.length >= 4) return parts.slice(0, 3).join("|");
+  return String(key || "");
+}
+
 function compactPlace(raw) {
   const src = raw && typeof raw === "object" ? raw : {};
   const countryCode = normalizeCountryCode(src.countryCode || src.code) || "UN";
@@ -339,9 +361,9 @@ function compactPlace(raw) {
   const postalCode = clean(src.postalCode || src.zip || src.postal).slice(0, 16);
   const street = clean(src.street || src.address).slice(0, 80);
   const timezone = clean(src.timezone).slice(0, 80);
-  const key = [countryCode, region, city, postalCode].join("|");
+  const key = [countryCode, region, city].join("|");
   const label =
-    formatPlaceLabel({ country, region, city, postalCode, timezone }, street ? [street] : []) ||
+    formatPlaceLabel({ country, region, city, timezone }, street ? [street] : []) ||
     country ||
     countryCode;
   return { countryCode, country, region, city, postalCode, street, timezone, key, label };
@@ -383,14 +405,18 @@ function buildGeoStats(visitInput, orders) {
         region: compact.region,
         city: compact.city,
         postalCode: compact.postalCode,
+        timezone: compact.timezone,
         label: compact.label,
         streets: [],
         visits: 0,
         visitors: 0,
         orders: 0,
+        firstAt: "",
+        lastAt: "",
       });
     }
     const item = map.get(compact.key);
+    if (compact.timezone && !item.timezone) item.timezone = compact.timezone;
     if (compact.street && !item.streets.includes(compact.street) && item.streets.length < 3) {
       item.streets.push(compact.street);
       item.label = formatPlaceLabel(item, item.streets);
@@ -400,9 +426,12 @@ function buildGeoStats(visitInput, orders) {
 
   visitPlaces.forEach((row) => {
     if (!row) return;
-    const item = ensure(row);
+    const item = ensure({ ...row, timezone: row.timezone, lastAt: row.lastAt, firstAt: row.firstAt });
     item.visits += Number(row.pv != null ? row.pv : row.visits) || 0;
     item.visitors += Number(row.uv != null ? row.uv : row.visitors) || 0;
+    item.lastAt = laterIso(item.lastAt, row.lastAt);
+    item.firstAt = earlierIso(item.firstAt, row.firstAt);
+    if (row.timezone && (row.lastAt === item.lastAt || !item.timezone)) item.timezone = row.timezone;
   });
 
   visitCountries.forEach((row) => {
@@ -417,9 +446,12 @@ function buildGeoStats(visitInput, orders) {
     const remPv = Math.max(0, (Number(row && (row.pv != null ? row.pv : row.visits)) || 0) - usedVisits);
     const remUv = Math.max(0, (Number(row && (row.uv != null ? row.uv : row.visitors)) || 0) - usedUv);
     if (!remPv && !remUv) return;
-    const item = ensure({ countryCode: code, country: name });
+    const item = ensure({ countryCode: code, country: name, timezone: row && row.timezone });
     item.visits += remPv;
     item.visitors += remUv;
+    item.lastAt = laterIso(item.lastAt, row && row.lastAt);
+    item.firstAt = earlierIso(item.firstAt, row && row.firstAt);
+    if (row && row.timezone && (row.lastAt === item.lastAt || !item.timezone)) item.timezone = row.timezone;
     if (usedVisits > 0 && !item.region && !item.city) {
       item.label = name + "（未细分到城市）";
     }
@@ -428,17 +460,22 @@ function buildGeoStats(visitInput, orders) {
   const resetAt = !Array.isArray(visitInput) && visitInput ? String(visitInput.geoResetAt || "") : "";
   const deleted = new Set(
     !Array.isArray(visitInput) && visitInput && Array.isArray(visitInput.geoDeletedKeys)
-      ? visitInput.geoDeletedKeys.map(String)
+      ? visitInput.geoDeletedKeys.map(normalizeGeoKey)
       : []
   );
 
   (Array.isArray(orders) ? orders : []).forEach((order) => {
     if (resetAt && String((order && order.createdAt) || "") < resetAt) return;
-    ensure(resolveOrderPlace(order)).orders += 1;
+    const place = resolveOrderPlace(order);
+    const item = ensure(place);
+    item.orders += 1;
+    item.lastAt = laterIso(item.lastAt, order && order.createdAt);
+    item.firstAt = earlierIso(item.firstAt, order && order.createdAt);
+    if (place.timezone && !item.timezone) item.timezone = place.timezone;
   });
 
   return Array.from(map.values())
-    .filter((row) => !deleted.has(row.key) && (row.visits || row.visitors || row.orders))
+    .filter((row) => !deleted.has(normalizeGeoKey(row.key)) && (row.visits || row.visitors || row.orders))
     .map((row) => ({ ...row, total: row.visits + row.orders }))
     .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders || String(a.label).localeCompare(String(b.label), "zh"));
 }
@@ -468,7 +505,8 @@ function readRegisterPlace(req, body) {
   const headers = (req && req.headers) || {};
   const fromReq = fromCf((req && req.cf) || null, headers);
   const client = body && typeof body === "object" ? body : {};
-  if (!fromReq.timezone) fromReq.timezone = clean(client.timezone);
+  const clientTz = clean(client.timezone);
+  if (clientTz) fromReq.timezone = clientTz;
   if (!fromReq.countryCode && fromReq.timezone === "Asia/Shanghai") {
     fromReq.countryCode = "CN";
     fromReq.country = "中国";
@@ -482,6 +520,9 @@ module.exports = {
   formatPlaceLabel,
   normalizePlace,
   compactPlace,
+  laterIso,
+  earlierIso,
+  normalizeGeoKey,
   countryName,
   normalizeCountryCode,
   inferCountryFromText,
