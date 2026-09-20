@@ -580,7 +580,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 880px;
+  min-width: 980px;
 }
 
 .admin-table th,
@@ -679,6 +679,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.admin-addr-detail {
+  max-width: 420px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .admin-detail {

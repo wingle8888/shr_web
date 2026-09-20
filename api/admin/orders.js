@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
       customers: extractCustomers(orders),
       addressStats: extractAddressStats(orders),
       visits,
-      geoStats: buildGeoStats(visits.countries, orders),
+      geoStats: buildGeoStats(visits, orders),
     });
     return;
   }

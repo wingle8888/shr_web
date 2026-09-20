@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { readJsonStore, writeJsonStore, hasBlob } = require("./blob-store");
 const { getCatalogStub } = require("./runtime-env");
-const { normalizeCountryCode, countryName } = require("./geo");
+const { normalizeCountryCode, countryName, compactPlace } = require("./geo");
 
 const DATA_FILE = path.join(process.cwd(), "data", "visits.json");
 const TMP_FILE = path.join("/tmp", "shr-visits.json");
@@ -58,6 +58,7 @@ function mergeVisits(a, b) {
       paths,
       lastReferrer: rb.lastReferrer || ra.lastReferrer || "",
       countries: mergeCountryDay(ra.countries, rb.countries),
+      places: mergePlaceDay(ra.places, rb.places),
     };
   });
   return { days };
@@ -140,6 +141,34 @@ function mergeCountryDay(a, b) {
   return out;
 }
 
+function mergePlaceDay(a, b) {
+  const out = {};
+  const keys = new Set([
+    ...Object.keys(a && typeof a === "object" ? a : {}),
+    ...Object.keys(b && typeof b === "object" ? b : {}),
+  ]);
+  keys.forEach((key) => {
+    const ra = (a && a[key]) || {};
+    const rb = (b && b[key]) || {};
+    const uvSet = new Set([
+      ...(Array.isArray(ra.uvIds) ? ra.uvIds : []),
+      ...(Array.isArray(rb.uvIds) ? rb.uvIds : []),
+    ]);
+    const compact = compactPlace({ ...ra, ...rb, countryCode: rb.countryCode || ra.countryCode || key.split("|")[0] });
+    out[key] = {
+      pv: Math.max(Number(ra.pv) || 0, Number(rb.pv) || 0),
+      uvIds: Array.from(uvSet).slice(-MAX_UV_IDS),
+      countryCode: compact.countryCode,
+      country: compact.country || rb.country || ra.country || "",
+      region: compact.region || rb.region || ra.region || "",
+      city: compact.city || rb.city || ra.city || "",
+      postalCode: compact.postalCode || rb.postalCode || ra.postalCode || "",
+      label: compact.label || rb.label || ra.label || "",
+    };
+  });
+  return out;
+}
+
 function bumpCountry(row, countryCode, visitorId) {
   const code = normalizeCountryCode(countryCode);
   if (!code || !row) return;
@@ -153,6 +182,35 @@ function bumpCountry(row, countryCode, visitorId) {
     if (prev.uvIds.length > MAX_UV_IDS) prev.uvIds = prev.uvIds.slice(-MAX_UV_IDS);
   }
   row.countries[code] = prev;
+}
+
+const MAX_PLACES = 400;
+
+function bumpPlace(row, place, visitorId) {
+  const compact = compactPlace(place);
+  if (!compact.countryCode || compact.countryCode === "UN") return;
+  if (!compact.region && !compact.city && !compact.postalCode) return;
+  if (!row.places || typeof row.places !== "object") row.places = {};
+  const key = compact.key;
+  if (!row.places[key] && Object.keys(row.places).length >= MAX_PLACES) return;
+  const prev =
+    row.places[key] && typeof row.places[key] === "object"
+      ? row.places[key]
+      : { pv: 0, uvIds: [], countryCode: compact.countryCode, country: compact.country, region: compact.region, city: compact.city, postalCode: compact.postalCode, label: compact.label };
+  prev.pv = (Number(prev.pv) || 0) + 1;
+  if (!Array.isArray(prev.uvIds)) prev.uvIds = [];
+  const vid = String(visitorId || "").slice(0, 64);
+  if (vid && !prev.uvIds.includes(vid)) {
+    prev.uvIds.push(vid);
+    if (prev.uvIds.length > MAX_UV_IDS) prev.uvIds = prev.uvIds.slice(-MAX_UV_IDS);
+  }
+  prev.countryCode = compact.countryCode;
+  prev.country = compact.country || prev.country;
+  prev.region = compact.region || prev.region;
+  prev.city = compact.city || prev.city;
+  prev.postalCode = compact.postalCode || prev.postalCode;
+  prev.label = compact.label || prev.label;
+  row.places[key] = prev;
 }
 
 function extractVisitCountries(daysMap) {
@@ -176,6 +234,51 @@ function extractVisitCountries(daysMap) {
     .sort((a, b) => b.pv - a.pv);
 }
 
+function extractVisitPlaces(daysMap) {
+  const by = {};
+  Object.values(daysMap || {}).forEach((row) => {
+    const pmap = row && row.places;
+    if (!pmap || typeof pmap !== "object") return;
+    Object.keys(pmap).forEach((key) => {
+      const item = pmap[key] || {};
+      const compact = compactPlace({ ...item, countryCode: item.countryCode || String(key).split("|")[0] });
+      if (!compact.countryCode || compact.countryCode === "UN") return;
+      if (!by[compact.key]) {
+        by[compact.key] = {
+          key: compact.key,
+          code: compact.countryCode,
+          country: compact.country,
+          name: compact.country,
+          region: compact.region,
+          city: compact.city,
+          postalCode: compact.postalCode,
+          label: compact.label,
+          pv: 0,
+          uvSet: new Set(),
+        };
+      }
+      by[compact.key].pv += Number(item.pv) || 0;
+      (Array.isArray(item.uvIds) ? item.uvIds : []).forEach((id) => {
+        if (id) by[compact.key].uvSet.add(String(id));
+      });
+    });
+  });
+  return Object.values(by)
+    .map((row) => ({
+      key: row.key,
+      code: row.code,
+      country: row.country,
+      name: row.name,
+      region: row.region,
+      city: row.city,
+      postalCode: row.postalCode,
+      label: row.label,
+      pv: row.pv,
+      uv: row.uvSet.size,
+    }))
+    .sort((a, b) => b.pv - a.pv);
+}
+
 function lastNDayKeys(n) {
   const today = dayKey();
   const [y, m, d] = today.split("-").map(Number);
@@ -196,11 +299,11 @@ function lastNMonthKeys(n) {
   return keys;
 }
 
-function applyVisitRecord(data, { visitorId, pathName, referrer, day, countryCode } = {}) {
+function applyVisitRecord(data, { visitorId, pathName, referrer, day, countryCode, place } = {}) {
   const payload = normalizeStore(data);
   if (!payload.days) payload.days = {};
   const key = /^\d{4}-\d{2}-\d{2}$/.test(String(day || "")) ? String(day) : dayKey();
-  const row = payload.days[key] || { pv: 0, uvIds: [], paths: {}, countries: {} };
+  const row = payload.days[key] || { pv: 0, uvIds: [], paths: {}, countries: {}, places: {} };
   row.pv = (Number(row.pv) || 0) + 1;
 
   const vid = String(visitorId || "").slice(0, 64);
@@ -214,10 +317,13 @@ function applyVisitRecord(data, { visitorId, pathName, referrer, day, countryCod
   if (!row.paths || typeof row.paths !== "object") row.paths = {};
   row.paths[p] = (Number(row.paths[p]) || 0) + 1;
   if (referrer) row.lastReferrer = String(referrer).slice(0, 200);
-  bumpCountry(row, countryCode, vid);
+  const resolved = compactPlace(place || { countryCode });
+  bumpCountry(row, resolved.countryCode || countryCode, vid);
+  bumpPlace(row, resolved, vid);
 
   payload.days[key] = row;
-  return { data: payload, day: key, pv: row.pv, uv: row.uvIds.length };
+  const pruned = pruneDays(payload);
+  return { data: pruned, day: key, pv: row.pv, uv: row.uvIds.length };
 }
 
 async function recordVisitAtomic(payload) {
@@ -241,9 +347,9 @@ async function recordVisitAtomic(payload) {
   }
 }
 
-async function recordVisit({ visitorId, pathName, referrer, countryCode } = {}) {
+async function recordVisit({ visitorId, pathName, referrer, countryCode, place } = {}) {
   const day = dayKey();
-  const atomic = await recordVisitAtomic({ visitorId, pathName, referrer, day, countryCode });
+  const atomic = await recordVisitAtomic({ visitorId, pathName, referrer, day, countryCode, place });
   if (atomic && atomic.day) {
     return {
       day: atomic.day,
@@ -253,7 +359,7 @@ async function recordVisit({ visitorId, pathName, referrer, countryCode } = {}) 
     };
   }
 
-  const applied = applyVisitRecord(await readVisits(), { visitorId, pathName, referrer, day, countryCode });
+  const applied = applyVisitRecord(await readVisits(), { visitorId, pathName, referrer, day, countryCode, place });
   await writeVisits(applied.data);
   return {
     day: applied.day,
@@ -318,6 +424,7 @@ function buildVisitStats(raw) {
     updatedAt: new Date().toISOString(),
     storage: hasBlob() ? "blob" : "local",
     countries: extractVisitCountries(daysMap),
+    places: extractVisitPlaces(daysMap),
   };
 }
 
@@ -330,6 +437,7 @@ module.exports = {
   readVisits,
   writeVisits,
   recordVisit,
+  applyVisitRecord,
   buildVisitStats,
   loadVisitStats,
   dayKey,

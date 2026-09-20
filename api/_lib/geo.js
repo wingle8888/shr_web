@@ -271,38 +271,9 @@ function resolveOrderCountry(order) {
   );
 }
 
-function buildGeoStats(visitCountries, orders) {
-  const map = new Map();
-  function ensure(code) {
-    const cc = normalizeCountryCode(code) || "UN";
-    if (!map.has(cc)) {
-      map.set(cc, {
-        code: cc,
-        name: cc === "UN" ? "未知地区" : countryName(cc) || cc,
-        visits: 0,
-        visitors: 0,
-        orders: 0,
-      });
-    }
-    return map.get(cc);
-  }
-  (Array.isArray(visitCountries) ? visitCountries : []).forEach((row) => {
-    const item = ensure(row && row.code);
-    item.visits += Number(row && (row.pv != null ? row.pv : row.visits)) || 0;
-    item.visitors += Number(row && (row.uv != null ? row.uv : row.visitors)) || 0;
-    if (row && row.name && item.code !== "UN" && item.name === item.code) item.name = row.name;
-  });
-  (Array.isArray(orders) ? orders : []).forEach((order) => {
-    ensure(resolveOrderCountry(order) || "UN").orders += 1;
-  });
-  return Array.from(map.values())
-    .map((row) => ({ ...row, total: row.visits + row.orders }))
-    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
-}
-
 function regionName(country, region, regionCode) {
   const cc = clean(country).toUpperCase();
-  const code = clean(regionCode).toUpperCase();
+  const code = clean(regionCode).toUpperCase() || clean(region).toUpperCase();
   if ((cc === "CN" || cc === "HK" || cc === "MO" || cc === "TW") && CN_REGION_ZH[code]) {
     return CN_REGION_ZH[code];
   }
@@ -330,36 +301,156 @@ function fromCf(cf, headers) {
     region: regionName(country, cf && cf.region, cf && cf.regionCode),
     regionCode: clean(cf && cf.regionCode).toUpperCase(),
     city: cityName(country, cf && cf.city),
+    postalCode: clean(cf && (cf.postalCode || cf.postal_code)).slice(0, 16),
     timezone: clean(cf && cf.timezone),
     continent: clean(cf && cf.continent).toUpperCase(),
   };
 }
 
-function formatRegisterPlace(place) {
+function formatPlaceLabel(place, extras) {
   if (!place || typeof place !== "object") return "";
-  const parts = [place.country, place.region, place.city].map(clean).filter(Boolean);
+  const parts = [place.country, place.region, place.city, place.postalCode]
+    .concat(Array.isArray(extras) ? extras : extras ? [extras] : [])
+    .map((part) => clean(part))
+    .filter(Boolean);
   const unique = [];
   parts.forEach((part) => {
-    if (!unique.includes(part)) unique.push(part);
+    if (unique.includes(part)) return;
+    if (unique.some((prev) => prev !== part && prev.includes(part))) return;
+    unique.push(part);
   });
   if (unique.length) return unique.join(" · ");
   if (place.timezone) return String(place.timezone);
   return "";
 }
 
+function formatRegisterPlace(place) {
+  return formatPlaceLabel(place);
+}
+
+function compactPlace(raw) {
+  const src = raw && typeof raw === "object" ? raw : {};
+  const countryCode = normalizeCountryCode(src.countryCode || src.code) || "UN";
+  const country =
+    clean(src.country || src.countryName || src.name) ||
+    (countryCode === "UN" ? "未知地区" : countryName(countryCode) || countryCode);
+  const region = regionName(countryCode, src.region, src.regionCode);
+  const city = cityName(countryCode, src.city);
+  const postalCode = clean(src.postalCode || src.zip || src.postal).slice(0, 16);
+  const street = clean(src.street || src.address).slice(0, 80);
+  const timezone = clean(src.timezone).slice(0, 80);
+  const key = [countryCode, region, city, postalCode].join("|");
+  const label =
+    formatPlaceLabel({ country, region, city, postalCode, timezone }, street ? [street] : []) ||
+    country ||
+    countryCode;
+  return { countryCode, country, region, city, postalCode, street, timezone, key, label };
+}
+
+function resolveOrderPlace(order) {
+  const shipping = (order && order.shipping) || {};
+  const place = (order && order.place) || {};
+  const countryCode =
+    resolveOrderCountry(order) ||
+    normalizeCountryCode(place.countryCode) ||
+    normalizeCountryCode(order && order.countryCode) ||
+    "";
+  return compactPlace({
+    countryCode,
+    country: place.country || order.country || shipping.country || countryName(countryCode),
+    region: shipping.region || place.region,
+    regionCode: place.regionCode,
+    city: shipping.city || place.city,
+    postalCode: shipping.zip || place.postalCode,
+    street: shipping.address,
+    timezone: place.timezone,
+  });
+}
+
+function buildGeoStats(visitInput, orders) {
+  const visitCountries = Array.isArray(visitInput) ? visitInput : (visitInput && visitInput.countries) || [];
+  const visitPlaces = Array.isArray(visitInput) ? [] : (visitInput && visitInput.places) || [];
+  const map = new Map();
+
+  function ensure(placeLike) {
+    const compact = compactPlace(placeLike);
+    if (!map.has(compact.key)) {
+      map.set(compact.key, {
+        key: compact.key,
+        code: compact.countryCode,
+        name: compact.country,
+        country: compact.country,
+        region: compact.region,
+        city: compact.city,
+        postalCode: compact.postalCode,
+        label: compact.label,
+        streets: [],
+        visits: 0,
+        visitors: 0,
+        orders: 0,
+      });
+    }
+    const item = map.get(compact.key);
+    if (compact.street && !item.streets.includes(compact.street) && item.streets.length < 3) {
+      item.streets.push(compact.street);
+      item.label = formatPlaceLabel(item, item.streets);
+    }
+    return item;
+  }
+
+  visitPlaces.forEach((row) => {
+    if (!row) return;
+    const item = ensure(row);
+    item.visits += Number(row.pv != null ? row.pv : row.visits) || 0;
+    item.visitors += Number(row.uv != null ? row.uv : row.visitors) || 0;
+  });
+
+  visitCountries.forEach((row) => {
+    const code = normalizeCountryCode(row && row.code) || "UN";
+    const name = (row && row.name) || (code === "UN" ? "未知地区" : countryName(code) || code);
+    const usedVisits = Array.from(map.values())
+      .filter((item) => item.code === code)
+      .reduce((sum, item) => sum + (Number(item.visits) || 0), 0);
+    const usedUv = Array.from(map.values())
+      .filter((item) => item.code === code)
+      .reduce((sum, item) => sum + (Number(item.visitors) || 0), 0);
+    const remPv = Math.max(0, (Number(row && (row.pv != null ? row.pv : row.visits)) || 0) - usedVisits);
+    const remUv = Math.max(0, (Number(row && (row.uv != null ? row.uv : row.visitors)) || 0) - usedUv);
+    if (!remPv && !remUv) return;
+    const item = ensure({ countryCode: code, country: name });
+    item.visits += remPv;
+    item.visitors += remUv;
+    if (usedVisits > 0 && !item.region && !item.city) {
+      item.label = name + "（未细分到城市）";
+    }
+  });
+
+  (Array.isArray(orders) ? orders : []).forEach((order) => {
+    ensure(resolveOrderPlace(order)).orders += 1;
+  });
+
+  return Array.from(map.values())
+    .map((row) => ({ ...row, total: row.visits + row.orders }))
+    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders || String(a.label).localeCompare(String(b.label), "zh"));
+}
+
 function normalizePlace(raw) {
   if (!raw || typeof raw !== "object") return null;
+  const compact = compactPlace(raw);
+  if (compact.countryCode === "UN" && !compact.region && !compact.city && !compact.postalCode && !compact.timezone) {
+    return null;
+  }
   const place = {
-    countryCode: clean(raw.countryCode || raw.country).toUpperCase().slice(0, 8),
-    country: clean(raw.countryName || raw.country),
-    region: clean(raw.region),
+    countryCode: compact.countryCode === "UN" ? "" : compact.countryCode,
+    country: compact.country,
+    region: compact.region,
     regionCode: clean(raw.regionCode).toUpperCase().slice(0, 8),
-    city: clean(raw.city).slice(0, 80),
-    timezone: clean(raw.timezone).slice(0, 80),
+    city: compact.city,
+    postalCode: compact.postalCode,
+    timezone: compact.timezone,
     continent: clean(raw.continent).toUpperCase().slice(0, 8),
+    label: compact.label,
   };
-  if (place.countryCode && !place.country) place.country = countryName(place.countryCode);
-  place.label = formatRegisterPlace(place);
   if (!place.label && !place.timezone && !place.countryCode) return null;
   return place;
 }
@@ -379,10 +470,13 @@ function readRegisterPlace(req, body) {
 module.exports = {
   readRegisterPlace,
   formatRegisterPlace,
+  formatPlaceLabel,
   normalizePlace,
+  compactPlace,
   countryName,
   normalizeCountryCode,
   inferCountryFromText,
   resolveOrderCountry,
+  resolveOrderPlace,
   buildGeoStats,
 };

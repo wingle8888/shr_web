@@ -58,6 +58,7 @@ module.exports = async function handler(req, res) {
           pathName: pathName || "/",
           referrer: body.referrer,
           countryCode: place && place.countryCode,
+          place,
         });
         sendJson(res, 200, { ok: true, ...result });
       } catch (err) {

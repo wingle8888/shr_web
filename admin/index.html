@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920h">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920i">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -103,7 +103,7 @@
               <button type="button" class="link-btn" id="refreshGeo">刷新</button>
             </div>
           </div>
-          <p class="admin-tip">世界地图按国家/地区汇总访问次数与下单次数。定位来自访问与下单时的网络国家码（Cloudflare），并辅以收货地址识别。颜色越亮表示合计越多。</p>
+          <p class="admin-tip">世界地图按国家着色；下方明细尽量显示国家、省/州、城市、邮编，以及下单时的收货街道。访问定位来自 Cloudflare 网络地址，下单会叠加收货地址。</p>
           <div class="admin-geo-legend">
             <span>少</span>
             <span class="admin-geo-legend-bar" aria-hidden="true"></span>
@@ -111,13 +111,16 @@
             <span class="admin-hint" id="geoSummary"></span>
           </div>
           <div class="admin-world-map" id="geoWorldMap"></div>
-          <h2 class="admin-sub">各国 / 地区明细</h2>
+          <h2 class="admin-sub">详细地址明细</h2>
           <div class="admin-table-wrap">
             <table class="admin-table" id="geoStatsTable">
               <thead>
                 <tr>
+                  <th>详细地址</th>
                   <th>国家 / 地区</th>
-                  <th>代码</th>
+                  <th>省 / 州</th>
+                  <th>城市</th>
+                  <th>邮编</th>
                   <th>访问次数</th>
                   <th>独立访客</th>
                   <th>下单次数</th>
@@ -532,6 +535,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920q"></script>
+  <script src="/admin/admin.js?v=20260920r"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ import adminFiles from "./api/admin/files.js";
 import adminUpload from "./api/admin/upload.js";
 import adminChat from "./api/admin/chat.js";
 import adminAuth from "./api/admin/auth.js";
+import visitsStore from "./api/_lib/visits-store.js";
 import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
@@ -95,49 +96,12 @@ export class CatalogDO {
     if (op === "visit" && (request.method === "POST" || request.method === "PUT")) {
       const body = await request.json().catch(() => ({}));
       let data = await this.state.storage.get(key);
-      if (!data || typeof data !== "object") data = { days: {} };
-      if (!data.days || typeof data.days !== "object") data.days = {};
-      const day = String(body.day || "").slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-        return new Response(JSON.stringify({ ok: false, error: "invalid day" }), {
-          status: 400,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
-      }
-      const row = data.days[day] && typeof data.days[day] === "object"
-        ? data.days[day]
-        : { pv: 0, uvIds: [], paths: {} };
-      row.pv = (Number(row.pv) || 0) + 1;
-      const vid = String(body.visitorId || "").slice(0, 64);
-      if (!Array.isArray(row.uvIds)) row.uvIds = [];
-      if (vid && !row.uvIds.includes(vid)) {
-        row.uvIds.push(vid);
-        if (row.uvIds.length > 3000) row.uvIds = row.uvIds.slice(-3000);
-      }
-      const p = String(body.pathName || "/").slice(0, 120) || "/";
-      if (!row.paths || typeof row.paths !== "object") row.paths = {};
-      row.paths[p] = (Number(row.paths[p]) || 0) + 1;
-      if (body.referrer) row.lastReferrer = String(body.referrer).slice(0, 200);
-      let cc = String(body.countryCode || "").toUpperCase().slice(0, 2);
-      if (cc === "UK") cc = "GB";
-      if (/^[A-Z]{2}$/.test(cc) && cc !== "XX" && cc !== "T1") {
-        if (!row.countries || typeof row.countries !== "object") row.countries = {};
-        const ctry = row.countries[cc] && typeof row.countries[cc] === "object" ? row.countries[cc] : { pv: 0, uvIds: [] };
-        ctry.pv = (Number(ctry.pv) || 0) + 1;
-        if (!Array.isArray(ctry.uvIds)) ctry.uvIds = [];
-        if (vid && !ctry.uvIds.includes(vid)) {
-          ctry.uvIds.push(vid);
-          if (ctry.uvIds.length > 3000) ctry.uvIds = ctry.uvIds.slice(-3000);
-        }
-        row.countries[cc] = ctry;
-      }
-      data.days[day] = row;
-      const keys = Object.keys(data.days).sort();
-      if (keys.length > 400) {
-        keys.slice(0, keys.length - 400).forEach((k) => delete data.days[k]);
-      }
-      await this.state.storage.put(key, data);
-      return new Response(JSON.stringify({ ok: true, day, pv: row.pv, uv: row.uvIds.length }), {
+      const applyVisit =
+        (visitsStore && visitsStore.applyVisitRecord) ||
+        (visitsStore && visitsStore.default && visitsStore.default.applyVisitRecord);
+      const applied = applyVisit(data, body);
+      await this.state.storage.put(key, applied.data);
+      return new Response(JSON.stringify({ ok: true, day: applied.day, pv: applied.pv, uv: applied.uv }), {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     }

@@ -652,35 +652,100 @@ function renderAddressStats() {
 function lookupGeoRow(code) {
   const up = String(code || "").toUpperCase();
   const alts = up === "UK" ? ["UK", "GB"] : up === "GB" ? ["GB", "UK"] : [up];
-  return (state.geoStats || []).find((row) => alts.includes(String(row.code || "").toUpperCase()));
+  const rows = (state.geoStats || []).filter((row) => alts.includes(String(row.code || "").toUpperCase()));
+  if (!rows.length) return null;
+  const visits = rows.reduce((s, row) => s + (Number(row.visits) || 0), 0);
+  const orders = rows.reduce((s, row) => s + (Number(row.orders) || 0), 0);
+  const cities = rows.map((row) => row.city || row.region).filter(Boolean);
+  const uniqueCities = [];
+  cities.forEach((name) => {
+    if (!uniqueCities.includes(name) && uniqueCities.length < 4) uniqueCities.push(name);
+  });
+  return {
+    code: rows[0].code,
+    name: rows[0].country || rows[0].name || up,
+    visits,
+    orders,
+    total: visits + orders,
+    detail: uniqueCities.join("、"),
+  };
+}
+
+function geoRowKey(row) {
+  return row.key || [row.code || "", row.region || "", row.city || "", row.postalCode || ""].join("|");
 }
 
 function applyVisitCountriesToGeo() {
-  const visitList = Array.isArray(state.visits && state.visits.countries) ? state.visits.countries : null;
-  if (!visitList) return;
-  const visitMap = new Map(visitList.map((row) => [String(row.code || "").toUpperCase(), row]));
-  const prevList = state.geoStats || [];
-  const codes = new Set();
-  prevList.forEach((row) => codes.add(String(row.code || "").toUpperCase()));
-  visitList.forEach((row) => codes.add(String(row.code || "").toUpperCase()));
-  state.geoStats = Array.from(codes)
-    .filter(Boolean)
-    .map((code) => {
-      const prev = prevList.find((row) => String(row.code || "").toUpperCase() === code) || {};
-      const visit = visitMap.get(code) || {};
-      const visits = visitMap.has(code) ? Number(visit.pv) || 0 : Number(prev.visits) || 0;
-      const visitors = visitMap.has(code) ? Number(visit.uv) || 0 : Number(prev.visitors) || 0;
-      const orders = Number(prev.orders) || 0;
-      return {
-        code,
-        name: prev.name || visit.name || (code === "UN" ? "未知地区" : code),
-        visits,
-        visitors,
-        orders,
-        total: visits + orders,
-      };
-    })
-    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
+  const visits = state.visits;
+  if (!visits) return;
+  const placeList = Array.isArray(visits.places) ? visits.places : [];
+  const countryList = Array.isArray(visits.countries) ? visits.countries : [];
+  if (!placeList.length && !countryList.length) return;
+
+  const prevMap = new Map((state.geoStats || []).map((row) => [geoRowKey(row), row]));
+  const nextMap = new Map();
+
+  function upsertVisit(row) {
+    const key = row.key || geoRowKey(row);
+    const prev = prevMap.get(key) || nextMap.get(key) || {};
+    const visitCount = Number(row.visits != null ? row.visits : row.pv) || 0;
+    const visitorCount = Number(row.visitors != null ? row.visitors : row.uv) || 0;
+    const orders = Number(prev.orders) || 0;
+    nextMap.set(key, {
+      key,
+      code: row.code || prev.code || "",
+      name: row.country || row.name || prev.country || prev.name || key,
+      country: row.country || row.name || prev.country || prev.name || "",
+      region: row.region || prev.region || "",
+      city: row.city || prev.city || "",
+      postalCode: row.postalCode || prev.postalCode || "",
+      label: row.label || prev.label || "",
+      streets: Array.isArray(prev.streets) ? prev.streets : [],
+      visits: visitCount,
+      visitors: visitorCount,
+      orders,
+      total: visitCount + orders,
+    });
+  }
+
+  placeList.forEach(upsertVisit);
+  countryList.forEach((row) => {
+    const code = String(row.code || "").toUpperCase();
+    const usedVisits = Array.from(nextMap.values())
+      .filter((item) => String(item.code || "").toUpperCase() === code)
+      .reduce((sum, item) => sum + (Number(item.visits) || 0), 0);
+    const usedUv = Array.from(nextMap.values())
+      .filter((item) => String(item.code || "").toUpperCase() === code)
+      .reduce((sum, item) => sum + (Number(item.visitors) || 0), 0);
+    const remPv = Math.max(0, (Number(row.pv) || 0) - usedVisits);
+    const remUv = Math.max(0, (Number(row.uv) || 0) - usedUv);
+    if (!remPv && !remUv) return;
+    const name = row.name || code;
+    upsertVisit({
+      key: code + "|||",
+      code,
+      country: name,
+      name,
+      label: usedVisits ? name + "（未细分到城市）" : name,
+      visits: remPv,
+      visitors: remUv,
+      pv: remPv,
+      uv: remUv,
+    });
+  });
+  prevMap.forEach((row, key) => {
+    if (nextMap.has(key)) return;
+    if (!(Number(row.orders) > 0)) return;
+    nextMap.set(key, {
+      ...row,
+      visits: Number(row.visits) || 0,
+      visitors: Number(row.visitors) || 0,
+      total: (Number(row.visits) || 0) + (Number(row.orders) || 0),
+    });
+  });
+  state.geoStats = Array.from(nextMap.values()).sort(
+    (a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders
+  );
 }
 
 function renderGeoStats() {
@@ -691,25 +756,29 @@ function renderGeoStats() {
   const orderSum = list.reduce((s, row) => s + (Number(row.orders) || 0), 0);
   if (summary) {
     summary.textContent = list.length
-      ? `${list.length} 个国家/地区 · 访问 ${visitSum} · 下单 ${orderSum}`
+      ? `${list.length} 条地址 · 访问 ${visitSum} · 下单 ${orderSum}`
       : "";
   }
   if (table) {
     const tbody = table.querySelector("tbody");
     tbody.innerHTML = list.length
       ? list
-          .map(
-            (row) => `<tr>
-        <td>${escapeHtml(row.name || row.code || "-")}</td>
-        <td>${escapeHtml(row.code || "-")}</td>
+          .map((row) => {
+            const label = row.label || [row.country || row.name, row.region, row.city, row.postalCode].filter(Boolean).join(" · ") || row.code || "-";
+            return `<tr>
+        <td class="admin-addr-detail" title="${escapeHtml(label)}">${escapeHtml(label)}</td>
+        <td>${escapeHtml(row.country || row.name || row.code || "-")}</td>
+        <td>${escapeHtml(row.region || "-")}</td>
+        <td>${escapeHtml(row.city || "-")}</td>
+        <td>${escapeHtml(row.postalCode || "-")}</td>
         <td>${row.visits || 0}</td>
         <td>${row.visitors || 0}</td>
         <td>${row.orders || 0}</td>
         <td><strong>${row.total || 0}</strong></td>
-      </tr>`
-          )
+      </tr>`;
+          })
           .join("")
-      : `<tr><td colspan="6" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按所在国家/地区累计。</td></tr>`;
+      : `<tr><td colspan="9" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按国家、城市等尽量详细的地址累计。</td></tr>`;
   }
   if (state.currentTab === "geo") {
     if (geoMapTimer) clearTimeout(geoMapTimer);
@@ -755,7 +824,7 @@ function renderWorldMap() {
     if (!/^[A-Z]{2}$/.test(code) || code === "UN") return;
     const total = Number(row.total) || 0;
     if (total <= 0) return;
-    values[code] = total;
+    values[code] = (Number(values[code]) || 0) + total;
     if (code === "GB") values.UK = total;
   });
 
@@ -791,7 +860,9 @@ function renderWorldMap() {
       onRegionTooltipShow(event, tooltip, code) {
         const row = lookupGeoRow(code);
         const text = row
-          ? `${row.name}（${row.code}）\n访问 ${row.visits || 0} · 下单 ${row.orders || 0} · 合计 ${row.total || 0}`
+          ? `${row.name}（${row.code}）\n访问 ${row.visits || 0} · 下单 ${row.orders || 0} · 合计 ${row.total || 0}${
+              row.detail ? `\n城市：${row.detail}` : ""
+            }`
           : `${code}：暂无记录`;
         if (tooltip && typeof tooltip.text === "function") tooltip.text(text);
       },
