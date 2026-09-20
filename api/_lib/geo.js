@@ -425,11 +425,20 @@ function buildGeoStats(visitInput, orders) {
     }
   });
 
+  const resetAt = !Array.isArray(visitInput) && visitInput ? String(visitInput.geoResetAt || "") : "";
+  const deleted = new Set(
+    !Array.isArray(visitInput) && visitInput && Array.isArray(visitInput.geoDeletedKeys)
+      ? visitInput.geoDeletedKeys.map(String)
+      : []
+  );
+
   (Array.isArray(orders) ? orders : []).forEach((order) => {
+    if (resetAt && String((order && order.createdAt) || "") < resetAt) return;
     ensure(resolveOrderPlace(order)).orders += 1;
   });
 
   return Array.from(map.values())
+    .filter((row) => !deleted.has(row.key) && (row.visits || row.visitors || row.orders))
     .map((row) => ({ ...row, total: row.visits + row.orders }))
     .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders || String(a.label).localeCompare(String(b.label), "zh"));
 }

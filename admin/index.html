@@ -101,9 +101,10 @@
             <h1>全球地址统计</h1>
             <div class="admin-inline-actions">
               <button type="button" class="link-btn" id="refreshGeo">刷新</button>
+              <button type="button" class="link-btn danger" id="clearGeo">清空</button>
             </div>
           </div>
-          <p class="admin-tip">世界地图按国家着色；下方明细尽量显示国家、省/州、城市、邮编，以及下单时的收货街道。访问定位来自 Cloudflare 网络地址，下单会叠加收货地址。</p>
+          <p class="admin-tip">世界地图按国家着色；下方明细尽量显示国家、省/州、城市、邮编，以及下单时的收货街道。可删除指定地址，或清空全部地址统计（不影响日访问量）。</p>
           <div class="admin-geo-legend">
             <span>少</span>
             <span class="admin-geo-legend-bar" aria-hidden="true"></span>
@@ -125,6 +126,7 @@
                   <th>独立访客</th>
                   <th>下单次数</th>
                   <th>合计</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -535,6 +537,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920r"></script>
+  <script src="/admin/admin.js?v=20260920s"></script>
 </body>
 </html>

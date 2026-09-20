@@ -27,13 +27,43 @@ function monthKeyFromDay(day) {
 }
 
 function emptyStore() {
-  return { days: {} };
+  return { days: {}, geoDeletedKeys: [], geoResetAt: "" };
+}
+
+function asGeoKeys(raw) {
+  if (raw && Array.isArray(raw.geoDeletedKeys)) {
+    return raw.geoDeletedKeys.map((id) => String(id || "").trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function laterStamp(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  return x >= y ? x : y;
 }
 
 function normalizeStore(raw) {
   if (!raw || typeof raw !== "object") return emptyStore();
   const days = raw.days && typeof raw.days === "object" ? raw.days : {};
-  return { days };
+  return {
+    days,
+    geoDeletedKeys: [...new Set(asGeoKeys(raw))].slice(-500),
+    geoResetAt: String(raw.geoResetAt || ""),
+  };
+}
+
+function applyGeoReset(days, resetAt) {
+  const cutoff = String(resetAt || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff) || !days || typeof days !== "object") return days;
+  Object.keys(days).forEach((day) => {
+    if (String(day) >= cutoff) return;
+    const row = days[day];
+    if (!row || typeof row !== "object") return;
+    row.countries = {};
+    row.places = {};
+  });
+  return days;
 }
 
 function mergeVisits(a, b) {
@@ -61,7 +91,13 @@ function mergeVisits(a, b) {
       places: mergePlaceDay(ra.places, rb.places),
     };
   });
-  return { days };
+  const geoResetAt = laterStamp(left.geoResetAt, right.geoResetAt);
+  applyGeoReset(days, geoResetAt);
+  return {
+    days,
+    geoDeletedKeys: [...new Set([...asGeoKeys(left), ...asGeoKeys(right)])].slice(-500),
+    geoResetAt,
+  };
 }
 
 function pruneDays(data) {
@@ -213,9 +249,11 @@ function bumpPlace(row, place, visitorId) {
   row.places[key] = prev;
 }
 
-function extractVisitCountries(daysMap) {
+function extractVisitCountries(daysMap, resetAt) {
+  const cutoff = String(resetAt || "").slice(0, 10);
   const by = {};
-  Object.values(daysMap || {}).forEach((row) => {
+  Object.entries(daysMap || {}).forEach(([day, row]) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cutoff) && String(day) < cutoff) return;
     const cmap = row && row.countries;
     if (!cmap || typeof cmap !== "object") return;
     Object.keys(cmap).forEach((rawCode) => {
@@ -234,9 +272,11 @@ function extractVisitCountries(daysMap) {
     .sort((a, b) => b.pv - a.pv);
 }
 
-function extractVisitPlaces(daysMap) {
+function extractVisitPlaces(daysMap, resetAt) {
+  const cutoff = String(resetAt || "").slice(0, 10);
   const by = {};
-  Object.values(daysMap || {}).forEach((row) => {
+  Object.entries(daysMap || {}).forEach(([day, row]) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cutoff) && String(day) < cutoff) return;
     const pmap = row && row.places;
     if (!pmap || typeof pmap !== "object") return;
     Object.keys(pmap).forEach((key) => {
@@ -423,14 +463,43 @@ function buildVisitStats(raw) {
     timezone: TZ,
     updatedAt: new Date().toISOString(),
     storage: hasBlob() ? "blob" : "local",
-    countries: extractVisitCountries(daysMap),
-    places: extractVisitPlaces(daysMap),
+    countries: extractVisitCountries(daysMap, data.geoResetAt),
+    places: extractVisitPlaces(daysMap, data.geoResetAt),
+    geoDeletedKeys: data.geoDeletedKeys || [],
+    geoResetAt: data.geoResetAt || "",
   };
 }
 
 async function loadVisitStats() {
   const data = await readVisits();
   return buildVisitStats(data);
+}
+
+function normalizeGeoKeys(ids) {
+  const list = Array.isArray(ids) ? ids : ids != null ? [ids] : [];
+  return [...new Set(list.map((id) => String(id || "").trim()).filter(Boolean))];
+}
+
+async function deleteGeoKeys(ids) {
+  const remove = normalizeGeoKeys(ids);
+  const current = await readVisits();
+  if (!remove.length) return current;
+  current.geoDeletedKeys = [...new Set([...(current.geoDeletedKeys || []), ...remove])].slice(-500);
+  return writeVisits(current);
+}
+
+async function clearGeoStats() {
+  const current = await readVisits();
+  current.geoDeletedKeys = [];
+  current.geoResetAt = new Date().toISOString();
+  applyGeoReset(current.days, current.geoResetAt);
+  Object.keys(current.days || {}).forEach((day) => {
+    const row = current.days[day];
+    if (!row || typeof row !== "object") return;
+    row.countries = {};
+    row.places = {};
+  });
+  return writeVisits(current);
 }
 
 module.exports = {
@@ -440,5 +509,7 @@ module.exports = {
   applyVisitRecord,
   buildVisitStats,
   loadVisitStats,
+  deleteGeoKeys,
+  clearGeoStats,
   dayKey,
 };

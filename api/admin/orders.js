@@ -1,6 +1,6 @@
 const { cors, sendJson, checkAdmin, parseBody } = require("../_lib/docs-store");
 const { readOrders, writeOrders, buildStats, extractCustomers, extractAddressStats } = require("../_lib/orders-store");
-const { loadVisitStats } = require("../_lib/visits-store");
+const { loadVisitStats, deleteGeoKeys, clearGeoStats } = require("../_lib/visits-store");
 const { buildGeoStats } = require("../_lib/geo");
 
 module.exports = async function handler(req, res) {
@@ -75,6 +75,20 @@ module.exports = async function handler(req, res) {
         orders[idx].updatedAt = new Date().toISOString();
         await writeOrders(orders);
         sendJson(res, 200, { ok: true, order: orders[idx] });
+        return;
+      }
+      if (action === "delete-geo") {
+        await deleteGeoKeys(body.keys || body.key);
+        const visits = await loadVisitStats();
+        const orders = await readOrders();
+        sendJson(res, 200, { ok: true, visits, geoStats: buildGeoStats(visits, orders) });
+        return;
+      }
+      if (action === "clear-geo") {
+        await clearGeoStats();
+        const visits = await loadVisitStats();
+        const orders = await readOrders();
+        sendJson(res, 200, { ok: true, visits, geoStats: buildGeoStats(visits, orders) });
         return;
       }
       sendJson(res, 400, { ok: false, error: "unknown action" });

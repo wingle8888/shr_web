@@ -743,9 +743,10 @@ function applyVisitCountriesToGeo() {
       total: (Number(row.visits) || 0) + (Number(row.orders) || 0),
     });
   });
-  state.geoStats = Array.from(nextMap.values()).sort(
-    (a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders
-  );
+  const deleted = new Set(Array.isArray(visits.geoDeletedKeys) ? visits.geoDeletedKeys.map(String) : []);
+  state.geoStats = Array.from(nextMap.values())
+    .filter((row) => !deleted.has(geoRowKey(row)))
+    .sort((a, b) => b.total - a.total || b.visits - a.visits || b.orders - a.orders);
 }
 
 function renderGeoStats() {
@@ -754,6 +755,8 @@ function renderGeoStats() {
   const list = state.geoStats || [];
   const visitSum = list.reduce((s, row) => s + (Number(row.visits) || 0), 0);
   const orderSum = list.reduce((s, row) => s + (Number(row.orders) || 0), 0);
+  const clearBtn = $("clearGeo");
+  if (clearBtn) clearBtn.disabled = !list.length;
   if (summary) {
     summary.textContent = list.length
       ? `${list.length} 条地址 · 访问 ${visitSum} · 下单 ${orderSum}`
@@ -764,6 +767,7 @@ function renderGeoStats() {
     tbody.innerHTML = list.length
       ? list
           .map((row) => {
+            const key = geoRowKey(row);
             const label = row.label || [row.country || row.name, row.region, row.city, row.postalCode].filter(Boolean).join(" · ") || row.code || "-";
             return `<tr>
         <td class="admin-addr-detail" title="${escapeHtml(label)}">${escapeHtml(label)}</td>
@@ -775,15 +779,50 @@ function renderGeoStats() {
         <td>${row.visitors || 0}</td>
         <td>${row.orders || 0}</td>
         <td><strong>${row.total || 0}</strong></td>
+        <td class="admin-row-actions">${
+          key
+            ? `<button type="button" class="danger" data-del-geo="${escapeHtml(key)}">删除</button>`
+            : "-"
+        }</td>
       </tr>`;
           })
           .join("")
-      : `<tr><td colspan="9" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按国家、城市等尽量详细的地址累计。</td></tr>`;
+      : `<tr><td colspan="10" class="admin-empty">暂无全球地址数据。访客打开商城或客户下单后，将按国家、城市等尽量详细的地址累计。</td></tr>`;
   }
   if (state.currentTab === "geo") {
     if (geoMapTimer) clearTimeout(geoMapTimer);
     geoMapTimer = setTimeout(() => renderWorldMap(), 40);
   }
+}
+
+async function applyGeoResult(data) {
+  if (data.visits) state.visits = data.visits;
+  if (Array.isArray(data.geoStats)) state.geoStats = data.geoStats;
+  renderGeoStats();
+}
+
+async function deleteGeoRow(key) {
+  const geoKey = String(key || "").trim();
+  if (!geoKey) return;
+  if (!(await adminConfirm("确定删除这条地址统计？删除后该地址不再出现在全球地址中，订单和访问量本身不会删除。", "删除地址统计"))) return;
+  const data = await api("/api/admin/orders", {
+    method: "POST",
+    body: JSON.stringify({ action: "delete-geo", key: geoKey }),
+  });
+  await applyGeoResult(data);
+}
+
+async function clearGeoHistory() {
+  if (!(state.geoStats || []).length) {
+    await adminAlert("当前没有地址统计。", "清空地址统计");
+    return;
+  }
+  if (!(await adminConfirm("确定清空全部地址统计？地图和明细会从服务器清掉，日访问量不受影响。", "清空地址统计"))) return;
+  const data = await api("/api/admin/orders", {
+    method: "POST",
+    body: JSON.stringify({ action: "clear-geo" }),
+  });
+  await applyGeoResult(data);
 }
 
 function destroyGeoMap() {
@@ -1625,6 +1664,14 @@ $("refreshDashboard").addEventListener("click", () =>
 $("refreshGeo").addEventListener("click", () =>
   loadOrdersBundle().catch((e) => alert(e.message))
 );
+$("clearGeo").addEventListener("click", () => {
+  clearGeoHistory().catch((err) => adminAlert(err.message));
+});
+$("geoStatsTable").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-del-geo]");
+  if (!btn) return;
+  deleteGeoRow(btn.dataset.delGeo).catch((err) => adminAlert(err.message));
+});
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !getPass()) return;
