@@ -24,7 +24,7 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --topbar-offset: calc(32px + var(--safe-top));
-  --header-offset: calc(118px + var(--safe-top));
+  --header-offset: calc(128px + var(--safe-top));
 }
 
 html {

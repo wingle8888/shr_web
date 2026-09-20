@@ -500,11 +500,10 @@
     const topBar = document.querySelector(".top-bar");
     const header = document.querySelector("header");
     if (!topBar || !header || document.body.classList.contains("admin-body")) return;
-    const inner = header.querySelector(".header-inner") || header;
     const topH = Math.ceil(topBar.getBoundingClientRect().height);
-    const headH = Math.ceil(inner.getBoundingClientRect().height);
+    const headH = Math.ceil(header.getBoundingClientRect().height);
     document.documentElement.style.setProperty("--topbar-offset", topH + "px");
-    document.documentElement.style.setProperty("--header-offset", topH + headH + "px");
+    document.documentElement.style.setProperty("--header-offset", topH + headH + 8 + "px");
   }
 
   function initChromeOffset() {
