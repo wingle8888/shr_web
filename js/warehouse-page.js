@@ -50,16 +50,42 @@
     toast(t(key));
   }
 
+  const ICONS = {
+    box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
+    list: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/>',
+    pin: '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>',
+    cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M3 4h2l2.2 11h11.3l1.8-7H7"/>',
+    wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.2"/>',
+    truck: '<path d="M3 7h11v10H3z"/><path d="M14 11h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>',
+    package: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/><path d="M8 6.5l8 4.5"/>',
+    refund: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+    card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
+    user: '<circle cx="12" cy="8" r="3.2"/><path d="M5 19c1.4-3 3.8-4.5 7-4.5S17.6 16 19 19"/>',
+    mail: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
+    phone: '<path d="M7 3h3l1.4 3.4-2 1.2a12 12 0 0 0 6 6l1.2-2L21 13v3a2 2 0 0 1-2 2A14 14 0 0 1 5 7a2 2 0 0 1 2-2z"/>',
+    star: '<path d="M12 3.6l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.8 7.2 18.5l.9-5.4L4.2 9.3l5.4-.8z"/>',
+    check: '<path d="M20 6L9 17l-5-5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    empty: '<path d="M3 7h18l-2 12H5L3 7z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/>',
+    edit: '<path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M14 6l4 4"/>',
+    trash: '<path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12"/>',
+  };
+
+  function icon(name, cls) {
+    return `<svg class="wh-ico${cls ? " " + cls : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.box}</svg>`;
+  }
+
   function renderProfile() {
     const user = window.Auth && window.Auth.currentUser ? window.Auth.currentUser() : null;
     const box = document.getElementById("whProfile");
     if (!box || !user) return;
     box.innerHTML = `
       <div class="warehouse-avatar">${escapeHtml(String(user.name || user.email || "?").slice(0, 1))}</div>
-      <div>
+      <div class="warehouse-profile-meta">
         <strong>${escapeHtml(user.name || user.email || "")}</strong>
-        <p>${escapeHtml(user.email || "")}</p>
-        ${user.phone ? `<p>${escapeHtml(user.phone)}</p>` : ""}
+        <p>${icon("mail")}<span>${escapeHtml(user.email || "")}</span></p>
+        ${user.phone ? `<p>${icon("phone")}<span>${escapeHtml(user.phone)}</span></p>` : ""}
       </div>`;
   }
 
@@ -84,22 +110,35 @@
     };
   }
 
+  function renderNavCounts() {
+    const n = counts();
+    const map = {
+      orders: n.all,
+      addresses: (warehouse().addresses || []).length,
+      cart: (warehouse().cart || []).length,
+    };
+    document.querySelectorAll("[data-wh-count]").forEach((el) => {
+      el.textContent = String(map[el.getAttribute("data-wh-count")] || 0);
+    });
+  }
+
   function renderStats() {
     const n = counts();
     const box = document.getElementById("whStats");
     if (!box) return;
     const items = [
-      ["unpaid", "warehouseUnpaid", n.unpaid],
-      ["paid", "warehouseToShip", n.paid],
-      ["shipped", "warehouseToReceive", n.shipped],
-      ["refund", "warehouseRefund", n.refund],
+      ["unpaid", "warehouseUnpaid", n.unpaid, "wallet"],
+      ["paid", "warehouseToShip", n.paid, "truck"],
+      ["shipped", "warehouseToReceive", n.shipped, "package"],
+      ["refund", "warehouseRefund", n.refund, "refund"],
     ];
     box.innerHTML = items
       .map(
-        ([key, label, count]) => `
-      <button type="button" class="warehouse-stat${orderFilter === key ? " active" : ""}" data-wh-filter="${key}">
-        <b>${escapeHtml(count)}</b>
-        <span>${escapeHtml(t(label))}</span>
+        ([key, label, count, ico]) => `
+      <button type="button" class="warehouse-stat warehouse-stat-${key}${orderFilter === key ? " active" : ""}" data-wh-filter="${key}">
+        <span class="warehouse-stat-ico">${icon(ico)}</span>
+        <strong class="warehouse-stat-num">${escapeHtml(count)}</strong>
+        <span class="warehouse-stat-label">${escapeHtml(t(label))}</span>
       </button>`
       )
       .join("");
@@ -110,18 +149,18 @@
     if (!wrap) return;
     const n = counts();
     const tabs = [
-      ["all", "warehouseOrdersAll", n.all],
-      ["unpaid", "warehouseUnpaid", n.unpaid],
-      ["paid", "warehouseToShip", n.paid],
-      ["shipped", "warehouseToReceive", n.shipped],
-      ["refund", "warehouseRefund", n.refund],
+      ["all", "warehouseOrdersAll", n.all, "list"],
+      ["unpaid", "warehouseUnpaid", n.unpaid, "wallet"],
+      ["paid", "warehouseToShip", n.paid, "truck"],
+      ["shipped", "warehouseToReceive", n.shipped, "package"],
+      ["refund", "warehouseRefund", n.refund, "refund"],
     ];
     wrap.innerHTML = tabs
       .map(
-        ([key, label, count]) =>
-          `<button type="button" class="${orderFilter === key ? "active" : ""}" data-wh-filter="${key}">${escapeHtml(
-            t(label)
-          )} (${count})</button>`
+        ([key, label, count, ico]) =>
+          `<button type="button" class="${orderFilter === key ? "active" : ""}" data-wh-filter="${key}">${icon(
+            ico
+          )}<span>${escapeHtml(t(label))} (${count})</span></button>`
       )
       .join("");
   }
@@ -141,7 +180,7 @@
     if (!list) return;
     const rows = orders.filter((order) => orderFilter === "all" || stageOf(order) === orderFilter);
     if (!rows.length) {
-      list.innerHTML = `<div class="warehouse-empty">${escapeHtml(emptyText())}</div>`;
+      list.innerHTML = `<div class="warehouse-empty">${icon("empty", "wh-ico-lg")}<p>${escapeHtml(emptyText())}</p></div>`;
       return;
     }
     list.innerHTML = rows
@@ -164,36 +203,38 @@
         const actions = [];
         if (st === "shipped") {
           actions.push(
-            `<button type="button" class="btn btn-sm" data-wh-receive="${escapeHtml(order.id)}">${escapeHtml(
-              t("warehouseConfirmReceive")
-            )}</button>`
+            `<button type="button" class="btn btn-sm warehouse-btn-ico" data-wh-receive="${escapeHtml(order.id)}">${icon(
+              "check"
+            )}<span>${escapeHtml(t("warehouseConfirmReceive"))}</span></button>`
           );
         }
         if (st === "paid" || st === "shipped") {
           actions.push(
-            `<button type="button" class="link-btn" data-wh-refund="${escapeHtml(order.id)}">${escapeHtml(
-              t("warehouseRequestRefund")
-            )}</button>`
+            `<button type="button" class="link-btn warehouse-btn-ico" data-wh-refund="${escapeHtml(order.id)}">${icon(
+              "refund"
+            )}<span>${escapeHtml(t("warehouseRequestRefund"))}</span></button>`
           );
         }
         return `
           <article class="order-card warehouse-card">
             <div class="order-card-head">
-              <strong>${escapeHtml(order.id)}</strong>
-              <span class="warehouse-stage warehouse-stage-${st}">${escapeHtml(stageLabel(order))}</span>
+              <strong>${icon("list")}<span>${escapeHtml(order.id)}</span></strong>
+              <span class="warehouse-stage warehouse-stage-${st}">${icon(st === "paid" ? "truck" : st === "shipped" ? "package" : st === "refund" ? "refund" : st === "unpaid" ? "wallet" : "check")}${escapeHtml(stageLabel(order))}</span>
             </div>
-            <p>${escapeHtml(t("orderTime"))}${escapeHtml(when)}</p>
-            ${order.payMethod ? `<p>${escapeHtml(t("payMethod"))}${escapeHtml(order.payMethod)}</p>` : ""}
-            ${
-              ship.name
-                ? `<p>${escapeHtml(t("receiver"))}${escapeHtml(ship.name)} / ${escapeHtml(ship.phone || "")}</p>`
-                : ""
-            }
-            ${
-              ship.address
-                ? `<p>${escapeHtml(t("address"))}${escapeHtml(ship.region || "")} ${escapeHtml(ship.address)}</p>`
-                : ""
-            }
+            <div class="warehouse-meta">
+              <p>${icon("clock")}<span>${escapeHtml(t("orderTime"))}${escapeHtml(when)}</span></p>
+              ${order.payMethod ? `<p>${icon("card")}<span>${escapeHtml(t("payMethod"))}${escapeHtml(order.payMethod)}</span></p>` : ""}
+              ${
+                ship.name
+                  ? `<p>${icon("user")}<span>${escapeHtml(t("receiver"))}${escapeHtml(ship.name)} / ${escapeHtml(ship.phone || "")}</span></p>`
+                  : ""
+              }
+              ${
+                ship.address
+                  ? `<p>${icon("pin")}<span>${escapeHtml(t("address"))}${escapeHtml(ship.region || "")} ${escapeHtml(ship.address)}</span></p>`
+                  : ""
+              }
+            </div>
             ${items}
             <p class="order-total">${escapeHtml(t("orderTotal"))}${Number(order.total || 0).toFixed(2)}</p>
             ${actions.length ? `<div class="warehouse-actions">${actions.join("")}</div>` : ""}
@@ -207,32 +248,35 @@
     if (!list) return;
     const addresses = warehouse().addresses || [];
     if (!addresses.length) {
-      list.innerHTML = `<div class="warehouse-empty">${escapeHtml(t("warehouseEmptyAddresses"))}</div>`;
+      list.innerHTML = `<div class="warehouse-empty">${icon("pin", "wh-ico-lg")}<p>${escapeHtml(t("warehouseEmptyAddresses"))}</p></div>`;
       return;
     }
     list.innerHTML = addresses
       .map((addr) => {
         const id = escapeHtml(addr.id || "");
         return `
-          <article class="order-card warehouse-card">
+          <article class="order-card warehouse-card warehouse-address-card">
+            <div class="warehouse-address-mark">${icon("pin")}</div>
+            <div class="warehouse-address-body">
             <p>
               <strong>${escapeHtml(addr.name || "")}</strong> · ${escapeHtml(addr.phone || "")}
-              ${addr.isDefault ? `<span class="warehouse-stage warehouse-stage-paid">${escapeHtml(t("warehouseDefaultAddress"))}</span>` : ""}
+              ${addr.isDefault ? `<span class="warehouse-stage warehouse-stage-paid">${icon("star")}${escapeHtml(t("warehouseDefaultAddress"))}</span>` : ""}
             </p>
             <p>${escapeHtml(addr.region || "")} ${escapeHtml(addr.address || "")}</p>
             ${addr.zip ? `<p>${escapeHtml(addr.zip)}</p>` : ""}
-            ${addr.email ? `<p>${escapeHtml(addr.email)}</p>` : ""}
+            ${addr.email ? `<p>${icon("mail")}<span>${escapeHtml(addr.email)}</span></p>` : ""}
             ${addr.note ? `<p>${escapeHtml(addr.note)}</p>` : ""}
             <div class="warehouse-actions">
               ${
                 addr.isDefault
                   ? ""
-                  : `<button type="button" class="btn btn-sm" data-wh-default="${id}">${escapeHtml(
-                      t("warehouseSetDefault")
-                    )}</button>`
+                  : `<button type="button" class="btn btn-sm warehouse-btn-ico" data-wh-default="${id}">${icon(
+                      "star"
+                    )}<span>${escapeHtml(t("warehouseSetDefault"))}</span></button>`
               }
-              <button type="button" class="link-btn" data-wh-edit="${id}">${escapeHtml(t("warehouseEditAddress"))}</button>
-              <button type="button" class="link-btn" data-wh-del="${id}">${escapeHtml(t("warehouseDeleteAddress"))}</button>
+              <button type="button" class="link-btn warehouse-btn-ico" data-wh-edit="${id}">${icon("edit")}<span>${escapeHtml(t("warehouseEditAddress"))}</span></button>
+              <button type="button" class="link-btn warehouse-btn-ico" data-wh-del="${id}">${icon("trash")}<span>${escapeHtml(t("warehouseDeleteAddress"))}</span></button>
+            </div>
             </div>
           </article>`;
       })
@@ -244,7 +288,7 @@
     if (!list) return;
     const cart = warehouse().cart || [];
     if (!cart.length) {
-      list.innerHTML = `<div class="warehouse-empty">${escapeHtml(t("warehouseEmptyCart"))}</div>`;
+      list.innerHTML = `<div class="warehouse-empty">${icon("cart", "wh-ico-lg")}<p>${escapeHtml(t("warehouseEmptyCart"))}</p></div>`;
       return;
     }
     const rows = cart
@@ -261,17 +305,18 @@
             <button type="button" data-wh-qty="1" data-wh-id="${escapeHtml(item.id)}">+</button>
           </div>
         </div>
-        <button class="cart-remove" type="button" data-wh-remove="${escapeHtml(item.id)}">${escapeHtml(t("remove"))}</button>
+        <button class="cart-remove warehouse-btn-ico" type="button" data-wh-remove="${escapeHtml(item.id)}">${icon("trash")}<span>${escapeHtml(t("remove"))}</span></button>
       </div>`
       )
       .join("");
     const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.qty), 0);
-    list.innerHTML = `${rows}<p class="order-total">${escapeHtml(t("total"))}${total.toFixed(2)}</p>`;
+    list.innerHTML = `<div class="warehouse-card warehouse-cart-box">${rows}<p class="order-total">${escapeHtml(t("total"))}${total.toFixed(2)}</p></div>`;
   }
 
   function render() {
     if (window.I18N) window.I18N.applyI18n();
     renderProfile();
+    renderNavCounts();
     if (panel === "addresses") renderAddresses();
     else if (panel === "cart") renderCart();
     else renderOrders();

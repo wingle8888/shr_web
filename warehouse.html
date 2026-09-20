@@ -10,14 +10,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260920ab">
+  <link rel="stylesheet" href="/css/style.css?v=20260920ae">
 </head>
 <body class="warehouse-page" data-i18n-title="warehousePageTitle">
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow" aria-hidden="true"></div>
   <div class="top-bar">
     <div class="container top-bar-inner">
-      <span data-i18n="warehouseLiveHint">订单状态与商家后台同步：付款后待发货，商家发货后待收货。</span>
+      <span data-i18n="topBar">可注册也可游客购买 · 支持国际支付 · 现货 24h 发货</span>
       <div class="top-bar-actions">
         <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
           <button type="button" class="lang-btn active" data-lang="zh">中文</button>
@@ -41,7 +41,14 @@
         <span class="logo-text" data-i18n="brand">开发板商城</span>
       </a>
       <div class="header-actions" style="margin-left:auto">
-        <a href="/#products" class="header-cart" data-i18n="warehouseGoMall">返回商城</a>
+        <a href="/#products" class="header-cart warehouse-back">
+          <svg class="header-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"></path>
+            <path d="M9 12h12"></path>
+            <path d="M4 5v14"></path>
+          </svg>
+          <span class="header-btn-text" data-i18n="warehouseGoMall">返回商城</span>
+        </a>
       </div>
     </div>
   </header>
@@ -50,12 +57,37 @@
     <aside class="warehouse-side">
       <div class="warehouse-profile" id="whProfile"></div>
       <nav class="warehouse-nav" id="whNav">
-        <button type="button" class="active" data-wh-panel="orders" data-i18n="warehouseNavOrders">我的订单</button>
-        <button type="button" data-wh-panel="addresses" data-i18n="warehouseNavAddresses">收货地址</button>
-        <button type="button" data-wh-panel="cart" data-i18n="warehouseNavCart">购物车</button>
+        <button type="button" class="active" data-wh-panel="orders">
+          <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="2"></rect><path d="M9 7h6M9 11h6M9 15h4"></path></svg>
+          <span data-i18n="warehouseNavOrders">我的订单</span>
+          <span class="warehouse-nav-count" data-wh-count="orders">0</span>
+        </button>
+        <button type="button" data-wh-panel="addresses">
+          <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>
+          <span data-i18n="warehouseNavAddresses">收货地址</span>
+          <span class="warehouse-nav-count" data-wh-count="addresses">0</span>
+        </button>
+        <button type="button" data-wh-panel="cart">
+          <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M3 4h2l2.2 11h11.3l1.8-7H7"></path></svg>
+          <span data-i18n="warehouseNavCart">购物车</span>
+          <span class="warehouse-nav-count" data-wh-count="cart">0</span>
+        </button>
       </nav>
     </aside>
     <section class="warehouse-content">
+      <div class="warehouse-hero">
+        <div class="warehouse-hero-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg>
+        </div>
+        <div>
+          <p class="warehouse-kicker">SHR WAREHOUSE</p>
+          <h1 data-i18n="warehouseTitle">我的仓库</h1>
+          <p class="warehouse-hero-hint">
+            <span class="warehouse-live-dot" aria-hidden="true"></span>
+            <span data-i18n="warehouseLiveHint">订单状态与商家后台同步：付款后待发货，商家发货后待收货。</span>
+          </p>
+        </div>
+      </div>
       <div id="whOrdersPanel">
         <div class="warehouse-stats" id="whStats"></div>
         <div class="warehouse-tabs" id="whOrderTabs" role="tablist"></div>
@@ -63,8 +95,14 @@
       </div>
       <div id="whAddressPanel" hidden>
         <div class="warehouse-toolbar">
-          <h2 data-i18n="warehouseNavAddresses">收货地址</h2>
-          <button type="button" class="btn btn-sm" id="whAddAddress" data-i18n="warehouseAddAddress">添加收货地址</button>
+          <h2 class="warehouse-heading">
+            <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>
+            <span data-i18n="warehouseNavAddresses">收货地址</span>
+          </h2>
+          <button type="button" class="btn btn-sm warehouse-btn-ico" id="whAddAddress">
+            <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            <span data-i18n="warehouseAddAddress">添加收货地址</span>
+          </button>
         </div>
         <form class="checkout-form warehouse-address-form" id="whAddressForm" hidden>
           <input type="hidden" id="whAddrId">
@@ -105,7 +143,10 @@
             <span data-i18n="warehouseDefaultAddress">设为默认收货地址</span>
           </label>
           <div class="warehouse-toolbar">
-            <button type="submit" class="btn" data-i18n="warehouseSaveAddress">保存地址</button>
+            <button type="submit" class="btn warehouse-btn-ico">
+              <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+              <span data-i18n="warehouseSaveAddress">保存地址</span>
+            </button>
             <button type="button" class="link-btn" id="whAddrCancel" data-i18n="cancel">取消</button>
           </div>
         </form>
@@ -113,8 +154,14 @@
       </div>
       <div id="whCartPanel" hidden>
         <div class="warehouse-toolbar">
-          <h2 data-i18n="warehouseNavCart">购物车</h2>
-          <a class="btn btn-sm" href="/#products" data-i18n="warehouseCheckout">去商城结算</a>
+          <h2 class="warehouse-heading">
+            <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M3 4h2l2.2 11h11.3l1.8-7H7"></path></svg>
+            <span data-i18n="warehouseNavCart">购物车</span>
+          </h2>
+          <a class="btn btn-sm warehouse-btn-ico" href="/#products">
+            <svg class="wh-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            <span data-i18n="warehouseCheckout">去商城结算</span>
+          </a>
         </div>
         <div id="whCartList"></div>
       </div>
@@ -126,7 +173,7 @@
   <script src="/js/order-status.js?v=20260920ab"></script>
   <script src="/js/auth.js?v=20260920ab"></script>
   <script src="/js/warehouse.js?v=20260920ab"></script>
-  <script src="/js/warehouse-page.js?v=20260920ab"></script>
+  <script src="/js/warehouse-page.js?v=20260920ae"></script>
   <script src="/js/analytics.js?v=20260920k"></script>
 </body>
 </html>
