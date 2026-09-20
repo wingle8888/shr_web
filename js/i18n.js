@@ -464,4 +464,37 @@
   }
 
   window.I18N = { getLang, setLang, t, applyI18n, localizeField, localizeList, dict };
+
+  function syncChromeOffset() {
+    const topBar = document.querySelector(".top-bar");
+    const header = document.querySelector("header");
+    if (!topBar || !header || document.body.classList.contains("admin-body")) return;
+    const inner = header.querySelector(".header-inner") || header;
+    const topH = Math.ceil(topBar.getBoundingClientRect().height);
+    const headH = Math.ceil(inner.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--topbar-offset", topH + "px");
+    document.documentElement.style.setProperty("--header-offset", topH + headH + "px");
+  }
+
+  function initChromeOffset() {
+    if (!document.querySelector(".top-bar") || !document.querySelector("header")) return;
+    const run = () => requestAnimationFrame(syncChromeOffset);
+    run();
+    window.addEventListener("resize", run);
+    window.addEventListener("orientationchange", run);
+    if (window.visualViewport) visualViewport.addEventListener("resize", run);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(run);
+      const header = document.querySelector("header");
+      const topBar = document.querySelector(".top-bar");
+      if (header) ro.observe(header);
+      if (topBar) ro.observe(topBar);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initChromeOffset);
+  } else {
+    initChromeOffset();
+  }
 })();
