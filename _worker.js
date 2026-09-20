@@ -16,6 +16,7 @@ import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
 import authWarehouse from "./api/auth/warehouse.js";
+import authOrders from "./api/auth/orders.js";
 import { withSecurityHeaders } from "./api/_lib/security-headers.js";
 
 const { setRuntimeEnv, getR2, getKV, getCatalogStub, isCloudflare } = runtimeEnv;
@@ -36,6 +37,7 @@ const HANDLERS = {
   "/api/auth/register": authRegister,
   "/api/auth/login": authLogin,
   "/api/auth/warehouse": authWarehouse,
+  "/api/auth/orders": authOrders,
 };
 
 function normalizePath(pathname) {

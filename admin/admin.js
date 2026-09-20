@@ -405,8 +405,18 @@ function renderVisitCharts() {
   }
 }
 
+function orderStage(order) {
+  const s = String((order && order.status) || "");
+  if (/退款|售后|refund/i.test(s)) return "refund";
+  if (/待付款|未支付|unpaid|pending payment|awaiting payment/i.test(s)) return "unpaid";
+  if (/已签收|已完成|received|delivered|completed/i.test(s) && !/待收货/.test(s)) return "received";
+  if (/待收货|已发货|shipped|in transit/i.test(s)) return "shipped";
+  if (/待发货|已支付|paid|awaiting shipment/i.test(s)) return "paid";
+  return "paid";
+}
+
 function cancelledOrder(order) {
-  return /取消|已退|cancel|refund/i.test(String((order && order.status) || ""));
+  return orderStage(order) === "refund";
 }
 
 function orderStatusText(order) {
@@ -414,18 +424,32 @@ function orderStatusText(order) {
 }
 
 function isShippedOrder(order) {
-  return /已发货|已完成|已签收|已送达|shipped|delivered|completed/i.test(orderStatusText(order));
+  const stage = orderStage(order);
+  return stage === "shipped" || stage === "received";
 }
 
 function needsShipping(order) {
-  if (!order || cancelledOrder(order) || isShippedOrder(order)) return false;
-  return /待发货|已支付|awaiting shipment|\bpaid\b/i.test(orderStatusText(order));
+  return orderStage(order) === "paid";
 }
 
-function shippedStatusFor(order) {
-  const status = orderStatusText(order);
-  if (/[A-Za-z]/.test(status) && !/[\u4e00-\u9fa5]/.test(status)) return "Shipped";
-  return "已发货";
+function awaitingReceive(order) {
+  return orderStage(order) === "shipped";
+}
+
+function shippedStatusFor() {
+  return "已发货，待收货";
+}
+
+function stageLabel(order) {
+  return (
+    {
+      unpaid: "待付款",
+      paid: "待发货",
+      shipped: "待收货",
+      received: "已签收",
+      refund: "退款/售后",
+    }[orderStage(order)] || "待发货"
+  );
 }
 
 function pendingShipOrders() {
@@ -601,17 +625,25 @@ function renderOrders() {
           const s = o.shipping || {};
           const addr = [s.region, s.address].filter(Boolean).join(" ") || "-";
           const ship = needsShipping(o);
-          const shipped = isShippedOrder(o);
+          const wait = awaitingReceive(o);
+          const received = orderStage(o) === "received";
+          const refund = orderStage(o) === "refund";
           const statusCell = ship
-            ? `<span class="admin-pill ship">请发货</span> ${escapeHtml(o.status || "")}`
-            : shipped
-              ? `<span class="admin-pill done">已发货</span> ${escapeHtml(o.status || "")}`
-              : escapeHtml(o.status || "-");
+            ? `<span class="admin-pill ship">待发货</span> ${escapeHtml(o.status || "")}`
+            : wait
+              ? `<span class="admin-pill wait">待收货</span> ${escapeHtml(o.status || "")}`
+              : received
+                ? `<span class="admin-pill done">已签收</span> ${escapeHtml(o.status || "")}`
+                : refund
+                  ? `<span class="admin-pill off">退款/售后</span> ${escapeHtml(o.status || "")}`
+                  : escapeHtml(stageLabel(o));
           const actionCell = ship
             ? `<button type="button" class="btn btn-sm" data-ship-order="${escapeHtml(o.id)}">标记已发货</button>`
-            : shipped
-              ? `<span class="admin-muted">已处理</span>`
-              : "-";
+            : wait
+              ? `<span class="admin-muted">已发货，待买家收货</span>`
+              : received
+                ? `<span class="admin-muted">已完成</span>`
+                : "-";
           return `<tr data-order-id="${escapeHtml(o.id)}" class="admin-click-row${ship ? " needs-ship" : ""}">
         <td>${escapeHtml(o.id)}</td>
         <td>${escapeHtml(formatTime(o.createdAt))}</td>
@@ -1003,20 +1035,24 @@ function showOrderDetail(order) {
     .map((i) => `<li>${escapeHtml(i.name)} × ${i.qty}　$${formatMoney((i.price || 0) * (i.qty || 0))}</li>`)
     .join("");
   const shipNote = needsShipping(order)
-    ? `<p class="admin-ship-note">客户已付款，请尽快发货。收货：${escapeHtml(s.name || "-")} · ${escapeHtml(
+    ? `<p class="admin-ship-note">客户已付款，买卖双方均显示待发货。收货：${escapeHtml(s.name || "-")} · ${escapeHtml(
         s.phone || "-"
       )} · ${escapeHtml([s.region, s.address].filter(Boolean).join(" ") || "-")}</p>
        <p><button type="button" class="btn btn-sm" data-ship-order="${escapeHtml(order.id)}">标记已发货</button></p>`
-    : isShippedOrder(order)
-      ? `<p class="admin-muted">此订单已发货。</p>`
-      : "";
+    : awaitingReceive(order)
+      ? `<p class="admin-muted">已发货，买家仓库显示待收货。</p>`
+      : orderStage(order) === "received"
+        ? `<p class="admin-muted">买家已确认收货。</p>`
+        : orderStage(order) === "refund"
+          ? `<p class="admin-muted">退款/售后处理中。</p>`
+          : "";
   box.hidden = false;
   box.innerHTML = `
     <h3>订单详情 ${escapeHtml(order.id)}</h3>
     ${shipNote}
     <p>收货：${escapeHtml(s.name || "")} · ${escapeHtml(s.phone || "")} · ${escapeHtml(s.email || "")}</p>
     <p>地址：${escapeHtml(s.region || "")} ${escapeHtml(s.address || "")}</p>
-    <p>支付：${escapeHtml(order.payMethod || "-")} · 状态：${escapeHtml(order.status || "-")}</p>
+    <p>支付：${escapeHtml(order.payMethod || "-")} · 状态：${escapeHtml(stageLabel(order))}（${escapeHtml(order.status || "-")}）</p>
     ${order.userEmail ? `<p>关联账号：${escapeHtml(order.userEmail)}</p>` : ""}
     <ul>${items}</ul>
     <p><strong>合计 $${formatMoney(order.total)}</strong></p>

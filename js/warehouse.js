@@ -100,7 +100,11 @@
       if (!addr) return;
       const key = addressKey(addr);
       if (!key || key === "|||") return;
-      if (!map.has(key)) map.set(key, { ...addr, id: addr.id || `a${Date.now()}` });
+      if (!map.has(key)) map.set(key, { ...addr, id: addr.id || `a${Date.now()}`, isDefault: Boolean(addr.isDefault) });
+      else {
+        const prev = map.get(key);
+        map.set(key, { ...prev, ...addr, id: prev.id, isDefault: Boolean(prev.isDefault || addr.isDefault) });
+      }
     });
     return Array.from(map.values());
   }
@@ -112,7 +116,9 @@
       if (!id) return;
       const cur = { ...row, orderId: String(id) };
       const prev = map.get(cur.orderId);
-      if (!prev || String(cur.createdAt || "") >= String(prev.createdAt || "")) map.set(cur.orderId, cur);
+      if (!prev || String(cur.updatedAt || cur.createdAt || "") >= String(prev.updatedAt || prev.createdAt || "")) {
+        map.set(cur.orderId, cur);
+      }
     });
     return Array.from(map.values()).sort((x, y) => String(y.createdAt || "").localeCompare(String(x.createdAt || "")));
   }
@@ -202,9 +208,19 @@
     const user = currentUser();
     if (!user) return;
     if (patch && Array.isArray(patch.cart)) cache.cart = patch.cart;
-    if (patch && patch.address) cache.addresses = mergeAddresses([patch.address], cache.addresses);
+    if (patch && patch.address) {
+      const next = { ...patch.address };
+      const rest = next.isDefault ? cache.addresses.map((a) => ({ ...a, isDefault: false })) : cache.addresses;
+      cache.addresses = mergeAddresses([next], rest);
+    }
     if (patch && patch.removeAddressId) {
       cache.addresses = cache.addresses.filter((a) => String(a.id) !== String(patch.removeAddressId));
+    }
+    if (patch && patch.setDefaultAddressId) {
+      cache.addresses = cache.addresses.map((a) => ({
+        ...a,
+        isDefault: String(a.id) === String(patch.setDefaultAddressId),
+      }));
     }
     if (patch && patch.order) {
       cache.purchases = mergePurchases([patch.order], cache.purchases);
@@ -444,15 +460,49 @@
     }
   }
 
+  async function fetchOrders() {
+    const headers = Object.assign({}, window.Auth.authHeader());
+    const res = await fetch("/api/auth/orders", { headers, cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return [];
+    if (!res.ok || !data.ok) throw new Error(data.error || "orders unavailable");
+    const list = Array.isArray(data.orders) ? data.orders : [];
+    cache.purchases = mergePurchases(
+      list.map((order) => ({ ...order, orderId: order.id })),
+      cache.purchases
+    );
+    if (currentUser()) writeLocal(currentUser(), cache);
+    return list;
+  }
+
+  async function updateOrder(action, id) {
+    const headers = Object.assign({ "Content-Type": "application/json" }, window.Auth.authHeader());
+    const res = await fetch("/api/auth/orders", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ action, id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || "update failed");
+    if (data.order) {
+      cache.purchases = mergePurchases([{ ...data.order, orderId: data.order.id }], cache.purchases);
+      writeLocal(currentUser(), cache);
+    }
+    return data.order;
+  }
+
   async function open() {
-    const user = currentUser();
-    if (!user) return;
-    ensureModal();
-    await loadWarehouse();
-    if (window.I18N) window.I18N.applyI18n();
-    const overlay = document.getElementById("warehouseModal");
-    overlay.classList.add("show");
-    render();
+    if (!currentUser()) {
+      location.href = "/?auth=login";
+      return;
+    }
+    if (!document.body.classList.contains("warehouse-page")) {
+      location.href = "/warehouse.html";
+      return;
+    }
+    if (window.WarehousePage && typeof window.WarehousePage.refresh === "function") {
+      await window.WarehousePage.refresh();
+    }
   }
 
   function close() {
@@ -464,7 +514,7 @@
     const btn = document.getElementById("warehouseBtn");
     if (btn && !btn.dataset.whBound) {
       btn.dataset.whBound = "1";
-      btn.addEventListener("click", () => open());
+      if (btn.tagName !== "A") btn.addEventListener("click", () => open());
     }
     const userEl = document.getElementById("authUser");
     if (userEl && !userEl.dataset.whBound) {
@@ -518,6 +568,31 @@
     renderIfOpen();
   }
 
+  function removeAddress(id) {
+    if (!currentUser() || !id) return;
+    persist({ removeAddressId: id }, true);
+    renderIfOpen();
+  }
+
+  function setDefaultAddress(id) {
+    if (!currentUser() || !id) return;
+    persist({ setDefaultAddressId: id }, true);
+    renderIfOpen();
+  }
+
+  function getDefaultAddress() {
+    const list = cache.addresses || [];
+    return list.find((a) => a.isDefault) || list[0] || null;
+  }
+
+  function getCache() {
+    return cache;
+  }
+
+  function changeQty(id, delta) {
+    changeWarehouseQty(id, delta);
+  }
+
   window.Warehouse = {
     open,
     close,
@@ -525,6 +600,13 @@
     syncCart,
     recordOrder,
     saveAddress,
+    removeAddress,
+    setDefaultAddress,
+    getDefaultAddress,
+    getCache,
+    changeQty,
+    fetchOrders,
+    updateOrder,
     load: loadWarehouse,
   };
 

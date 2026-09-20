@@ -71,6 +71,7 @@ function sanitizeAddress(addr, fallbackId) {
     zip: String(addr.zip || "").trim().slice(0, 20),
     address,
     note: String(addr.note || "").trim().slice(0, 120),
+    isDefault: Boolean(addr.isDefault),
     createdAt: addr.createdAt || nowIso(),
   };
 }
@@ -83,11 +84,12 @@ function sanitizeAddresses(list) {
     const key = addressKey(row);
     const prev = map.get(key);
     if (!prev) map.set(key, row);
-    else map.set(key, { ...row, id: prev.id, createdAt: prev.createdAt || row.createdAt });
+    else map.set(key, { ...row, id: prev.id, createdAt: prev.createdAt || row.createdAt, isDefault: prev.isDefault || row.isDefault });
   });
-  return Array.from(map.values())
-    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
-    .slice(0, 20);
+  let rows = Array.from(map.values()).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  const defaultId = (rows.find((a) => a.isDefault) || rows[0] || {}).id;
+  rows = rows.map((a) => ({ ...a, isDefault: String(a.id) === String(defaultId) }));
+  return rows.slice(0, 20);
 }
 
 function sanitizePurchase(order) {
@@ -97,6 +99,7 @@ function sanitizePurchase(order) {
   return {
     orderId: String(id).slice(0, 40),
     createdAt: order.createdAt || nowIso(),
+    updatedAt: order.updatedAt || order.createdAt || nowIso(),
     status: String(order.status || "").slice(0, 80),
     payMethod: String(order.payMethod || "").slice(0, 40),
     total: Number(order.total) || 0,
@@ -118,7 +121,9 @@ function sanitizePurchases(list) {
     const purchase = sanitizePurchase(row);
     if (!purchase) return;
     const prev = map.get(purchase.orderId);
-    if (!prev || String(purchase.createdAt) >= String(prev.createdAt)) map.set(purchase.orderId, purchase);
+    if (!prev || String(purchase.updatedAt || purchase.createdAt) >= String(prev.updatedAt || prev.createdAt)) {
+      map.set(purchase.orderId, purchase);
+    }
   });
   return Array.from(map.values())
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
@@ -214,22 +219,27 @@ async function backfillFromOrders(warehouse, user) {
     orders = [];
   }
   const mine = (Array.isArray(orders) ? orders : []).filter((o) => orderMatchesUser(o, user));
-  if (!mine.length) return { warehouse, changed: false };
-  const purchases = sanitizePurchases([
-    ...warehouse.purchases,
-    ...mine.map((o) => sanitizePurchase(o)).filter(Boolean),
-  ]);
+  const livePurchases = mine.map((o) => sanitizePurchase(o)).filter(Boolean);
+  const purchases = sanitizePurchases([...warehouse.purchases, ...livePurchases]);
   const addresses = sanitizeAddresses([
     ...warehouse.addresses,
     ...mine.map((o) => sanitizeAddress(o.shipping, o.id ? `ord-${o.id}` : "")).filter(Boolean),
   ]);
+  const liveMap = new Map(livePurchases.map((row) => [row.orderId, row]));
+  const mergedPurchases = purchases.map((row) => (liveMap.has(row.orderId) ? { ...row, ...liveMap.get(row.orderId) } : row));
+  const statusChanged = mergedPurchases.some((row) => {
+    const prev = (warehouse.purchases || []).find((p) => p.orderId === row.orderId);
+    return !prev || String(prev.status || "") !== String(row.status || "");
+  });
   const changed =
-    purchases.length !== warehouse.purchases.length || addresses.length !== warehouse.addresses.length;
+    statusChanged ||
+    mergedPurchases.length !== warehouse.purchases.length ||
+    addresses.length !== warehouse.addresses.length;
   if (!changed) return { warehouse, changed: false };
   return {
     warehouse: {
       ...warehouse,
-      purchases,
+      purchases: mergedPurchases,
       addresses,
       updatedAt: nowIso(),
     },
@@ -261,11 +271,19 @@ async function patchWarehouse(user, patch) {
   if (patch && Array.isArray(patch.cart)) next.cart = sanitizeCart(patch.cart);
   if (patch && Array.isArray(patch.addresses)) next.addresses = sanitizeAddresses(patch.addresses);
   if (patch && patch.address) {
-    next.addresses = sanitizeAddresses([patch.address, ...next.addresses]);
+    const incoming = { ...patch.address };
+    if (incoming.isDefault) {
+      next.addresses = next.addresses.map((a) => ({ ...a, isDefault: false }));
+    }
+    next.addresses = sanitizeAddresses([incoming, ...next.addresses]);
   }
   if (patch && patch.removeAddressId) {
     const rid = String(patch.removeAddressId);
     next.addresses = next.addresses.filter((a) => String(a.id) !== rid);
+  }
+  if (patch && patch.setDefaultAddressId) {
+    const did = String(patch.setDefaultAddressId);
+    next.addresses = next.addresses.map((a) => ({ ...a, isDefault: String(a.id) === did }));
   }
   if (patch && patch.order) {
     const purchase = sanitizePurchase(patch.order);

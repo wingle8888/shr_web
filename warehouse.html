@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="我的仓库 - 开发板商城">
+  <title>我的仓库 - 开发板商城</title>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=20260920ab">
+</head>
+<body class="warehouse-page" data-i18n-title="warehousePageTitle">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <div class="top-bar">
+    <div class="container top-bar-inner">
+      <span data-i18n="warehouseLiveHint">订单状态与商家后台同步：付款后待发货，商家发货后待收货。</span>
+      <div class="top-bar-actions">
+        <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+          <button type="button" class="lang-btn active" data-lang="zh">中文</button>
+          <button type="button" class="lang-btn" data-lang="en">EN</button>
+        </div>
+        <div class="auth-area" id="authArea">
+          <a class="link-btn" href="/?auth=login" id="loginBtn" data-i18n="login">登录</a>
+          <a class="link-btn" href="/?auth=register" id="registerBtn" data-i18n="register">注册</a>
+          <span class="auth-user" id="authUser" hidden></span>
+          <a class="link-btn" href="/warehouse.html" id="warehouseBtn" data-i18n="warehouse" hidden>我的仓库</a>
+          <button type="button" class="link-btn" id="logoutBtn" data-i18n="logout" hidden>退出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <div class="logo-icon">SHR</div>
+        <span class="logo-text" data-i18n="brand">开发板商城</span>
+      </a>
+      <div class="header-actions" style="margin-left:auto">
+        <a href="/#products" class="header-cart" data-i18n="warehouseGoMall">返回商城</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container warehouse-shell">
+    <aside class="warehouse-side">
+      <div class="warehouse-profile" id="whProfile"></div>
+      <nav class="warehouse-nav" id="whNav">
+        <button type="button" class="active" data-wh-panel="orders" data-i18n="warehouseNavOrders">我的订单</button>
+        <button type="button" data-wh-panel="addresses" data-i18n="warehouseNavAddresses">收货地址</button>
+        <button type="button" data-wh-panel="cart" data-i18n="warehouseNavCart">购物车</button>
+      </nav>
+    </aside>
+    <section class="warehouse-content">
+      <div id="whOrdersPanel">
+        <div class="warehouse-stats" id="whStats"></div>
+        <div class="warehouse-tabs" id="whOrderTabs" role="tablist"></div>
+        <div id="whOrderList"></div>
+      </div>
+      <div id="whAddressPanel" hidden>
+        <div class="warehouse-toolbar">
+          <h2 data-i18n="warehouseNavAddresses">收货地址</h2>
+          <button type="button" class="btn btn-sm" id="whAddAddress" data-i18n="warehouseAddAddress">添加收货地址</button>
+        </div>
+        <form class="checkout-form warehouse-address-form" id="whAddressForm" hidden>
+          <input type="hidden" id="whAddrId">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="whAddrName" data-i18n="shipName">收货人 *</label>
+              <input type="text" id="whAddrName" required>
+            </div>
+            <div class="form-group">
+              <label for="whAddrPhone" data-i18n="phone">手机号 *</label>
+              <input type="tel" id="whAddrPhone" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="whAddrEmail" data-i18n="email">邮箱（选填）</label>
+            <input type="email" id="whAddrEmail">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="whAddrRegion" data-i18n="shipRegion">省 / 市 / 区 *</label>
+              <input type="text" id="whAddrRegion" required>
+            </div>
+            <div class="form-group">
+              <label for="whAddrZip" data-i18n="shipZip">邮编（选填）</label>
+              <input type="text" id="whAddrZip">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="whAddrAddress" data-i18n="shipAddress">详细地址 *</label>
+            <textarea id="whAddrAddress" required rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="whAddrNote" data-i18n="remark">备注（选填）</label>
+            <input type="text" id="whAddrNote">
+          </div>
+          <label class="warehouse-check">
+            <input type="checkbox" id="whAddrDefault">
+            <span data-i18n="warehouseDefaultAddress">设为默认收货地址</span>
+          </label>
+          <div class="warehouse-toolbar">
+            <button type="submit" class="btn" data-i18n="warehouseSaveAddress">保存地址</button>
+            <button type="button" class="link-btn" id="whAddrCancel" data-i18n="cancel">取消</button>
+          </div>
+        </form>
+        <div id="whAddressList"></div>
+      </div>
+      <div id="whCartPanel" hidden>
+        <div class="warehouse-toolbar">
+          <h2 data-i18n="warehouseNavCart">购物车</h2>
+          <a class="btn btn-sm" href="/#products" data-i18n="warehouseCheckout">去商城结算</a>
+        </div>
+        <div id="whCartList"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/i18n.js?v=20260920ab"></script>
+  <script src="/js/order-status.js?v=20260920ab"></script>
+  <script src="/js/auth.js?v=20260920ab"></script>
+  <script src="/js/warehouse.js?v=20260920ab"></script>
+  <script src="/js/warehouse-page.js?v=20260920ab"></script>
+  <script src="/js/analytics.js?v=20260920k"></script>
+</body>
+</html>

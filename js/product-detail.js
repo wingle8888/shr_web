@@ -362,9 +362,6 @@ function initLangSwitch() {
       if (window.Auth) window.Auth.refreshAuthUI();
       await loadCurrentProduct();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
-      if (window.Warehouse && document.getElementById("warehouseModal") && document.getElementById("warehouseModal").classList.contains("show")) {
-        window.Warehouse.open();
-      }
     });
   });
 }

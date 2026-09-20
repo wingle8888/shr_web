@@ -355,6 +355,11 @@
   background: rgba(255, 122, 24, 0.28);
 }
 
+.admin-pill.wait {
+  color: #2ee6ff;
+  background: rgba(46, 230, 255, 0.18);
+}
+
 .admin-pill.done {
   color: #b8f0d8;
   background: rgba(46, 230, 160, 0.2);

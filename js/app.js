@@ -285,6 +285,22 @@ function openCheckout() {
   closeModal("cartModal");
   document.getElementById("checkoutTotal").textContent = cartTotal().toFixed(2);
   if (window.Auth) window.Auth.prefillCheckoutFromUser();
+  const addr = window.Warehouse && window.Warehouse.getDefaultAddress ? window.Warehouse.getDefaultAddress() : null;
+  if (addr) {
+    const map = {
+      shipName: addr.name,
+      shipPhone: addr.phone,
+      shipEmail: addr.email,
+      shipRegion: addr.region,
+      shipZip: addr.zip,
+      shipAddress: addr.address,
+      shipNote: addr.note,
+    };
+    Object.keys(map).forEach((key) => {
+      const el = document.getElementById(key);
+      if (el && !el.value) el.value = map[key] || "";
+    });
+  }
   openModal("checkoutModal");
 }
 
@@ -344,7 +360,7 @@ async function submitOrder(e) {
   const order = {
     id: generateOrderId(),
     createdAt: new Date().toISOString(),
-    status: window.I18N?.getLang() === "en" ? "Paid, awaiting shipment" : "已支付，待发货",
+    status: "已支付，待发货",
     payMethod,
     items: cart.map((i) => ({ ...i })),
     total: cartTotal(),
@@ -578,9 +594,6 @@ function initLangSwitch() {
       renderProducts();
       if (document.getElementById("cartModal").classList.contains("show")) renderCart();
       refreshChatWelcome();
-      if (window.Warehouse && document.getElementById("warehouseModal") && document.getElementById("warehouseModal").classList.contains("show")) {
-        window.Warehouse.open();
-      }
     });
   });
 }
