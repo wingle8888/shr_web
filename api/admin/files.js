@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    if (!checkAdmin(req)) {
+    if (!(await checkAdmin(req))) {
       sendJson(res, 401, { ok: false, error: "unauthorized" });
       return;
     }
@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "DELETE" || req.method === "POST") {
     const body = parseBody(req);
     req.body = body;
-    if (!checkAdmin(req)) {
+    if (!(await checkAdmin(req))) {
       sendJson(res, 401, { ok: false, error: "unauthorized" });
       return;
     }

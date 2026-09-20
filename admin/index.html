@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260920h">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260920d">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260920e">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -21,6 +21,7 @@
         <span class="logo-text">后台管理</span>
       </a>
       <div class="admin-header-actions">
+        <button type="button" class="link-btn" id="passwordBtn" hidden>修改密码</button>
         <button type="button" class="link-btn" id="logoutBtn" hidden>退出</button>
         <a class="header-cart" href="/">返回商城</a>
       </div>
@@ -43,7 +44,7 @@
         <input type="password" id="adminPassword" required placeholder="请输入后台密码" autocomplete="current-password">
         <button class="btn" type="submit" style="width:100%;margin-top:12px">进入网页后台</button>
       </form>
-      <p class="admin-hint">默认密码：shr-admin-2026（可在 Cloudflare Pages 环境变量 ADMIN_PASSWORD 修改）</p>
+      <p class="admin-hint">初始密码：shr-admin-2026。登录后可在右上角修改密码（网页后台、Windows 和 Android 客户端通用）。</p>
     </section>
 
     <section id="panelCard" hidden>
@@ -458,6 +459,27 @@
     </section>
   </div>
 
+  <div class="admin-dialog" id="passwordDialog" hidden>
+    <div class="admin-dialog-backdrop" data-password-cancel></div>
+    <div class="admin-dialog-card admin-password-card" role="dialog" aria-modal="true" aria-labelledby="passwordDialogTitle">
+      <h2 id="passwordDialogTitle">修改登录密码</h2>
+      <p>新密码会保存到服务器，网页后台和客户端下次都用新密码登录。</p>
+      <form id="passwordForm">
+        <label for="pwdCurrent">当前密码</label>
+        <input type="password" id="pwdCurrent" required autocomplete="current-password" placeholder="请输入当前密码">
+        <label for="pwdNew">新密码</label>
+        <input type="password" id="pwdNew" required minlength="6" maxlength="64" autocomplete="new-password" placeholder="至少 6 位">
+        <label for="pwdNew2">确认新密码</label>
+        <input type="password" id="pwdNew2" required minlength="6" maxlength="64" autocomplete="new-password" placeholder="再输入一次新密码">
+        <p class="admin-status" id="passwordStatus"></p>
+        <div class="admin-dialog-actions">
+          <button type="button" class="link-btn" data-password-cancel>取消</button>
+          <button class="btn" type="submit" id="passwordSaveBtn">保存新密码</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="admin-dialog" id="adminDialog" hidden>
     <div class="admin-dialog-backdrop" data-dialog-cancel></div>
     <div class="admin-dialog-card" role="dialog" aria-modal="true" aria-labelledby="adminDialogTitle">
@@ -476,6 +498,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260920i"></script>
-  <script src="/admin/admin.js?v=20260920l"></script>
+  <script src="/admin/admin.js?v=20260920m"></script>
 </body>
 </html>

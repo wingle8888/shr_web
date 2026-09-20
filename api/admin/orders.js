@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
   const body = parseBody(req);
   req.body = body;
 
-  if (!checkAdmin(req)) {
+  if (!(await checkAdmin(req))) {
     sendJson(res, 401, { ok: false, error: "unauthorized" });
     return;
   }

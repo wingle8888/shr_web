@@ -943,3 +943,39 @@
   min-width: 72px;
 }
 
+.admin-password-card {
+  width: min(440px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.admin-password-card p {
+  margin-bottom: 12px;
+}
+
+.admin-password-card label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+.admin-password-card input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-password-card .admin-status {
+  min-height: 20px;
+  margin: 10px 0 0;
+}
+
+@media (max-width: 700px) {
+  .admin-dialog {
+    align-items: flex-start;
+    padding-top: 18px;
+    padding-bottom: 24px;
+  }
+}
+

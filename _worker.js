@@ -10,6 +10,7 @@ import adminUsers from "./api/admin/users.js";
 import adminFiles from "./api/admin/files.js";
 import adminUpload from "./api/admin/upload.js";
 import adminChat from "./api/admin/chat.js";
+import adminAuth from "./api/admin/auth.js";
 import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
@@ -27,6 +28,7 @@ const HANDLERS = {
   "/api/admin/upload": adminUpload,
   "/api/chat": chat,
   "/api/admin/chat": adminChat,
+  "/api/admin/auth": adminAuth,
   "/api/auth/me": authMe,
   "/api/auth/register": authRegister,
   "/api/auth/login": authLogin,

@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
   req.body = body;
 
   if (req.method === "GET") {
-    if (!checkAdmin(req)) {
+    if (!(await checkAdmin(req))) {
       sendJson(res, 401, { ok: false, error: "unauthorized" });
       return;
     }
@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (!checkAdmin(req)) {
+  if (!(await checkAdmin(req))) {
     sendJson(res, 401, { ok: false, error: "unauthorized" });
     return;
   }

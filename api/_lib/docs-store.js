@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { readJsonStore, writeJsonStore } = require("./blob-store");
+const { checkAdmin } = require("./admin-auth");
 
 const ROOT = process.cwd();
 const MANIFEST_PATH = path.join(ROOT, "data", "downloads-manifest.json");
@@ -20,14 +21,6 @@ function sendJson(res, status, data) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(data));
-}
-
-function checkAdmin(req) {
-  const expected = process.env.ADMIN_PASSWORD || "shr-admin-2026";
-  const fromHeader = req.headers["x-admin-password"];
-  let bodyPass = "";
-  if (req.body && typeof req.body === "object") bodyPass = req.body.password || "";
-  return fromHeader === expected || bodyPass === expected;
 }
 
 function mergeManifest(a, b) {

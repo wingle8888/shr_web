@@ -167,6 +167,7 @@ function showPanel(loggedIn) {
   $("loginCard").hidden = loggedIn;
   $("panelCard").hidden = !loggedIn;
   $("logoutBtn").hidden = !loggedIn;
+  if ($("passwordBtn")) $("passwordBtn").hidden = !loggedIn;
 }
 
 function switchTab(tab) {
@@ -1200,6 +1201,27 @@ function fileToBase64(file) {
   });
 }
 
+function closePasswordDialog() {
+  const overlay = $("passwordDialog");
+  if (overlay) overlay.hidden = true;
+  const form = $("passwordForm");
+  if (form) form.reset();
+  const status = $("passwordStatus");
+  if (status) {
+    status.textContent = "";
+    status.className = "admin-status";
+  }
+}
+
+function openPasswordDialog() {
+  const overlay = $("passwordDialog");
+  if (!overlay) return;
+  closePasswordDialog();
+  overlay.hidden = false;
+  const current = $("pwdCurrent");
+  if (current) current.focus();
+}
+
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const password = $("adminPassword").value.trim();
@@ -1220,8 +1242,63 @@ $("logoutBtn").addEventListener("click", () => {
   stopVisitLive();
   stopChatLive();
   clearPass();
+  closePasswordDialog();
   showPanel(false);
 });
+
+if ($("passwordBtn")) {
+  $("passwordBtn").addEventListener("click", () => openPasswordDialog());
+}
+if ($("passwordDialog")) {
+  $("passwordDialog").addEventListener("click", (e) => {
+    if (e.target.closest("[data-password-cancel]")) closePasswordDialog();
+  });
+}
+if ($("passwordForm")) {
+  $("passwordForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const status = $("passwordStatus");
+    const currentPassword = ($("pwdCurrent").value || "").trim();
+    const newPassword = ($("pwdNew").value || "").trim();
+    const confirmPassword = ($("pwdNew2").value || "").trim();
+    if (status) {
+      status.textContent = "";
+      status.className = "admin-status";
+    }
+    if (newPassword.length < 6) {
+      if (status) {
+        status.textContent = "新密码至少 6 位";
+        status.className = "admin-status error";
+      }
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      if (status) {
+        status.textContent = "两次输入的新密码不一致";
+        status.className = "admin-status error";
+      }
+      return;
+    }
+    try {
+      await api("/api/admin/auth", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "change-password",
+          currentPassword,
+          newPassword,
+        }),
+      });
+      setPass(newPassword);
+      closePasswordDialog();
+      await adminAlert("密码已更新，网页后台和客户端下次请使用新密码登录。", "修改成功");
+    } catch (err) {
+      if (status) {
+        status.textContent = err.message || "修改失败";
+        status.className = "admin-status error";
+      }
+    }
+  });
+}
 
 $("adminDialogOk").addEventListener("click", () => closeAdminDialog(true));
 $("adminDialog").addEventListener("click", (e) => {
@@ -1229,6 +1306,11 @@ $("adminDialog").addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  const pwd = $("passwordDialog");
+  if (pwd && !pwd.hidden) {
+    closePasswordDialog();
+    return;
+  }
   const overlay = $("adminDialog");
   if (!overlay || overlay.hidden) return;
   closeAdminDialog(false);
