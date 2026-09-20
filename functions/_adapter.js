@@ -1,4 +1,8 @@
+import { createRequire } from "node:module";
 import runtimeEnv from "../api/_lib/runtime-env.js";
+
+const require = createRequire(import.meta.url);
+const { applySecurityHeaders } = require("../api/_lib/security-headers.js");
 
 const { setRuntimeEnv } = runtimeEnv;
 
@@ -95,5 +99,6 @@ async function invokeHandler(context, handler) {
   if (!headers.has("access-control-allow-origin")) {
     headers.set("access-control-allow-origin", "*");
   }
+  applySecurityHeaders(headers);
   return new Response(out.body, { status: out.statusCode, headers });
 }

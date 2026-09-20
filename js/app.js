@@ -158,7 +158,7 @@ function productCardHtml(raw) {
       </a>
       <div class="card-bottom card-bottom-pad">
         <div class="card-price"><small>$</small>${Number(p.price).toFixed(2)}</div>
-        <button class="btn btn-sm" type="button" onclick="addToCart(${p.id})">${t("addToCart")}</button>
+        <button class="btn btn-sm" type="button" data-add-cart="${p.id}">${t("addToCart")}</button>
       </div>
     </div>
   `;
@@ -251,12 +251,12 @@ function renderCart() {
         <div class="cart-item-title">${escapeHtml(item.name)}</div>
         <div class="cart-item-price">$${Number(item.price).toFixed(2)}</div>
         <div class="qty-row">
-          <button type="button" onclick="changeQty(${item.id}, -1)">−</button>
+          <button type="button" data-cart-qty="-1" data-cart-id="${item.id}">−</button>
           <span>${item.qty}</span>
-          <button type="button" onclick="changeQty(${item.id}, 1)">+</button>
+          <button type="button" data-cart-qty="1" data-cart-id="${item.id}">+</button>
         </div>
       </div>
-      <button class="cart-remove" type="button" onclick="removeFromCart(${item.id})">${t("remove")}</button>
+      <button class="cart-remove" type="button" data-cart-remove="${item.id}">${t("remove")}</button>
     </div>
   `
     )
@@ -489,6 +489,27 @@ function initSearchAndFilter() {
   });
 }
 
+function bindCartActions() {
+  const onClick = (e) => {
+    const add = e.target.closest("[data-add-cart]");
+    if (add) {
+      addToCart(Number(add.getAttribute("data-add-cart")));
+      return;
+    }
+    const qty = e.target.closest("[data-cart-qty]");
+    if (qty) {
+      changeQty(Number(qty.getAttribute("data-cart-id")), Number(qty.getAttribute("data-cart-qty")));
+      return;
+    }
+    const rm = e.target.closest("[data-cart-remove]");
+    if (rm) removeFromCart(Number(rm.getAttribute("data-cart-remove")));
+  };
+  const productsEl = document.getElementById("products");
+  if (productsEl) productsEl.addEventListener("click", onClick);
+  const cartModal = document.getElementById("cartModal");
+  if (cartModal) cartModal.addEventListener("click", onClick);
+}
+
 function bindModalDismiss(overlayId) {
   document.getElementById(overlayId).addEventListener("click", (e) => {
     if (e.target.id === overlayId) closeModal(overlayId);
@@ -508,6 +529,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateCartBadge();
   initNav();
   initSearchAndFilter();
+  bindCartActions();
 
   if (window.Auth) {
     window.Auth.initAuthUI({

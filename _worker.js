@@ -16,8 +16,10 @@ import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
 import authWarehouse from "./api/auth/warehouse.js";
+import securityHeaders from "./api/_lib/security-headers.js";
 
 const { setRuntimeEnv, getR2, getKV, getCatalogStub, isCloudflare } = runtimeEnv;
+const withSecurityHeaders = securityHeaders.withSecurityHeaders || securityHeaders;
 
 const HANDLERS = {
   "/api/products": products,
@@ -50,37 +52,41 @@ export default {
       const path = normalizePath(url.pathname);
 
       if (path === "/api/health") {
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            runtime: "cloudflare",
-            cloudflare: isCloudflare(),
-            r2: Boolean(getR2()),
-            kv: Boolean(getKV()),
-            durable: Boolean(getCatalogStub()),
-            storeRev: 8,
-          }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json; charset=utf-8" },
-          }
+        return withSecurityHeaders(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              runtime: "cloudflare",
+              cloudflare: isCloudflare(),
+              r2: Boolean(getR2()),
+              kv: Boolean(getKV()),
+              durable: Boolean(getCatalogStub()),
+              storeRev: 8,
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json; charset=utf-8" },
+            }
+          )
         );
       }
 
       const handler = HANDLERS[path];
       if (handler) {
-        return runNodeHandler({ request, env, ctx, params: {} }, handler);
+        return withSecurityHeaders(await runNodeHandler({ request, env, ctx, params: {} }, handler));
       }
 
       if (env && env.ASSETS) {
-        return env.ASSETS.fetch(request);
+        return withSecurityHeaders(await env.ASSETS.fetch(request));
       }
-      return new Response("Not found", { status: 404 });
+      return withSecurityHeaders(new Response("Not found", { status: 404 }));
     } catch (err) {
-      return new Response(JSON.stringify({ ok: false, error: String((err && err.message) || err) }), {
-        status: 500,
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
+      return withSecurityHeaders(
+        new Response(JSON.stringify({ ok: false, error: String((err && err.message) || err) }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" },
+        })
+      );
     }
   },
 };
