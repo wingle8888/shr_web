@@ -1,4 +1,4 @@
-const CSP = [
+export const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -12,7 +12,7 @@ const CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-const SECURITY_HEADERS = {
+export const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -22,7 +22,7 @@ const SECURITY_HEADERS = {
   "Strict-Transport-Security": "max-age=15552000; includeSubDomains",
 };
 
-function applySecurityHeaders(headers) {
+export function applySecurityHeaders(headers) {
   const out = headers instanceof Headers ? headers : new Headers(headers || {});
   Object.keys(SECURITY_HEADERS).forEach((key) => {
     if (!out.has(key)) out.set(key, SECURITY_HEADERS[key]);
@@ -30,7 +30,7 @@ function applySecurityHeaders(headers) {
   return out;
 }
 
-function withSecurityHeaders(response) {
+export function withSecurityHeaders(response) {
   if (!response) return response;
   return new Response(response.body, {
     status: response.status,
@@ -39,7 +39,7 @@ function withSecurityHeaders(response) {
   });
 }
 
-module.exports = {
+export default {
   CSP,
   SECURITY_HEADERS,
   applySecurityHeaders,

@@ -1,8 +1,5 @@
-import { createRequire } from "node:module";
 import { runNodeHandler } from "../_adapter.js";
-
-const require = createRequire(import.meta.url);
-const handler = require("../../api/orders.js");
+import handler from "../../api/orders.js";
 
 export function onRequest(context) {
   return runNodeHandler(context, handler);

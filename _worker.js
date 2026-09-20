@@ -16,10 +16,9 @@ import authMe from "./api/auth/me.js";
 import authRegister from "./api/auth/register.js";
 import authLogin from "./api/auth/login.js";
 import authWarehouse from "./api/auth/warehouse.js";
-import securityHeaders from "./api/_lib/security-headers.js";
+import { withSecurityHeaders } from "./api/_lib/security-headers.js";
 
 const { setRuntimeEnv, getR2, getKV, getCatalogStub, isCloudflare } = runtimeEnv;
-const withSecurityHeaders = securityHeaders.withSecurityHeaders || securityHeaders;
 
 const HANDLERS = {
   "/api/products": products,
@@ -61,7 +60,7 @@ export default {
               r2: Boolean(getR2()),
               kv: Boolean(getKV()),
               durable: Boolean(getCatalogStub()),
-              storeRev: 10,
+              storeRev: 11,
             }),
             {
               status: 200,

@@ -1,10 +1,7 @@
 import runtimeEnv from "../api/_lib/runtime-env.js";
-import securityHeaders from "../api/_lib/security-headers.js";
+import { applySecurityHeaders } from "../api/_lib/security-headers.js";
 
 const { setRuntimeEnv } = runtimeEnv;
-const applySecurityHeaders =
-  (securityHeaders && securityHeaders.applySecurityHeaders) ||
-  (securityHeaders && securityHeaders.default && securityHeaders.default.applySecurityHeaders);
 
 function headerMap(request) {
   const headers = {};
