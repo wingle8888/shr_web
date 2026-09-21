@@ -2548,7 +2548,25 @@ $("fileList").addEventListener("click", async (e) => {
   }
 });
 
+function bindPasswordToggles() {
+  document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+    if (btn.dataset.boundToggle) return;
+    btn.dataset.boundToggle = "1";
+    btn.addEventListener("click", () => {
+      const wrap = btn.closest(".password-field");
+      const input = wrap && wrap.querySelector("input");
+      if (!input) return;
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      wrap.classList.toggle("is-visible", show);
+      btn.setAttribute("aria-pressed", show ? "true" : "false");
+      btn.setAttribute("aria-label", show ? "隐藏密码" : "显示密码");
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  bindPasswordToggles();
   state.seedProducts = Array.isArray(window.PRODUCTS) ? window.PRODUCTS.slice() : [];
   productOptions();
   if (!getPass()) {

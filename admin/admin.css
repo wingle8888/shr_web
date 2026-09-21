@@ -1112,9 +1112,63 @@
   font-family: var(--font-ui);
 }
 
-.admin-password-card input[type="password"] {
+.admin-password-card input[type="password"],
+.admin-password-card .password-field input,
+#loginCard .password-field input {
   width: 100%;
   box-sizing: border-box;
+  padding-right: 76px;
+}
+
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  color: var(--primary);
+  outline: none;
+}
+
+.password-toggle .pwd-ico {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.password-field .pwd-ico-eyeoff,
+.password-field .pwd-toggle-hide {
+  display: none;
+}
+
+.password-field.is-visible .pwd-ico-eye,
+.password-field.is-visible .pwd-toggle-show {
+  display: none;
+}
+
+.password-field.is-visible .pwd-ico-eyeoff,
+.password-field.is-visible .pwd-toggle-hide {
+  display: inline;
 }
 
 .admin-password-card .admin-status {

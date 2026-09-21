@@ -412,10 +412,29 @@
     if (email && !email.value && user.email) email.value = user.email;
   }
 
+  function bindPasswordToggles(root, t) {
+    const translate = typeof t === "function" ? t : (k) => k;
+    (root || document).querySelectorAll("[data-password-toggle]").forEach((btn) => {
+      if (btn.dataset.boundToggle) return;
+      btn.dataset.boundToggle = "1";
+      btn.addEventListener("click", () => {
+        const wrap = btn.closest(".password-field");
+        const input = wrap && wrap.querySelector("input");
+        if (!input) return;
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        wrap.classList.toggle("is-visible", show);
+        btn.setAttribute("aria-pressed", show ? "true" : "false");
+        btn.setAttribute("aria-label", show ? translate("authHidePassword") : translate("authShowPassword"));
+      });
+    });
+  }
+
   function initAuthUI(opts) {
     const onChange = opts && typeof opts.onChange === "function" ? opts.onChange : null;
     const toast = opts && typeof opts.toast === "function" ? opts.toast : null;
     const t = opts && typeof opts.t === "function" ? opts.t : (k) => k;
+    bindPasswordToggles(document, t);
 
     function notify(key) {
       if (toast) toast(t(key));
