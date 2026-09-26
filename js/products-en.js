@@ -237,14 +237,15 @@ window.PRODUCT_EN = {
     desc: "TFT color display, 5 keys, 12–24V input, Type-C / RJ / terminal I/O",
     tag: "New",
     category: "Display Kits",
+    img: "/images/zm01-1-en.jpg",
     images: [
-      { url: "/images/zm01-1.jpg", caption: "Overview" },
-      { url: "/images/zm01-2.jpg", caption: "TFT display and 5 keys" },
-      { url: "/images/zm01-3.jpg", caption: "Connectors" },
-      { url: "/images/zm01-detail.jpg", caption: "Specs" },
+      { url: "/images/zm01-1-en.jpg", caption: "Overview" },
+      { url: "/images/zm01-2-en.jpg", caption: "TFT display and 5 keys" },
+      { url: "/images/zm01-3-en.jpg", caption: "Connectors" },
+      { url: "/images/zm01-detail-en.jpg", caption: "Specs" },
     ],
     intro:
-      "ZM01 (SW6112 V2.0) control board with a TFT color display and five keys. It accepts 12–24V and includes Type-C, DC power, an RJ port, a 2-pin terminal, a 3.5mm audio jack, a buzzer, an RTC battery and a power MOSFET driver.",
+      "ZM01 (ZM01_DSNT01 V2.0) control board with a TFT color display and five keys. It accepts 12–24V and includes Type-C, DC power, an RJ port, a 2-pin terminal, a 3.5mm audio jack, a buzzer, an RTC battery and a power MOSFET driver.",
     features: [
       "TFT color display",
       "Five independent keys",
@@ -254,7 +255,7 @@ window.PRODUCT_EN = {
       "Four mounting holes",
     ],
     specs: [
-      ["Model", "ZM01 (SW6112 V2.0)"],
+      ["Model", "ZM01 (ZM01_DSNT01 V2.0)"],
       ["Power", "12–24V DC"],
       ["MCU", "32-bit MCU (LQFP64)"],
       ["Display", "TFT color screen"],
