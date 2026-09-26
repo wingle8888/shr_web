@@ -232,6 +232,49 @@ window.PRODUCT_EN = {
       { name: "Technical Docs (7Z)", file: "/downloads/arduino-uno-r4-docs.7z", format: "7Z" },
     ],
   },
+  7: {
+    name: "ZM01 Multifunction Control Board",
+    desc: "TFT color display, 5 keys, 12–24V input, Type-C / RJ / terminal I/O",
+    tag: "New",
+    category: "Display Kits",
+    images: [
+      { url: "/images/zm01-1.jpg", caption: "Overview" },
+      { url: "/images/zm01-2.jpg", caption: "TFT display and 5 keys" },
+      { url: "/images/zm01-3.jpg", caption: "Connectors" },
+      { url: "/images/zm01-detail.jpg", caption: "Specs" },
+    ],
+    intro:
+      "ZM01 (SW6112 V2.0) control board with a TFT color display and five keys. It accepts 12–24V and includes Type-C, DC power, an RJ port, a 2-pin terminal, a 3.5mm audio jack, a buzzer, an RTC battery and a power MOSFET driver.",
+    features: [
+      "TFT color display",
+      "Five independent keys",
+      "12–24V wide input",
+      "Type-C, DC jack, RJ, 2-pin terminal and 3.5mm audio",
+      "32-bit MCU with RTC battery and MOSFET driver",
+      "Four mounting holes",
+    ],
+    specs: [
+      ["Model", "ZM01 (SW6112 V2.0)"],
+      ["Power", "12–24V DC"],
+      ["MCU", "32-bit MCU (LQFP64)"],
+      ["Display", "TFT color screen"],
+      ["Keys", "5 independent buttons"],
+      ["I/O", "DC, Type-C, 3.5mm audio, RJ, 2-pin terminal"],
+      ["Mounting", "4 mounting holes"],
+    ],
+    pins: [
+      ["VIN", "12–24V in", "Follow silkscreen polarity"],
+      ["DC", "DC input", "Can be used with VIN"],
+      ["Type-C", "Debug / download", "Typical UART and power"],
+      ["RJ", "Comms port", "Follow silkscreen"],
+      ["2P", "Terminal", "Follow silkscreen"],
+      ["3.5mm", "Audio", "Audio output"],
+      ["Buzzer", "Alert", "Onboard buzzer"],
+      ["GND", "Ground", "Common with externals"],
+    ],
+    package: ["ZM01 board ×1"],
+    downloads: [],
+  },
 };
 
 window.getLocalizedProduct = function getLocalizedProduct(product) {

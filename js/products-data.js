@@ -170,6 +170,53 @@ var PRODUCTS_SEED = [
       { name: "技术资料包 (7Z)", file: "/downloads/mpu6050-docs.7z", format: "7Z" },
     ],
   },
+  {
+    id: 7,
+    name: "ZM01 多功能智能控制主板",
+    desc: "TFT 彩屏、5 键操作、12–24V 宽压，Type-C / RJ / 端子接口，即插即用",
+    price: 28.00,
+    tag: "新品",
+    category: "显示套件",
+    categoryId: "cat-display",
+    img: "/images/zm01-1.jpg",
+    images: [
+      { url: "/images/zm01-1.jpg", caption: "产品总览" },
+      { url: "/images/zm01-2.jpg", caption: "TFT 彩屏与 5 键" },
+      { url: "/images/zm01-3.jpg", caption: "接口说明" },
+      { url: "/images/zm01-detail.jpg", caption: "参数与详情" },
+    ],
+    intro:
+      "ZM01（SW6112 V2.0）多功能智能控制主板，板载 TFT 彩色屏和 5 个独立按键，支持 12–24V 宽压输入。接口包含 Type-C、DC 电源、RJ 通信、2P 端子和 3.5mm 音频，并带蜂鸣器、RTC 时钟电池与功率 MOS 驱动，适合显示控制与现场调试。",
+    features: [
+      "TFT 彩色屏，参数一目了然",
+      "5 个独立按键，操作简单",
+      "12–24V 宽压输入",
+      "Type-C、DC 电源、RJ 通信、2P 端子、3.5mm 音频",
+      "32 位 MCU，板载 RTC 时钟电池与功率 MOS 驱动",
+      "四角安装孔，便于固定",
+    ],
+    specs: [
+      ["型号", "ZM01（SW6112 V2.0）"],
+      ["供电", "12–24V DC"],
+      ["主控", "32 位 MCU（LQFP64）"],
+      ["显示", "TFT 彩色屏"],
+      ["按键", "5 个独立按键"],
+      ["接口", "DC 电源、Type-C、3.5mm 音频、RJ、2P 端子"],
+      ["安装", "4 个安装孔"],
+    ],
+    pins: [
+      ["VIN", "12–24V 输入", "按丝印极性接线"],
+      ["DC", "直流电源输入", "可与 VIN 端子配合使用"],
+      ["Type-C", "调试 / 下载", "常见串口与供电"],
+      ["RJ", "通信接口", "按丝印接线"],
+      ["2P 端子", "外设接口", "按丝印接线"],
+      ["3.5mm", "音频口", "音频输出"],
+      ["蜂鸣器", "提示音", "板载蜂鸣器"],
+      ["GND", "地", "与外部设备共地"],
+    ],
+    package: ["ZM01 主板 ×1"],
+    downloads: [],
+  },
 ];
 
 if (typeof window !== "undefined") window.PRODUCTS = PRODUCTS_SEED;
