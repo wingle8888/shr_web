@@ -174,15 +174,20 @@ function mergeUsers(base, incoming) {
   );
 }
 
+const PBKDF2_ITERS = 10000;
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  const hash = crypto.pbkdf2Sync(String(password), salt, PBKDF2_ITERS, 32, "sha256").toString("hex");
   return { salt, hash };
 }
 
 function verifyPassword(password, salt, hash) {
-  const next = crypto.scryptSync(String(password), salt, 64).toString("hex");
+  const stored = String(hash || "");
+  // Older records used scrypt. That call hangs on Cloudflare and the login becomes HTTP 503.
+  if (stored.length !== 64) return false;
+  const next = crypto.pbkdf2Sync(String(password), String(salt || ""), PBKDF2_ITERS, 32, "sha256").toString("hex");
   try {
-    return crypto.timingSafeEqual(Buffer.from(next, "hex"), Buffer.from(hash, "hex"));
+    return crypto.timingSafeEqual(Buffer.from(next, "hex"), Buffer.from(stored, "hex"));
   } catch {
     return false;
   }

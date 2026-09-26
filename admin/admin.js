@@ -1807,11 +1807,16 @@ $("loginForm").addEventListener("submit", async (e) => {
     await recordAdminLogin("password");
     showPanel(true);
     switchTab("dashboard");
-    await loadAll();
-    startVisitLive();
   } catch (err) {
     clearPass();
     alert("登录失败：" + err.message);
+    return;
+  }
+  try {
+    await loadAll();
+    startVisitLive();
+  } catch (err) {
+    alert("已登录，但部分数据没有加载出来：" + err.message);
   }
 });
 

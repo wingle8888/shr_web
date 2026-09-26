@@ -29,6 +29,12 @@ function isHashedRecord(rec) {
   return Boolean(rec && rec.hash && rec.salt);
 }
 
+function isLegacyScrypt(rec) {
+  if (!isHashedRecord(rec)) return false;
+  if (rec.algo === "pbkdf2-sha256") return false;
+  return rec.algo === "scrypt" || String(rec.hash).length === 128;
+}
+
 function mergeAuth(a, b) {
   const left = a && typeof a === "object" && !Array.isArray(a) ? a : {};
   const right = b && typeof b === "object" && !Array.isArray(b) ? b : {};
@@ -56,7 +62,8 @@ async function writeAuthRecord(password) {
   const payload = {
     salt,
     hash,
-    algo: "scrypt",
+    algo: "pbkdf2-sha256",
+    iters: 10000,
     updatedAt: new Date().toISOString(),
   };
   await writeJsonStore({
@@ -74,7 +81,17 @@ function fallbackPassword() {
 async function passwordMatches(given, rec) {
   const pass = normalizePassword(given);
   if (!pass) return false;
-  if (isHashedRecord(rec)) return verifyPassword(pass, rec.salt, rec.hash);
+  if (isHashedRecord(rec)) {
+    if (isLegacyScrypt(rec)) {
+      if (!passwordsEqual(pass, fallbackPassword())) {
+        const err = new Error("请先用初始密码 shr-admin-2026 登录，进入后在右上角重新设置密码");
+        err.code = "ADMIN_LEGACY";
+        throw err;
+      }
+      return true;
+    }
+    return verifyPassword(pass, rec.salt, rec.hash);
+  }
   const storedPlain = normalizePassword(rec && rec.password);
   if (storedPlain) return passwordsEqual(pass, storedPlain);
   return passwordsEqual(pass, fallbackPassword());
@@ -95,7 +112,7 @@ async function checkAdmin(req) {
   if (!given) return false;
   const rec = await readAuthRecord();
   const ok = await passwordMatches(given, rec);
-  if (ok && rec && rec.password && !isHashedRecord(rec)) {
+  if (ok && ((rec && rec.password && !isHashedRecord(rec)) || isLegacyScrypt(rec))) {
     try {
       await writeAuthRecord(given);
     } catch (_) {}
