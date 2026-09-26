@@ -260,13 +260,15 @@
   background: linear-gradient(90deg, #16324a, #2ee6ff);
 }
 
-.admin-world-map {
-  width: 100%;
-  height: clamp(260px, 48vh, 640px);
+.admin-world-map,
+.admin-world-map.jvm-container {
+  width: min(100%, calc(2 * clamp(300px, 56vh, 720px))) !important;
+  aspect-ratio: 2 / 1 !important;
+  height: auto !important;
+  margin: 0 auto 22px !important;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: radial-gradient(ellipse at center, rgba(18, 36, 62, 0.7), rgba(7, 11, 20, 0.95));
-  margin: 0 0 22px;
   overflow: hidden;
 }
 
@@ -296,8 +298,11 @@
 }
 
 @media (max-width: 700px) {
-  .admin-world-map {
-    height: clamp(220px, 42vh, 360px);
+  .admin-world-map,
+  .admin-world-map.jvm-container {
+    width: 100% !important;
+    aspect-ratio: 4 / 3 !important;
+    max-height: 420px !important;
   }
 }
 
