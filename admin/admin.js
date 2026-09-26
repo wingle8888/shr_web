@@ -2565,6 +2565,10 @@ function bindPasswordToggles() {
   });
 }
 
+window.addEventListener("resize", () => {
+  if (geoMap && typeof geoMap.updateSize === "function") geoMap.updateSize();
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
   bindPasswordToggles();
   state.seedProducts = Array.isArray(window.PRODUCTS) ? window.PRODUCTS.slice() : [];
