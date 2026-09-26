@@ -14,6 +14,7 @@ const {
   addGalleryImages,
   updateGalleryCaption,
   removeGalleryImage,
+  setGalleryImages,
   attachGalleries,
 } = require("../_lib/products-store");
 
@@ -147,6 +148,24 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    if (action === "gallery-set") {
+      const id = String(body.id || "").trim();
+      if (!id) {
+        sendJson(res, 400, { ok: false, error: "id required" });
+        return;
+      }
+      try {
+        const images = await setGalleryImages(id, body.images);
+        sendJson(res, 200, { ok: true, images });
+      } catch (err) {
+        sendJson(res, err && err.code === "BLOB_MISSING" ? 503 : 500, {
+          ok: false,
+          error: err && err.code === "BLOB_MISSING" ? "数据未能保存到服务器，请重试" : String(err.message || err),
+        });
+      }
+      return;
+    }
+
     if (action === "gallery-remove") {
       const id = String(body.id || "").trim();
       const imageId = String(body.imageId || "").trim();
@@ -188,19 +207,28 @@ module.exports = async function handler(req, res) {
     try {
       if (action === "update") {
         const id = String(body.id || "").trim();
-        const idx = list.findIndex((p) => String(p.id) === id);
-        if (idx < 0) {
-          sendJson(res, 404, { ok: false, error: "product not found" });
+        if (!id) {
+          sendJson(res, 400, { ok: false, error: "id required" });
           return;
         }
+        const idx = list.findIndex((p) => String(p.id) === id);
+        const prev = idx >= 0 ? list[idx] : {};
+        const mergedEn = body.en ? Object.assign({}, prev.en || {}, body.en) : prev.en;
         const updated = normalizeProduct(
-          { ...list[idx], ...body, createdAt: list[idx].createdAt, img: body.img || list[idx].img },
-          { id: list[idx].id }
+          {
+            ...prev,
+            ...body,
+            createdAt: prev.createdAt,
+            img: body.img || prev.img,
+            en: mergedEn,
+          },
+          { id: prev.id || id }
         );
         if (body.imageBase64) {
           updated.img = await saveProductImage(updated.id, body.imageBase64, body.imageType);
         }
-        list[idx] = updated;
+        if (idx >= 0) list[idx] = updated;
+        else list.unshift(updated);
         await writeCustomProducts(list);
         sendJson(res, 200, { ok: true, product: updated });
         return;

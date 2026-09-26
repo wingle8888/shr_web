@@ -88,7 +88,12 @@ function unwrapGalleries(raw) {
         if (!item) return null;
         if (typeof item === "string") return { id: item, url: item, caption: "" };
         if (item.url) {
-          return { id: String(item.id || item.url), url: String(item.url), caption: clipCaption(item.caption) };
+          return {
+            id: String(item.id || item.url),
+            url: String(item.url),
+            caption: clipCaption(item.caption),
+            captionEn: clipCaption(item.captionEn),
+          };
         }
         return null;
       })
@@ -385,7 +390,12 @@ async function addGalleryImages(productId, payloads) {
     if (!raw) continue;
     const imageId = `g${pid}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const url = await saveProductImage(imageId, raw, item.imageType || item.type);
-    list.push({ id: imageId, url, caption: clipCaption(item.caption) });
+    list.push({
+      id: imageId,
+      url,
+      caption: clipCaption(item.caption),
+      captionEn: clipCaption(item.captionEn),
+    });
   }
   cur.galleries[pid] = list;
   await writeCatalog(cur);
@@ -404,6 +414,35 @@ async function updateGalleryCaption(productId, imageId, caption) {
   return cur.galleries[pid];
 }
 
+async function setGalleryImages(productId, images) {
+  const pid = String(productId || "").trim();
+  if (!pid) throw new Error("product id required");
+  const cur = await readCatalog();
+  const list = [];
+  const incoming = Array.isArray(images) ? images : [];
+  for (const item of incoming) {
+    if (list.length >= MAX_GALLERY) break;
+    if (!item) continue;
+    let url = String(item.url || "").trim();
+    let imageId = String(item.id || "").trim();
+    if (item.imageBase64) {
+      imageId = imageId || `g${pid}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      url = await saveProductImage(imageId, item.imageBase64, item.imageType || item.type);
+    }
+    if (!url || url.indexOf("blob:") === 0) continue;
+    if (!imageId) imageId = url;
+    list.push({
+      id: imageId,
+      url,
+      caption: clipCaption(item.caption),
+      captionEn: clipCaption(item.captionEn),
+    });
+  }
+  cur.galleries[pid] = list;
+  await writeCatalog(cur);
+  return list;
+}
+
 async function removeGalleryImage(productId, imageId) {
   const pid = String(productId || "").trim();
   const iid = String(imageId || "").trim();
@@ -420,6 +459,66 @@ function attachGalleries(products, galleries) {
     ...p,
     images: map[String(p.id)] || p.images || [],
   }));
+}
+
+function normalizeDownloads(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => {
+      if (!item) return null;
+      if (typeof item === "string") {
+        const parts = item.split("|").map((part) => part.trim());
+        return { name: parts[0] || "", file: parts[1] || "", format: parts[2] || "" };
+      }
+      if (Array.isArray(item)) {
+        return {
+          name: String(item[0] || "").trim(),
+          file: String(item[1] || "").trim(),
+          format: String(item[2] || "").trim(),
+        };
+      }
+      return {
+        name: String(item.name || "").trim(),
+        file: String(item.file || item.url || "").trim(),
+        format: String(item.format || "").trim(),
+      };
+    })
+    .filter((item) => item && (item.name || item.file));
+}
+
+function cleanEn(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const text = (value) => String(value || "").trim();
+  const lines = (value) =>
+    (Array.isArray(value) ? value : [])
+      .map((item) => (Array.isArray(item) ? item.map((part) => text(part)) : text(item)))
+      .filter((item) => (Array.isArray(item) ? item.some(Boolean) : item));
+  const images = (Array.isArray(raw.images) ? raw.images : [])
+    .map((item) => {
+      if (!item || !item.url) return null;
+      return { url: String(item.url).trim(), caption: clipCaption(item.caption) };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_GALLERY);
+  const en = {
+    name: text(raw.name),
+    desc: text(raw.desc),
+    tag: text(raw.tag),
+    category: text(raw.category),
+    intro: text(raw.intro),
+    img: text(raw.img),
+    imgCaption: clipCaption(raw.imgCaption),
+    features: lines(raw.features),
+    package: lines(raw.package),
+    specs: lines(raw.specs),
+    pins: lines(raw.pins),
+    downloads: normalizeDownloads(raw.downloads),
+    images,
+  };
+  Object.keys(en).forEach((key) => {
+    const value = en[key];
+    if (value == null || value === "" || (Array.isArray(value) && !value.length)) delete en[key];
+  });
+  return Object.keys(en).length ? en : undefined;
 }
 
 function categoryName(id, categories) {
@@ -472,7 +571,8 @@ function normalizeProduct(input, { id, existingIds } = {}) {
     specs: Array.isArray(input.specs) ? input.specs : [],
     pins: Array.isArray(input.pins) ? input.pins : [],
     package: packageList.length ? packageList : ["商品本体 ×1"],
-    downloads: Array.isArray(input.downloads) ? input.downloads : [],
+    downloads: normalizeDownloads(input.downloads),
+    en: cleanEn(input.en),
     custom: true,
     updatedAt: new Date().toISOString(),
     createdAt: input.createdAt || new Date().toISOString(),
@@ -553,6 +653,7 @@ module.exports = {
   addGalleryImages,
   updateGalleryCaption,
   removeGalleryImage,
+  setGalleryImages,
   attachGalleries,
   listVisibleProducts,
   loadSeedProducts,

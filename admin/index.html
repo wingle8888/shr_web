@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260921c">
-  <link rel="stylesheet" href="/admin/admin.css?v=20260926d">
+  <link rel="stylesheet" href="/admin/admin.css?v=20260926h">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.css">
 </head>
 <body class="admin-body">
@@ -146,7 +146,7 @@
             <h1>产品管理</h1>
             <button type="button" class="link-btn" id="refreshProducts">刷新</button>
           </div>
-          <p class="admin-tip">可新增后台产品。勾选商品后可下架，下架后商城不再展示，数据仍保留，可再上架。</p>
+          <p class="admin-tip">可新增产品。在下方商品一览中点「编辑」，可修改图片、说明、价格和其他资料。勾选后可下架，下架后商城不再展示。</p>
           <form id="productForm" class="admin-upload">
             <input type="hidden" id="editProductId" value="">
             <div class="form-row">
@@ -206,6 +206,73 @@
                 <textarea id="prodPackage" rows="3" placeholder="开发板 ×1&#10;数据线 ×1"></textarea>
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prodSpecs">规格参数（每行：名称 | 内容）</label>
+                <textarea id="prodSpecs" rows="4" placeholder="主控 | STM32H750&#10;供电 | 5V"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="prodPins">引脚说明（每行：引脚 | 功能 | 说明）</label>
+                <textarea id="prodPins" rows="4" placeholder="PA0 | ADC | 模拟输入"></textarea>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="prodDownloads">资料下载（每行：名称 | 文件地址 | 格式）</label>
+              <textarea id="prodDownloads" rows="3" placeholder="技术资料包 | /downloads/board.zip | ZIP"></textarea>
+            </div>
+            <div class="form-group">
+              <label>商品图片</label>
+              <p class="admin-tip">可更换、添加或删除图片。第一张是主图。每张图可填写中文和英文说明。</p>
+              <div class="admin-gallery-list" id="editGalleryList"></div>
+              <input type="file" id="editGalleryFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+            </div>
+            <details class="admin-edit-en" id="editEnBox">
+              <summary>英文版文字和图片</summary>
+              <p class="admin-tip">英文版页面使用这里的内容。不填的项目会继续用原来的英文资料。英文图片不设置时，英文版使用上面的商品图片。</p>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="prodNameEn">英文名称</label>
+                  <input type="text" id="prodNameEn">
+                </div>
+                <div class="form-group">
+                  <label for="prodTagEn">英文标签</label>
+                  <input type="text" id="prodTagEn">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="prodDescEn">英文简介</label>
+                <input type="text" id="prodDescEn">
+              </div>
+              <div class="form-group">
+                <label for="prodIntroEn">英文详细介绍</label>
+                <textarea id="prodIntroEn" rows="3"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="prodFeaturesEn">英文功能特点（每行一条）</label>
+                  <textarea id="prodFeaturesEn" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="prodPackageEn">英文包装清单（每行一条）</label>
+                  <textarea id="prodPackageEn" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="prodSpecsEn">英文规格（每行：名称 | 内容）</label>
+                  <textarea id="prodSpecsEn" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="prodPinsEn">英文引脚（每行：引脚 | 功能 | 说明）</label>
+                  <textarea id="prodPinsEn" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>英文版图片（可选）</label>
+                <div class="admin-gallery-list" id="editGalleryEnList"></div>
+                <input type="file" id="editGalleryEnFiles" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+              </div>
+            </details>
             <div class="admin-form-actions">
               <button class="btn" type="submit" id="productSubmitBtn">上传产品</button>
               <button class="link-btn" type="button" id="productResetBtn">清空表单</button>
@@ -570,6 +637,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260926g"></script>
-  <script src="/admin/admin.js?v=20260926e"></script>
+  <script src="/admin/admin.js?v=20260926h"></script>
 </body>
 </html>

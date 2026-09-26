@@ -281,9 +281,34 @@ window.PRODUCT_EN = {
 window.getLocalizedProduct = function getLocalizedProduct(product) {
   if (!product) return null;
   if (!window.I18N || window.I18N.getLang() !== "en") return product;
-  const en = window.PRODUCT_EN[product.id];
-  if (!en) return product;
-  return Object.assign({}, product, en);
+  const fallback = (window.PRODUCT_EN && window.PRODUCT_EN[product.id]) || {};
+  const stored = product.en && typeof product.en === "object" ? product.en : {};
+  const en = Object.assign({}, fallback);
+  ["name", "desc", "tag", "category", "intro", "imgCaption"].forEach((key) => {
+    if (stored[key] && String(stored[key]).trim()) en[key] = stored[key];
+  });
+  ["features", "package", "specs", "pins", "downloads"].forEach((key) => {
+    if (Array.isArray(stored[key]) && stored[key].length) en[key] = stored[key];
+  });
+  const next = Object.assign({}, product, en);
+  const enImages = Array.isArray(stored.images) ? stored.images.filter((img) => img && img.url) : [];
+  if (product.custom) {
+    if (enImages.length) {
+      next.images = enImages.map((img) => ({ url: img.url, caption: img.caption || "" }));
+      next.img = stored.img || enImages[0].url;
+    } else {
+      next.img = product.img;
+      next.images = (product.images || []).map((img) => {
+        if (!img || typeof img === "string") return img;
+        return Object.assign({}, img, { caption: img.captionEn || img.caption || "" });
+      });
+    }
+  } else if (fallback.images) {
+    next.images = fallback.images;
+    if (fallback.img) next.img = fallback.img;
+  }
+  delete next.en;
+  return next;
 };
 
 window.getProductById = function getProductById(id) {

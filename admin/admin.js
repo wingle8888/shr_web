@@ -8,6 +8,9 @@ const state = {
   deletedIds: [],
   galleries: {},
   galleryProductId: "",
+  editGallery: [],
+  editGalleryEn: [],
+  editGalleryActive: false,
   categories: [],
   orders: [],
   customers: [],
@@ -571,7 +574,7 @@ function renderProductsTable() {
           <button type="button" data-toggle-hidden="${p.id}" data-hidden="${p.hidden ? "1" : "0"}">${
             p.hidden ? "上架" : "下架"
           }</button>
-          ${custom ? `<button type="button" data-edit-product="${p.id}">编辑</button>` : ""}
+          <button type="button" data-edit-product="${p.id}">编辑</button>
           <button type="button" class="danger" data-del-product="${p.id}">删除</button>
         </td>
       </tr>`;
@@ -1700,9 +1703,159 @@ async function loadAll() {
   if (failed) throw failed.reason;
 }
 
+function linesOf(list) {
+  return (Array.isArray(list) ? list : []).map((item) => String(item || "").trim()).filter(Boolean).join("\n");
+}
+
+function pairsToText(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((row) => (Array.isArray(row) ? row.map((part) => String(part || "").trim()).join(" | ") : String(row || "")))
+    .filter((line) => line.replace(/\|/g, "").trim())
+    .join("\n");
+}
+
+function textToLines(text) {
+  return String(text || "")
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function textToRows(text, width) {
+  return textToLines(text).map((line) => {
+    const parts = line.split("|").map((part) => part.trim());
+    if (width) {
+      while (parts.length < width) parts.push("");
+      return parts.slice(0, width);
+    }
+    return parts;
+  });
+}
+
+function downloadsToText(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") return item;
+      return [item.name || "", item.file || item.url || "", item.format || ""].join(" | ");
+    })
+    .filter((line) => line.replace(/\|/g, "").trim())
+    .join("\n");
+}
+
+function textToDownloads(text) {
+  return textToRows(text)
+    .map((row) => ({ name: row[0] || "", file: row[1] || "", format: row[2] || "" }))
+    .filter((item) => item.name || item.file);
+}
+
+function englishPackFor(product) {
+  const stored = product && product.en && typeof product.en === "object" ? product.en : {};
+  const fallback = (window.PRODUCT_EN && product && window.PRODUCT_EN[product.id]) || {};
+  return Object.assign({}, fallback, stored);
+}
+
+function galleryItemsFrom(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((item, index) => {
+      if (!item) return null;
+      if (typeof item === "string") {
+        return { key: "g" + index + "-" + Date.now(), id: item, url: item, caption: "", captionEn: "", file: null };
+      }
+      const url = String(item.url || "").trim();
+      if (!url) return null;
+      return {
+        key: String(item.id || "g" + index) + "-" + index,
+        id: item.id || url,
+        url,
+        caption: item.caption || "",
+        captionEn: item.captionEn || "",
+        file: null,
+      };
+    })
+    .filter(Boolean);
+}
+
+function renderEditGallery(listName, elementId) {
+  const box = $(elementId);
+  if (!box) return;
+  const list = state[listName] || [];
+  box.innerHTML = list.length
+    ? list
+        .map((item, index) => {
+          const src = item.file ? "" : item.url;
+          const captions =
+            listName === "editGalleryEn"
+              ? `<textarea data-edit-caption-en="${escapeHtml(item.key)}" rows="2" maxlength="200" placeholder="英文说明">${escapeHtml(item.captionEn || item.caption || "")}</textarea>`
+              : `<textarea data-edit-caption="${escapeHtml(item.key)}" rows="2" maxlength="200" placeholder="中文说明">${escapeHtml(item.caption || "")}</textarea>
+        <textarea data-edit-caption-en="${escapeHtml(item.key)}" rows="2" maxlength="200" placeholder="英文说明">${escapeHtml(item.captionEn || "")}</textarea>`;
+          return `<div class="admin-gallery-item" data-edit-key="${escapeHtml(item.key)}">
+        <img src="${escapeHtml(src)}" alt="" ${item.file ? "data-local-preview=\"1\"" : ""}>
+        <div class="admin-hint">${index === 0 && listName === "editGallery" ? "主图" : "图片 " + (index + 1)}</div>
+        ${captions}
+        <button type="button" class="danger" data-remove-edit-image="${escapeHtml(item.key)}" data-edit-list="${listName}">删除</button>
+      </div>`;
+        })
+        .join("")
+    : `<p class="admin-tip">还没有图片。</p>`;
+  box.querySelectorAll("img[data-local-preview]").forEach((img) => {
+    const key = img.closest("[data-edit-key]") && img.closest("[data-edit-key]").dataset.editKey;
+    const item = list.find((entry) => entry.key === key);
+    if (item && item.file) img.src = URL.createObjectURL(item.file);
+  });
+}
+
+function bindEditGallery(listName, elementId) {
+  const box = $(elementId);
+  if (!box || box.dataset.boundGallery) return;
+  box.dataset.boundGallery = "1";
+  box.addEventListener("input", (e) => {
+    const caption = e.target.closest("[data-edit-caption]");
+    const captionEn = e.target.closest("[data-edit-caption-en]");
+    const key = (caption && caption.dataset.editCaption) || (captionEn && captionEn.dataset.editCaptionEn);
+    if (!key) return;
+    const item = (state[listName] || []).find((entry) => entry.key === key);
+    if (!item) return;
+    if (caption) item.caption = caption.value;
+    if (captionEn) item.captionEn = captionEn.value;
+  });
+  box.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-remove-edit-image]");
+    if (!btn || btn.dataset.editList !== listName) return;
+    state[listName] = (state[listName] || []).filter((entry) => entry.key !== btn.dataset.removeEditImage);
+    state.editGalleryActive = true;
+    renderEditGallery(listName, elementId);
+  });
+}
+
+function addEditGalleryFiles(listName, elementId, files) {
+  const list = state[listName] || [];
+  Array.from(files || []).forEach((file) => {
+    if (list.length >= 12) return;
+    list.push({
+      key: "new-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      id: "",
+      url: "",
+      caption: "",
+      captionEn: "",
+      file,
+    });
+  });
+  state[listName] = list;
+  state.editGalleryActive = true;
+  renderEditGallery(listName, elementId);
+}
+
 function resetProductForm() {
   $("editProductId").value = "";
   $("productForm").reset();
+  state.editGallery = [];
+  state.editGalleryEn = [];
+  state.editGalleryActive = false;
+  renderEditGallery("editGallery", "editGalleryList");
+  renderEditGallery("editGalleryEn", "editGalleryEnList");
+  const enBox = $("editEnBox");
+  if (enBox) enBox.open = false;
   $("productSubmitBtn").textContent = "上传产品";
   $("productStatus").textContent = "";
   $("productStatus").className = "admin-status";
@@ -1714,6 +1867,7 @@ function resetProductForm() {
 }
 
 function fillProductForm(p) {
+  const en = englishPackFor(p);
   $("editProductId").value = p.id;
   $("prodName").value = p.name || "";
   $("prodPrice").value = p.price || "";
@@ -1733,10 +1887,60 @@ function fillProductForm(p) {
   }
   $("prodDesc").value = p.desc || "";
   $("prodIntro").value = p.intro || "";
-  $("prodFeatures").value = (p.features || []).join("\n");
-  $("prodPackage").value = (p.package || []).join("\n");
+  $("prodFeatures").value = linesOf(p.features);
+  $("prodPackage").value = linesOf(p.package);
+  if ($("prodSpecs")) $("prodSpecs").value = pairsToText(p.specs);
+  if ($("prodPins")) $("prodPins").value = pairsToText(p.pins);
+  if ($("prodDownloads")) $("prodDownloads").value = downloadsToText(p.downloads);
+  if ($("prodNameEn")) $("prodNameEn").value = en.name || "";
+  if ($("prodTagEn")) $("prodTagEn").value = en.tag || "";
+  if ($("prodDescEn")) $("prodDescEn").value = en.desc || "";
+  if ($("prodIntroEn")) $("prodIntroEn").value = en.intro || "";
+  if ($("prodFeaturesEn")) $("prodFeaturesEn").value = linesOf(en.features);
+  if ($("prodPackageEn")) $("prodPackageEn").value = linesOf(en.package);
+  if ($("prodSpecsEn")) $("prodSpecsEn").value = pairsToText(en.specs);
+  if ($("prodPinsEn")) $("prodPinsEn").value = pairsToText(en.pins);
+  const images = galleryItemsFrom(p.images && p.images.length ? p.images : p.img ? [{ url: p.img, caption: p.imgCaption || "" }] : []);
+  state.editGallery = images;
+  const enImages = galleryItemsFrom(en.images);
+  const sameAsMain =
+    enImages.length &&
+    images.length === enImages.length &&
+    images.every((item, index) => item.url === enImages[index].url);
+  state.editGalleryEn = (sameAsMain ? [] : enImages).map((item) => ({
+    ...item,
+    captionEn: item.captionEn || item.caption || "",
+  }));
+  state.editGalleryActive = true;
+  renderEditGallery("editGallery", "editGalleryList");
+  renderEditGallery("editGalleryEn", "editGalleryEnList");
+  const enBox = $("editEnBox");
+  if (enBox) enBox.open = Boolean(state.editGalleryEn.length);
   $("productSubmitBtn").textContent = "保存修改";
   switchTab("products");
+  const form = $("productForm");
+  if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function collectEnglishPayload() {
+  const en = {
+    name: $("prodNameEn") ? $("prodNameEn").value.trim() : "",
+    desc: $("prodDescEn") ? $("prodDescEn").value.trim() : "",
+    tag: $("prodTagEn") ? $("prodTagEn").value.trim() : "",
+    intro: $("prodIntroEn") ? $("prodIntroEn").value.trim() : "",
+    features: textToLines($("prodFeaturesEn") ? $("prodFeaturesEn").value : ""),
+    package: textToLines($("prodPackageEn") ? $("prodPackageEn").value : ""),
+    specs: textToRows($("prodSpecsEn") ? $("prodSpecsEn").value : ""),
+    pins: textToRows($("prodPinsEn") ? $("prodPinsEn").value : "", 3),
+  };
+  const images = (state.editGalleryEn || [])
+    .filter((item) => item.url && !item.file)
+    .map((item) => ({ url: item.url, caption: item.captionEn || item.caption || "" }));
+  if (images.length) {
+    en.images = images;
+    en.img = images[0].url;
+  }
+  return en;
 }
 
 function fileToCompressedDataUrl(file, maxW = 900, quality = 0.82) {
@@ -1761,6 +1965,25 @@ function fileToCompressedDataUrl(file, maxW = 900, quality = 0.82) {
       reject(new Error("image read failed"));
     };
     image.src = url;
+  });
+}
+
+bindEditGallery("editGallery", "editGalleryList");
+bindEditGallery("editGalleryEn", "editGalleryEnList");
+const editGalleryFiles = $("editGalleryFiles");
+if (editGalleryFiles) {
+  editGalleryFiles.addEventListener("change", () => {
+    addEditGalleryFiles("editGallery", "editGalleryList", editGalleryFiles.files);
+    editGalleryFiles.value = "";
+  });
+}
+const editGalleryEnFiles = $("editGalleryEnFiles");
+if (editGalleryEnFiles) {
+  editGalleryEnFiles.addEventListener("change", () => {
+    addEditGalleryFiles("editGalleryEn", "editGalleryEnList", editGalleryEnFiles.files);
+    editGalleryEnFiles.value = "";
+    const enBox = $("editEnBox");
+    if (enBox) enBox.open = true;
   });
 }
 
@@ -2119,15 +2342,30 @@ $("productForm").addEventListener("submit", async (e) => {
   status.className = "admin-status";
   const editId = $("editProductId").value.trim();
   const file = $("prodImgFile") && $("prodImgFile").files ? $("prodImgFile").files[0] : null;
-  let imageBase64 = "";
+  const typedUrl = $("prodImg").value.trim();
+  const typedCaption = $("prodImgCaption") ? $("prodImgCaption").value.trim() : "";
   if (file) {
-    try {
-      imageBase64 = await fileToCompressedDataUrl(file);
-    } catch (err) {
-      status.textContent = "图片读取失败：" + err.message;
-      status.className = "admin-status error";
-      return;
+    state.editGallery.unshift({
+      key: "cover-" + Date.now(),
+      id: "",
+      url: "",
+      caption: typedCaption,
+      captionEn: "",
+      file,
+    });
+    state.editGalleryActive = true;
+  } else if (typedUrl) {
+    if (!state.editGallery.length) {
+      state.editGallery = [
+        { key: "cover-url", id: typedUrl, url: typedUrl, caption: typedCaption, captionEn: "", file: null },
+      ];
+      state.editGalleryActive = true;
+    } else if (!state.editGallery[0].file && state.editGallery[0].url !== typedUrl) {
+      state.editGallery[0].url = typedUrl;
+      state.editGallery[0].id = typedUrl;
+      state.editGalleryActive = true;
     }
+    if (state.editGallery[0] && !state.editGallery[0].caption) state.editGallery[0].caption = typedCaption;
   }
   const payload = {
     action: editId ? "update" : "create",
@@ -2137,18 +2375,27 @@ $("productForm").addEventListener("submit", async (e) => {
     categoryId: $("prodCategory").value,
     category: ($("prodCategory").selectedOptions[0] && $("prodCategory").selectedOptions[0].textContent) || "",
     tag: $("prodTag").value.trim(),
-    img: $("prodImg").value.trim(),
-    imgCaption: $("prodImgCaption") ? $("prodImgCaption").value.trim() : "",
-    imageBase64,
+    img: typedUrl,
+    imgCaption: typedCaption,
+    imageBase64: "",
     imageType: "image/jpeg",
     desc: $("prodDesc").value.trim(),
     intro: $("prodIntro").value.trim(),
-    featuresText: $("prodFeatures").value,
-    packageText: $("prodPackage").value,
+    features: textToLines($("prodFeatures").value),
+    package: textToLines($("prodPackage").value),
+    specs: textToRows($("prodSpecs") ? $("prodSpecs").value : ""),
+    pins: textToRows($("prodPins") ? $("prodPins").value : "", 3),
+    downloads: textToDownloads($("prodDownloads") ? $("prodDownloads").value : ""),
+    en: collectEnglishPayload(),
     seedIds: state.seedProducts.map((p) => p.id),
   };
   try {
-    await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
+    const saved = await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
+    const productId = (saved.product && saved.product.id) || editId;
+    if (productId && state.editGalleryActive) {
+      status.textContent = "正在保存图片…";
+      await syncProductImages(productId);
+    }
     status.textContent = editId ? "已保存" : "产品已上传";
     resetProductForm();
     await loadProductsBundle();
@@ -2157,6 +2404,68 @@ $("productForm").addEventListener("submit", async (e) => {
     status.className = "admin-status error";
   }
 });
+
+async function uploadEditFiles(productId, items) {
+  const ready = [];
+  for (const item of items) {
+    let url = item.url;
+    let id = item.id;
+    if (item.file) {
+      const imageBase64 = await fileToCompressedDataUrl(item.file);
+      const data = await api("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "gallery-add",
+          id: productId,
+          images: [{ imageBase64, imageType: "image/jpeg", caption: item.caption, captionEn: item.captionEn }],
+        }),
+      });
+      const last = (data.images || [])[data.images.length - 1];
+      if (!last || !last.url) throw new Error("图片没有保存成功");
+      url = last.url;
+      id = last.id || last.url;
+    }
+    if (!url || String(url).indexOf("blob:") === 0) continue;
+    ready.push({
+      id: id || url,
+      url,
+      caption: item.caption || "",
+      captionEn: item.captionEn || "",
+    });
+  }
+  return ready;
+}
+
+async function syncProductImages(productId) {
+  const images = await uploadEditFiles(productId, state.editGallery || []);
+  const enImages = await uploadEditFiles(productId, state.editGalleryEn || []);
+  const data = await api("/api/admin/products", {
+    method: "POST",
+    body: JSON.stringify({ action: "gallery-set", id: productId, images }),
+  });
+  const patch = {
+    action: "update",
+    id: productId,
+    name: $("prodName").value.trim(),
+    price: $("prodPrice").value,
+    categoryId: $("prodCategory").value,
+    desc: $("prodDesc").value.trim(),
+  };
+  if (images[0] && images[0].url) {
+    patch.img = images[0].url;
+    patch.imgCaption = images[0].caption || "";
+  }
+  if (enImages.length) {
+    patch.en = {
+      images: enImages.map((item) => ({ url: item.url, caption: item.captionEn || item.caption || "" })),
+      img: enImages[0].url,
+    };
+  }
+  if (patch.img || patch.en) {
+    await api("/api/admin/products", { method: "POST", body: JSON.stringify(patch) });
+  }
+  if (data.images) state.galleries[String(productId)] = data.images;
+}
 
 function selectedProductIds() {
   return Array.from(document.querySelectorAll(".product-check:checked")).map((el) => el.value);
@@ -2423,7 +2732,7 @@ $("productsTable").addEventListener("click", async (e) => {
   }
   const editBtn = e.target.closest("[data-edit-product]");
   if (editBtn) {
-    const p = state.customProducts.find((x) => String(x.id) === String(editBtn.dataset.editProduct));
+    const p = allProducts().find((x) => String(x.id) === String(editBtn.dataset.editProduct));
     if (p) fillProductForm(p);
     return;
   }
