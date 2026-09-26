@@ -542,7 +542,7 @@
   function getLang() {
     const saved = localStorage.getItem(LANG_KEY);
     if (saved === "zh" || saved === "en") return saved;
-    return "zh";
+    return "en";
   }
 
   function setLang(lang) {
@@ -634,6 +634,8 @@
       if (topBar) ro.observe(topBar);
     }
   }
+
+  applyI18n();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initChromeOffset);
