@@ -1,4 +1,5 @@
 const PASS_KEY = "shr_admin_pass";
+const EDIT_KEY = "shr_admin_edit_product";
 const ORDERS_KEY = "shr_orders";
 
 const state = {
@@ -108,6 +109,98 @@ function setPass(v) {
 
 function clearPass() {
   sessionStorage.removeItem(PASS_KEY);
+}
+
+function rememberEditProduct(id) {
+  const value = String(id || "").trim();
+  if (value) sessionStorage.setItem(EDIT_KEY, value);
+  else sessionStorage.removeItem(EDIT_KEY);
+}
+
+function activeEditId() {
+  const field = $("editProductId");
+  const stored = sessionStorage.getItem(EDIT_KEY) || "";
+  const current = field ? field.value.trim() : "";
+  if (field && !current && stored) field.value = stored;
+  return (field && field.value.trim()) || stored;
+}
+
+function syncEditMode() {
+  const id = activeEditId();
+  const btn = $("productSubmitBtn");
+  if (btn) btn.textContent = id ? "保存修改" : "上传产品";
+  const hint = $("editProductHint");
+  if (!hint) return;
+  if (!id) {
+    hint.hidden = true;
+    hint.textContent = "";
+    return;
+  }
+  hint.hidden = false;
+  hint.textContent = `正在修改 #${id}。保存会更新该产品，不会新建。若要上传新产品，请先点「清空表单」。`;
+}
+
+function pinFormDefaults() {
+  const form = $("productForm");
+  if (!form) return;
+  form.querySelectorAll("input, textarea").forEach((el) => {
+    if (el.type === "file") return;
+    el.defaultValue = el.value;
+  });
+  form.querySelectorAll("select").forEach((sel) => {
+    Array.from(sel.options).forEach((opt) => {
+      opt.defaultSelected = opt.selected;
+    });
+  });
+}
+
+function clearFormDefaults() {
+  const form = $("productForm");
+  if (!form) return;
+  form.querySelectorAll("input, textarea").forEach((el) => {
+    if (el.type === "file") return;
+    el.defaultValue = "";
+  });
+  form.querySelectorAll("select").forEach((sel) => {
+    Array.from(sel.options).forEach((opt, index) => {
+      opt.defaultSelected = index === 0;
+    });
+  });
+}
+
+function snapshotProductForm() {
+  const form = $("productForm");
+  if (!form) return null;
+  const data = {};
+  form.querySelectorAll("input, textarea, select").forEach((el) => {
+    if (!el.id || el.type === "file") return;
+    data[el.id] = el.value;
+  });
+  return data;
+}
+
+function restoreProductFormSnapshot(data) {
+  if (!data) return;
+  Object.keys(data).forEach((id) => {
+    const el = $(id);
+    if (!el || el.value === data[id]) return;
+    el.value = data[id];
+  });
+}
+
+function restoreProductEditor() {
+  const editId = sessionStorage.getItem(EDIT_KEY) || "";
+  if (!editId) return;
+  if ($("editProductId").value.trim() === editId && $("prodName").value.trim()) {
+    syncEditMode();
+    return;
+  }
+  const product = allProducts().find((item) => String(item.id) === String(editId));
+  if (!product) {
+    syncEditMode();
+    return;
+  }
+  fillProductForm(product);
 }
 
 function escapeHtml(str) {
@@ -1460,6 +1553,7 @@ async function loadVisits() {
 }
 
 async function loadProductsBundle() {
+  const formSnap = snapshotProductForm();
   const data = await api("/api/admin/products");
   state.customProducts = data.products || [];
   state.hiddenIds = data.hiddenIds || [];
@@ -1467,10 +1561,13 @@ async function loadProductsBundle() {
   state.galleries = data.galleries || {};
   state.categories = Array.isArray(data.categories) ? data.categories : [];
   fillCategorySelect();
+  restoreProductFormSnapshot(formSnap);
+  pinFormDefaults();
   renderCategoriesTable();
   renderProductsTable();
   productOptions();
   if (state.galleryProductId) renderGalleryPanel(state.galleryProductId);
+  syncEditMode();
 }
 
 async function loadUsers() {
@@ -1847,7 +1944,10 @@ function addEditGalleryFiles(listName, elementId, files) {
 }
 
 function resetProductForm() {
+  rememberEditProduct("");
+  clearFormDefaults();
   $("editProductId").value = "";
+  $("editProductId").defaultValue = "";
   $("productForm").reset();
   state.editGallery = [];
   state.editGalleryEn = [];
@@ -1856,7 +1956,7 @@ function resetProductForm() {
   renderEditGallery("editGalleryEn", "editGalleryEnList");
   const enBox = $("editEnBox");
   if (enBox) enBox.open = false;
-  $("productSubmitBtn").textContent = "上传产品";
+  syncEditMode();
   $("productStatus").textContent = "";
   $("productStatus").className = "admin-status";
   const preview = $("prodImgPreview");
@@ -1916,7 +2016,9 @@ function fillProductForm(p) {
   renderEditGallery("editGalleryEn", "editGalleryEnList");
   const enBox = $("editEnBox");
   if (enBox) enBox.open = Boolean(state.editGalleryEn.length);
-  $("productSubmitBtn").textContent = "保存修改";
+  rememberEditProduct(p.id);
+  pinFormDefaults();
+  syncEditMode();
   switchTab("products");
   const form = $("productForm");
   if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2037,6 +2139,7 @@ $("loginForm").addEventListener("submit", async (e) => {
   }
   try {
     await loadAll();
+    restoreProductEditor();
     startVisitLive();
   } catch (err) {
     alert("已登录，但部分数据没有加载出来：" + err.message);
@@ -2047,6 +2150,7 @@ $("logoutBtn").addEventListener("click", () => {
   stopVisitLive();
   stopChatLive();
   clearPass();
+  rememberEditProduct("");
   closePasswordDialog();
   showPanel(false);
 });
@@ -2150,7 +2254,26 @@ document.addEventListener("visibilitychange", () => {
 });
 $("refreshOrders").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
 $("refreshCustomers").addEventListener("click", () => loadOrdersBundle().catch((e) => alert(e.message)));
-$("refreshProducts").addEventListener("click", () => loadProductsBundle().catch((e) => alert(e.message)));
+$("refreshProducts").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const editId = activeEditId();
+  try {
+    await loadProductsBundle();
+    if (editId) {
+      const nameGone = !$("prodName").value.trim();
+      const idGone = !$("editProductId").value.trim();
+      if (nameGone || idGone) {
+        const product = allProducts().find((item) => String(item.id) === String(editId));
+        if (product) fillProductForm(product);
+        else $("editProductId").value = editId;
+      }
+      rememberEditProduct(editId);
+    }
+    syncEditMode();
+  } catch (err) {
+    alert(err.message);
+  }
+});
 $("refreshUsers").addEventListener("click", () => loadUsers().catch((e) => alert(e.message)));
 $("refreshUsersTop").addEventListener("click", () => loadUsers().catch((e) => adminAlert(e.message)));
 $("clearUsers").addEventListener("click", () => {
@@ -2340,7 +2463,7 @@ $("productForm").addEventListener("submit", async (e) => {
   const status = $("productStatus");
   status.textContent = "保存中…";
   status.className = "admin-status";
-  const editId = $("editProductId").value.trim();
+  const editId = activeEditId();
   const file = $("prodImgFile") && $("prodImgFile").files ? $("prodImgFile").files[0] : null;
   const typedUrl = $("prodImg").value.trim();
   const typedCaption = $("prodImgCaption") ? $("prodImgCaption").value.trim() : "";
@@ -2897,6 +3020,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     showPanel(true);
     switchTab("dashboard");
     await loadAll();
+    restoreProductEditor();
     startVisitLive();
   } catch {
     clearPass();

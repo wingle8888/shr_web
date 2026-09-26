@@ -146,7 +146,7 @@
             <h1>产品管理</h1>
             <button type="button" class="link-btn" id="refreshProducts">刷新</button>
           </div>
-          <p class="admin-tip">可新增产品。在下方商品一览中点「编辑」，可修改图片、说明、价格和其他资料。勾选后可下架，下架后商城不再展示。</p>
+          <p class="admin-tip">可新增产品。在下方商品一览中点「编辑」，可修改图片、说明、价格和其他资料。点「刷新」只更新列表，不会退出正在进行的编辑，保存时仍会更新该产品。要改为上传新产品，请先点「清空表单」。勾选后可下架，下架后商城不再展示。</p>
           <form id="productForm" class="admin-upload">
             <input type="hidden" id="editProductId" value="">
             <div class="form-row">
@@ -277,6 +277,7 @@
               <button class="btn" type="submit" id="productSubmitBtn">上传产品</button>
               <button class="link-btn" type="button" id="productResetBtn">清空表单</button>
             </div>
+            <p class="admin-tip" id="editProductHint" hidden></p>
             <p class="admin-status" id="productStatus"></p>
           </form>
 
@@ -637,6 +638,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js"></script>
   <script src="/js/products-data.js?v=20260926g"></script>
-  <script src="/admin/admin.js?v=20260926h"></script>
+  <script src="/admin/admin.js?v=20260926i"></script>
 </body>
 </html>
