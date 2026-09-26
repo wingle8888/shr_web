@@ -3,6 +3,7 @@
 
   let panel = "orders";
   let orderFilter = "all";
+  let orderQuery = "";
   let orders = [];
   let pollTimer = null;
 
@@ -106,6 +107,7 @@
       unpaid: orders.filter((o) => stageOf(o) === "unpaid").length,
       paid: orders.filter((o) => stageOf(o) === "paid").length,
       shipped: orders.filter((o) => stageOf(o) === "shipped").length,
+      received: orders.filter((o) => stageOf(o) === "received").length,
       refund: orders.filter((o) => stageOf(o) === "refund").length,
     };
   }
@@ -127,9 +129,11 @@
     const box = document.getElementById("whStats");
     if (!box) return;
     const items = [
+      ["all", "warehouseOrdersAll", n.all, "list"],
       ["unpaid", "warehouseUnpaid", n.unpaid, "wallet"],
       ["paid", "warehouseToShip", n.paid, "truck"],
       ["shipped", "warehouseToReceive", n.shipped, "package"],
+      ["received", "warehouseReceived", n.received, "check"],
       ["refund", "warehouseRefund", n.refund, "refund"],
     ];
     box.innerHTML = items
@@ -153,6 +157,7 @@
       ["unpaid", "warehouseUnpaid", n.unpaid, "wallet"],
       ["paid", "warehouseToShip", n.paid, "truck"],
       ["shipped", "warehouseToReceive", n.shipped, "package"],
+      ["received", "warehouseReceived", n.received, "check"],
       ["refund", "warehouseRefund", n.refund, "refund"],
     ];
     wrap.innerHTML = tabs
@@ -169,8 +174,43 @@
     if (orderFilter === "unpaid") return t("warehouseEmptyUnpaid");
     if (orderFilter === "paid") return t("warehouseEmptyToShip");
     if (orderFilter === "shipped") return t("warehouseEmptyToReceive");
+    if (orderFilter === "received") return t("warehouseEmptyReceived");
     if (orderFilter === "refund") return t("warehouseEmptyRefund");
     return t("warehouseEmptyPurchases");
+  }
+
+  function visibleOrders() {
+    const query = orderQuery.trim().toLowerCase();
+    return orders
+      .filter((order) => orderFilter === "all" || stageOf(order) === orderFilter)
+      .filter((order) => {
+        if (!query) return true;
+        const names = (order.items || []).map((item) => item && item.name).join(" ");
+        const ship = order.shipping || {};
+        return [order.id, names, ship.name, ship.phone].join(" ").toLowerCase().includes(query);
+      })
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  }
+
+  function copyText(text) {
+    const value = String(text || "");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(value).catch(() => fallbackCopy(value));
+    }
+    return fallbackCopy(value);
+  }
+
+  function fallbackCopy(value) {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    input.remove();
+    return Promise.resolve();
   }
 
   function renderOrders() {
@@ -178,7 +218,7 @@
     renderTabs();
     const list = document.getElementById("whOrderList");
     if (!list) return;
-    const rows = orders.filter((order) => orderFilter === "all" || stageOf(order) === orderFilter);
+    const rows = visibleOrders();
     if (!rows.length) {
       list.innerHTML = `<div class="warehouse-empty">${icon("empty", "wh-ico-lg")}<p>${escapeHtml(emptyText())}</p></div>`;
       return;
@@ -213,6 +253,18 @@
             `<button type="button" class="link-btn warehouse-btn-ico" data-wh-refund="${escapeHtml(order.id)}">${icon(
               "refund"
             )}<span>${escapeHtml(t("warehouseRequestRefund"))}</span></button>`
+          );
+        }
+        actions.push(
+          `<button type="button" class="link-btn warehouse-btn-ico" data-wh-copy="${escapeHtml(order.id)}">${icon(
+            "list"
+          )}<span>${escapeHtml(t("warehouseCopyId"))}</span></button>`
+        );
+        if ((order.items || []).length) {
+          actions.push(
+            `<button type="button" class="btn btn-sm warehouse-btn-ico" data-wh-reorder="${escapeHtml(order.id)}">${icon(
+              "cart"
+            )}<span>${escapeHtml(t("warehouseReorder"))}</span></button>`
           );
         }
         return `
@@ -389,14 +441,35 @@
     document.getElementById("whOrderList").addEventListener("click", (e) => {
       const receive = e.target.closest("[data-wh-receive]");
       if (receive) {
-        if (window.confirm(t("warehouseConfirmReceive"))) orderAction("receive", receive.getAttribute("data-wh-receive"));
+        if (window.confirm(t("warehouseConfirmReceiveAsk"))) orderAction("receive", receive.getAttribute("data-wh-receive"));
         return;
       }
       const refund = e.target.closest("[data-wh-refund]");
-      if (refund && window.confirm(t("warehouseRequestRefund"))) {
+      if (refund && window.confirm(t("warehouseRefundAsk"))) {
         orderAction("refund", refund.getAttribute("data-wh-refund"));
+        return;
+      }
+      const copy = e.target.closest("[data-wh-copy]");
+      if (copy) {
+        copyText(copy.getAttribute("data-wh-copy")).then(() => showToastAnd("warehouseCopied"));
+        return;
+      }
+      const reorder = e.target.closest("[data-wh-reorder]");
+      if (reorder && window.Warehouse && typeof window.Warehouse.addCartItems === "function") {
+        const order = orders.find((row) => String(row.id) === String(reorder.getAttribute("data-wh-reorder")));
+        if (!order) return;
+        window.Warehouse.addCartItems(order.items || []);
+        renderNavCounts();
+        showToastAnd("warehouseReordered");
       }
     });
+    const search = document.getElementById("whOrderSearch");
+    if (search) {
+      search.addEventListener("input", () => {
+        orderQuery = search.value || "";
+        renderOrders();
+      });
+    }
     document.getElementById("whAddAddress").addEventListener("click", () => showAddressForm(null));
     document.getElementById("whAddrCancel").addEventListener("click", hideAddressForm);
     document.getElementById("whAddressForm").addEventListener("submit", async (e) => {

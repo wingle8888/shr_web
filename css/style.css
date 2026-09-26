@@ -1555,7 +1555,7 @@ footer {
 
 .warehouse-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -1594,10 +1594,27 @@ footer {
   height: 18px;
 }
 
+.warehouse-stat-all .warehouse-stat-ico { color: var(--primary); background: rgba(46, 230, 255, 0.16); }
 .warehouse-stat-unpaid .warehouse-stat-ico { color: #ffd8b0; background: rgba(255, 122, 24, 0.16); }
 .warehouse-stat-paid .warehouse-stat-ico { color: #ffd8b0; background: rgba(255, 122, 24, 0.22); }
 .warehouse-stat-shipped .warehouse-stat-ico { color: var(--primary); background: rgba(46, 230, 255, 0.14); }
+.warehouse-stat-received .warehouse-stat-ico { color: #b8f0d8; background: rgba(46, 230, 160, 0.16); }
 .warehouse-stat-refund .warehouse-stat-ico { color: #ffb3bc; background: rgba(255, 92, 108, 0.16); }
+
+.warehouse-search {
+  margin: 0 0 14px;
+}
+
+.warehouse-search input {
+  width: min(420px, 100%);
+  background: rgba(13, 20, 36, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+}
 
 .warehouse-stat-num {
   display: block;

@@ -593,6 +593,31 @@
     changeWarehouseQty(id, delta);
   }
 
+  function addCartItems(items) {
+    const map = new Map((cache.cart || []).map((item) => [String(item.id), { ...item }]));
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      if (!item || item.id == null) return;
+      const key = String(item.id);
+      const qty = Math.max(1, Number(item.qty) || 1);
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, {
+          id: item.id,
+          name: item.name || "",
+          price: item.price,
+          img: item.img || "",
+          qty,
+        });
+      } else {
+        map.set(key, { ...prev, qty: Number(prev.qty || 0) + qty });
+      }
+    });
+    cache.cart = Array.from(map.values());
+    applyPageCart(cache.cart);
+    persist({ cart: cache.cart }, true);
+    return cache.cart;
+  }
+
   window.Warehouse = {
     open,
     close,
@@ -605,6 +630,7 @@
     getDefaultAddress,
     getCache,
     changeQty,
+    addCartItems,
     fetchOrders,
     updateOrder,
     load: loadWarehouse,
