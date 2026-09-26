@@ -236,6 +236,7 @@ function renderDetail(product, remoteDownloads) {
           }
         </div>
         <p class="detail-ship-tip">${escapeHtml(t("shipTip"))}</p>
+        <p class="detail-warranty">${escapeHtml(t("customShort"))} <a href="/#custom">${escapeHtml(t("customMore"))}</a></p>
         <p class="detail-warranty">${escapeHtml(t("warrantyLead"))} <a href="/#warranty">${escapeHtml(t("warrantyMore"))}</a></p>
       </div>
     </section>
